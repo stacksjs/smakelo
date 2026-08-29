@@ -1,0 +1,158 @@
+<script server>
+/*
+ * Where your order is.
+ *
+ * Reached with a tracking code rather than an order id, so somebody can watch
+ * their order without an account and cannot watch anybody else's by counting.
+ *
+ * Polls rather than holds a websocket. The framework has broadcasting and the
+ * courier position already goes out on `order.{id}`, but a page that reconnects
+ * after a tunnel and survives a laptop lid closing is worth more here than the
+ * latency a socket would save, and the payload is a few hundred bytes.
+ */
+const pageTitle = 'Where your order is - Smakelo'
+const pageDescription = 'Follow an order from the kitchen to the door.'
+const canonicalPath = '/track'
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body>
+    @include('chrome')
+
+    <main class="mx-auto px-4 sm:px-8 max-w-4xl">
+      <div id="track-root" class="pt-12 pb-24 sm:pb-40">
+        <p class="text-[15px]" style="color: var(--ink-soft)">Looking for that order…</p>
+      </div>
+    </main>
+
+    <script client>
+      import { Marker, tileLayer, TsMap } from 'ts-maps'
+      import 'ts-maps/styles.css'
+
+      const root = document.getElementById('track-root')
+      const code = new URLSearchParams(location.search).get('code') || ''
+
+      let map = null
+      let courierMarker = null
+
+      const STEPS = [
+        ['PENDING', 'Order received'],
+        ['PROCESSING', 'Being prepared'],
+        ['OUT_FOR_DELIVERY', 'On the way'],
+        ['DELIVERED', 'Delivered'],
+      ]
+
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
+      }[ch]))
+
+      async function tick() {
+        if (!code) {
+          root.innerHTML = '<p class="text-[15px]">No tracking code. Place an order from <a class="underline underline-offset-4" href="/">discover</a>.</p>'
+          return
+        }
+
+        const response = await fetch(`/api/orders/track/${encodeURIComponent(code)}`)
+
+        if (!response.ok) {
+          root.innerHTML = '<p class="text-[15px]">No order with that code.</p>'
+          return
+        }
+
+        const { data } = await response.json()
+        render(data)
+
+        // Stop asking once there is nothing left to change.
+        if (data.status !== 'DELIVERED' && data.status !== 'CANCELLED')
+          setTimeout(tick, 5000)
+      }
+
+      function render(order) {
+        const reached = STEPS.findIndex(([status]) => status === order.status)
+        const currency = order.currency
+
+        // Rendered once, then only the parts that change are touched. Replacing
+        // the whole page every five seconds would tear down the map with it.
+        if (!root.dataset.ready) {
+          root.dataset.ready = '1'
+          root.innerHTML = `
+            <p class="text-[13px]" style="color: var(--ink-soft)">${escapeHtml(order.business ? order.business.name : '')}</p>
+            <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Where your order is</h1>
+
+            <div class="p-2 mt-8 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 24px 48px -24px rgba(20,17,15,0.16)">
+              <div id="track-map" class="h-[320px] w-full rounded-[calc(2rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
+            </div>
+
+            <ol id="steps" class="mt-8 space-y-3"></ol>
+
+            <dl id="summary" class="pt-6 mt-8 space-y-2 text-[14px] border-t" style="border-color: var(--line)"></dl>`
+
+          setupMap(order)
+        }
+
+        document.getElementById('steps').innerHTML = STEPS.map(([status, label], index) => {
+          const done = reached >= index
+          return `
+            <li class="flex gap-3 items-center text-[15px]">
+              <span class="inline-flex justify-center items-center w-6 h-6 rounded-full shrink-0"
+                style="${done ? 'background: var(--accent); color: #fff' : 'border: 1px solid var(--line); color: var(--ink-soft)'}">
+                ${done ? '<i class="w-3 h-3 i-hugeicons-tick-02"></i>' : ''}
+              </span>
+              <span style="${done ? '' : 'color: var(--ink-soft)'}">${label}</span>
+            </li>`
+        }).join('')
+
+        const eta = order.stop && order.stop.etaAt
+          ? `about ${Math.max(1, Math.round((new Date(order.stop.etaAt) - Date.now()) / 60000))} min`
+          : `about ${order.estimatedMinutes} min`
+
+        document.getElementById('summary').innerHTML = `
+          <div class="flex justify-between"><dt style="color: var(--ink-soft)">Arriving</dt><dd>${order.status === 'DELIVERED' ? 'Delivered' : eta}</dd></div>
+          ${order.courier ? `<div class="flex justify-between"><dt style="color: var(--ink-soft)">Courier</dt><dd>${escapeHtml(order.courier.name)}</dd></div>` : ''}
+          ${order.deliveryAddress ? `<div class="flex justify-between"><dt style="color: var(--ink-soft)">To</dt><dd>${escapeHtml(order.deliveryAddress)}</dd></div>` : ''}
+          <div class="flex justify-between"><dt style="color: var(--ink-soft)">Total</dt><dd class="tabular-nums">${currency === 'eur' ? '€' : '$'}${(order.totalCents / 100).toFixed(2)}</dd></div>`
+
+        updateCourier(order)
+      }
+
+      function setupMap(order) {
+        const el = document.getElementById('track-map')
+        if (!el || !order.business) return
+
+        map = new TsMap(el, { center: [order.business.latitude, order.business.longitude], zoom: 14 })
+
+        tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19,
+        }).addTo(map)
+
+        new Marker([order.business.latitude, order.business.longitude])
+          .addTo(map)
+          .bindPopup(`<strong>${escapeHtml(order.business.name)}</strong>`)
+
+        if (order.destination)
+          new Marker([order.destination.latitude, order.destination.longitude]).addTo(map).bindPopup('Your address')
+      }
+
+      function updateCourier(order) {
+        if (!map || !order.courier || order.courier.latitude == null) return
+
+        const position = [order.courier.latitude, order.courier.longitude]
+
+        // Move the existing marker rather than adding another. Adding one per
+        // poll leaves a trail of stale couriers across the city.
+        if (courierMarker) courierMarker.setLatLng(position)
+        else courierMarker = new Marker(position).addTo(map).bindPopup(escapeHtml(order.courier.name))
+
+        map.panTo(position)
+      }
+
+      tick()
+    </script>
+  </body>
+</html>

@@ -18,6 +18,7 @@ export interface PlaceViewModel {
   pageDescription: string
   canonicalPath: string
   name: string
+  slug: string
   type: string
   description: string
   cuisine: string
@@ -58,6 +59,7 @@ export function placeViewModel(found: any): PlaceViewModel {
       : 'That place is not listed.',
     canonicalPath: `/places/${String(business.slug ?? '')}`,
     name,
+    slug: String(business.slug ?? ''),
     type: String(business.type ?? ''),
     description: String(business.description ?? ''),
     cuisine: String(business.cuisine ?? ''),

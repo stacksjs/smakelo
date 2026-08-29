@@ -1,5 +1,7 @@
 import { response, route } from '@stacksjs/router'
 import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
+import { menuFor } from '../app/Actions/Order/menu'
+import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 
 /**
  * Smakelo's JSON API, mounted under `/api` and answered by the API process.
@@ -41,4 +43,83 @@ route.get('/businesses/{slug}', async (request: any) => {
     return response.json({ message: `No business with slug "${slug}".` }, 404)
 
   return response.json({ data: found })
+})
+
+/**
+ * The menu for one business, with modifier groups.
+ *
+ * `GET /api/businesses/{slug}/menu`
+ *
+ * Separate from the business endpoint because the ordering screen needs the
+ * groups and options, and the browse screens never do. Sending them everywhere
+ * would triple a payload most callers throw away.
+ */
+route.get('/businesses/{slug}/menu', async (request: any) => {
+  const slug = String(request?.getParam?.('slug') ?? request?.params?.slug ?? '')
+  const menu = await menuFor(slug)
+
+  if (!menu)
+    return response.json({ message: `No business with slug "${slug}".` }, 404)
+
+  return response.json({ data: menu })
+})
+
+/**
+ * Place an order.
+ *
+ * `POST /api/orders`
+ *
+ * The body names what was chosen; every price is looked up server-side.
+ */
+route.post('/orders', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const result = await createOrder(body)
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({
+    data: {
+      orderId: result.orderId,
+      trackingToken: result.trackingToken,
+      pricing: result.pricing,
+    },
+  }, 201)
+})
+
+/**
+ * Quote an order without placing it.
+ *
+ * `POST /api/orders/quote`
+ *
+ * The checkout screen needs the fees before anyone commits, and it must be the
+ * same arithmetic that will run on submit, not a second implementation in the
+ * browser that drifts from it.
+ */
+route.post('/orders/quote', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const quote = await quoteOrder(body)
+
+  if (!quote.ok)
+    return response.json({ message: quote.reason }, 422)
+
+  return response.json({ data: quote.pricing })
+})
+
+/**
+ * An order's public status, by tracking token.
+ *
+ * `GET /api/orders/track/{token}`
+ *
+ * Keyed on the token rather than the order id so a customer can watch their
+ * order without an account, and cannot watch anybody else's by counting.
+ */
+route.get('/orders/track/{token}', async (request: any) => {
+  const token = String(request?.getParam?.('token') ?? request?.params?.token ?? '')
+  const tracked = await trackOrder(token)
+
+  if (!tracked)
+    return response.json({ message: 'No order with that tracking code.' }, 404)
+
+  return response.json({ data: tracked })
 })

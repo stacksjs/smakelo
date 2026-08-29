@@ -1,0 +1,436 @@
+<script server>
+/*
+ * Ordering.
+ *
+ * Client-rendered against `/api/businesses/{slug}/menu`, unlike the browse and
+ * place pages which are server-rendered. Not a preference: a per-request stx
+ * view silently drops awaited values and imported-function results, so a page
+ * that has to read `?business=` from the URL cannot fetch anything on the
+ * server (stacksjs/stacks#2390). The API is the reliable path for a screen that
+ * changes as somebody uses it anyway.
+ *
+ * Every price shown here is one the server calculated. The quote endpoint runs
+ * the same `priceOrder` that placement runs, so what the customer is shown and
+ * what they are charged cannot drift apart.
+ */
+const pageTitle = 'Order - Smakelo'
+const pageDescription = 'Choose what you want and how you want it.'
+const canonicalPath = '/order'
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body>
+    @include('chrome')
+
+    <main class="mx-auto px-4 sm:px-8 max-w-7xl">
+      <div id="order-root" class="pt-10 pb-24 sm:pb-40">
+        <p class="text-[15px]" style="color: var(--ink-soft)">Loading the menu…</p>
+      </div>
+    </main>
+
+    <footer class="border-t" style="border-color: var(--line)">
+      <div class="mx-auto px-4 sm:px-8 py-12 max-w-7xl text-[13px]" style="color: var(--ink-soft)">
+        <p>
+          Test mode. No card is charged and no order reaches anybody.
+        </p>
+      </div>
+    </footer>
+
+    <script client>
+      const root = document.getElementById('order-root')
+      const slug = new URLSearchParams(location.search).get('business') || ''
+
+      // Cents in, money out. The one formatting rule in the app, so a total and
+      // a line item can never be written differently. The sign sits outside the
+      // symbol, and it is kept: a smaller portion that takes a dollar off has
+      // to read as -$1.00, not as $1.00.
+      const money = (cents, currency = 'usd') =>
+        `${cents < 0 ? '-' : ''}${currency === 'eur' ? '€' : '$'}${(Math.abs(cents) / 100).toFixed(2)}`
+
+      /**
+       * The CSRF token the server seeded on this page's GET.
+       *
+       * Double-submit: the cookie is deliberately not HttpOnly so the page can
+       * read it back and echo it as a header, which is what proves the request
+       * came from a page the server served rather than from another origin.
+       */
+      function csrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
+        return match ? decodeURIComponent(match[1]) : ''
+      }
+
+      function postJson(url, body) {
+        return fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken(),
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(body),
+        })
+      }
+
+      const state = {
+        menu: null,
+        // Chosen options per item, keyed by item id: { [groupId]: Set<optionId> }
+        choices: new Map(),
+        cart: [],
+        fulfilment: 'pickup',
+        tipCents: 0,
+        quote: null,
+        error: '',
+        placed: null,
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, ch => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
+        }[ch]))
+      }
+
+      async function load() {
+        if (!slug) {
+          root.innerHTML = '<p class="text-[15px]">Pick a place from <a class="underline underline-offset-4" href="/">discover</a> first.</p>'
+          return
+        }
+
+        const response = await fetch(`/api/businesses/${encodeURIComponent(slug)}/menu`)
+
+        if (!response.ok) {
+          root.innerHTML = '<p class="text-[15px]">That menu is not available.</p>'
+          return
+        }
+
+        const { data } = await response.json()
+        state.menu = data
+
+        // Preselect whatever the menu marks as default, so a required group is
+        // usually already satisfied and the common order is two taps.
+        for (const section of data.sections) {
+          for (const item of section.items) {
+            const perGroup = {}
+            for (const group of item.groups) {
+              perGroup[group.id] = new Set(group.options.filter(o => o.isDefault).map(o => o.id))
+            }
+            state.choices.set(item.id, perGroup)
+          }
+        }
+
+        state.fulfilment = data.business.offersPickup
+          ? 'pickup'
+          : data.business.offersDelivery ? 'delivery' : 'dine_in'
+
+        render()
+      }
+
+      function toggleOption(itemId, group, optionId) {
+        const groups = state.choices.get(itemId)
+        const chosen = groups[group.id]
+
+        if (chosen.has(optionId)) {
+          // A required group keeps at least its minimum; unticking the last
+          // choice would leave an order the server will refuse.
+          if (chosen.size <= group.min) return
+          chosen.delete(optionId)
+        }
+        else {
+          if (group.max === 1) chosen.clear()
+          else if (chosen.size >= group.max) return
+          chosen.add(optionId)
+        }
+
+        render()
+      }
+
+      function addToCart(item) {
+        const groups = state.choices.get(item.id)
+        const modifierIds = []
+        const labels = []
+
+        for (const group of item.groups) {
+          const chosen = [...(groups[group.id] || [])]
+          if (chosen.length < group.min) {
+            state.error = `${item.name} needs a choice for "${group.name}".`
+            render()
+            return
+          }
+          for (const id of chosen) {
+            modifierIds.push(id)
+            const option = group.options.find(o => o.id === id)
+            if (option) labels.push(option.name)
+          }
+        }
+
+        state.error = ''
+        state.cart.push({ productId: item.id, name: item.name, quantity: 1, modifierIds, labels })
+        quote()
+      }
+
+      function removeLine(index) {
+        state.cart.splice(index, 1)
+        quote()
+      }
+
+      async function quote() {
+        if (state.cart.length === 0) {
+          state.quote = null
+          render()
+          return
+        }
+
+        const response = await postJson('/api/orders/quote', {
+          businessSlug: slug,
+          fulfilment: state.fulfilment,
+          tipCents: state.tipCents,
+          lines: state.cart.map(line => ({
+            productId: line.productId,
+            quantity: line.quantity,
+            modifierIds: line.modifierIds,
+          })),
+        })
+
+        const payload = await response.json()
+        state.quote = response.ok ? payload.data : null
+        state.error = response.ok ? '' : payload.message || ''
+        render()
+      }
+
+      async function submit() {
+        const response = await postJson('/api/orders', {
+          businessSlug: slug,
+          fulfilment: state.fulfilment,
+          tipCents: state.tipCents,
+          lines: state.cart.map(line => ({
+            productId: line.productId,
+            quantity: line.quantity,
+            modifierIds: line.modifierIds,
+          })),
+        })
+
+        const payload = await response.json()
+
+        if (!response.ok) {
+          state.error = payload.message || 'That order could not be placed.'
+          render()
+          return
+        }
+
+        state.placed = payload.data
+        render()
+      }
+
+      function render() {
+        if (state.placed) {
+          root.innerHTML = `
+            <div class="mx-auto max-w-xl p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+              <div class="p-8 rounded-[calc(2rem-0.375rem)] text-center">
+                <h1 class="text-[26px] font-semibold tracking-[-0.02em]">Order placed</h1>
+                <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
+                  ${escapeHtml(state.menu.business.name)} has it. Nothing was charged and nobody is cooking:
+                  this is a demonstration.
+                </p>
+                <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">Total</p>
+                <p class="text-[32px] font-semibold tracking-[-0.03em]">${money(state.placed.pricing.totalCents, state.menu.business.currency)}</p>
+                <a href="/track?code=${encodeURIComponent(state.placed.trackingToken)}"
+                   class="inline-flex gap-3 items-center px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
+                   style="background: var(--ink); color: var(--paper)">
+                  <span>Track it</span>
+                  <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.14)">
+                    <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
+                  </span>
+                </a>
+              </div>
+            </div>`
+          return
+        }
+
+        const business = state.menu.business
+        const currency = business.currency
+
+        const fulfilments = [
+          business.offersDelivery ? ['delivery', 'Delivery'] : null,
+          business.offersPickup ? ['pickup', 'Pickup'] : null,
+          business.offersDineIn ? ['dine_in', 'Dine in'] : null,
+        ].filter(Boolean)
+
+        root.innerHTML = `
+          <div class="flex flex-wrap gap-4 justify-between items-baseline">
+            <div>
+              <a href="/places/${escapeHtml(business.slug)}" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">${escapeHtml(business.name)}</a>
+              <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Order</h1>
+            </div>
+            <div class="flex gap-1 p-1 rounded-full" style="background: var(--paper-raised); border: 1px solid var(--line)">
+              ${fulfilments.map(([value, label]) => `
+                <button data-fulfilment="${value}" class="px-4 py-1.5 text-[13px] rounded-full transition-all duration-500"
+                  style="${state.fulfilment === value ? 'background: var(--ink); color: var(--paper)' : 'color: var(--ink-soft)'}">${label}</button>
+              `).join('')}
+            </div>
+          </div>
+
+          ${state.error ? `<p class="mt-6 px-4 py-3 text-[14px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">${escapeHtml(state.error)}</p>` : ''}
+
+          <div class="grid grid-cols-1 gap-10 mt-10 lg:grid-cols-12">
+            <div class="space-y-10 lg:col-span-7">
+              ${state.menu.sections.map(section => `
+                <section>
+                  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">${escapeHtml(section.name)}</h2>
+                  <div class="mt-4 space-y-3">
+                    ${section.items.map(item => renderItem(item, currency)).join('')}
+                  </div>
+                </section>
+              `).join('')}
+            </div>
+
+            <aside class="lg:col-span-5">
+              ${renderCart(currency)}
+            </aside>
+          </div>`
+
+        bind()
+      }
+
+      function renderItem(item, currency) {
+        const groups = state.choices.get(item.id) || {}
+
+        return `
+          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+            <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+              <div class="flex gap-6 justify-between items-start">
+                <div class="min-w-0">
+                  <p class="text-[15px] font-medium">${escapeHtml(item.name)}</p>
+                  <p class="mt-1.5 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(item.description)}</p>
+                  ${item.allergens.length ? `<p class="mt-2 text-[12px]" style="color: var(--ink-soft)">Contains ${item.allergens.map(escapeHtml).join(', ')}</p>` : ''}
+                </div>
+                <p class="text-[15px] font-medium tabular-nums shrink-0">${money(item.priceCents, currency)}</p>
+              </div>
+
+              ${item.groups.map(group => `
+                <div class="mt-4">
+                  <p class="text-[12px] font-medium" style="color: var(--ink-soft)">
+                    ${escapeHtml(group.name)}
+                    <span style="opacity:.7">${group.min > 0 ? 'required' : 'optional'}${group.max > 1 ? `, up to ${group.max}` : ''}</span>
+                  </p>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    ${group.options.map(option => {
+                      const on = (groups[group.id] || new Set()).has(option.id)
+                      return `<button data-item="${item.id}" data-group="${group.id}" data-option="${option.id}"
+                        class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
+                        style="${on ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'}">
+                        ${escapeHtml(option.name)}${option.priceDeltaCents ? ` ${option.priceDeltaCents > 0 ? '+' : ''}${money(option.priceDeltaCents, currency)}` : ''}
+                      </button>`
+                    }).join('')}
+                  </div>
+                </div>
+              `).join('')}
+
+              <button data-add="${item.id}" class="inline-flex gap-2 items-center px-4 py-2 mt-5 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                style="background: var(--ink); color: var(--paper)">
+                Add
+              </button>
+            </div>
+          </div>`
+      }
+
+      function renderCart(currency) {
+        const q = state.quote
+
+        return `
+          <div class="p-1.5 rounded-[2rem] lg:sticky lg:top-24" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+            <div class="p-7 rounded-[calc(2rem-0.375rem)]">
+              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your order</h2>
+
+              ${state.cart.length === 0
+                ? '<p class="mt-4 text-[14px]" style="color: var(--ink-soft)">Nothing yet.</p>'
+                : `<ul class="mt-4 space-y-3">${state.cart.map((line, index) => `
+                    <li class="flex gap-4 justify-between items-start text-[14px]">
+                      <div class="min-w-0">
+                        <p>${line.quantity} × ${escapeHtml(line.name)}</p>
+                        ${line.labels.length ? `<p class="text-[12px]" style="color: var(--ink-soft)">${line.labels.map(escapeHtml).join(', ')}</p>` : ''}
+                      </div>
+                      <button data-remove="${index}" class="text-[12px] shrink-0 transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">Remove</button>
+                    </li>`).join('')}</ul>`}
+
+              ${state.cart.length > 0 ? `
+                <div class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+                  <p class="text-[12px] font-medium" style="color: var(--ink-soft)">Tip</p>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    ${[0, 200, 400, 600].map(cents => `
+                      <button data-tip="${cents}" class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
+                        style="${state.tipCents === cents ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'}">
+                        ${cents === 0 ? 'None' : money(cents, currency)}
+                      </button>`).join('')}
+                  </div>
+                </div>` : ''}
+
+              ${q ? `
+                <dl class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
+                  <div class="flex justify-between"><dt style="color: var(--ink-soft)">Subtotal</dt><dd class="tabular-nums">${money(q.subtotalCents, currency)}</dd></div>
+                  ${q.deliveryFeeCents ? `<div class="flex justify-between"><dt style="color: var(--ink-soft)">Delivery</dt><dd class="tabular-nums">${money(q.deliveryFeeCents, currency)}</dd></div>` : ''}
+                  <div class="flex justify-between"><dt style="color: var(--ink-soft)">Service</dt><dd class="tabular-nums">${money(q.serviceFeeCents, currency)}</dd></div>
+                  <div class="flex justify-between"><dt style="color: var(--ink-soft)">Tax</dt><dd class="tabular-nums">${money(q.taxCents, currency)}</dd></div>
+                  ${q.tipCents ? `<div class="flex justify-between"><dt style="color: var(--ink-soft)">Tip</dt><dd class="tabular-nums">${money(q.tipCents, currency)}</dd></div>` : ''}
+                  <div class="flex justify-between pt-2 text-[16px] font-semibold border-t" style="border-color: var(--line)"><dt>Total</dt><dd class="tabular-nums">${money(q.totalCents, currency)}</dd></div>
+                </dl>
+
+                <button id="place" class="flex gap-3 justify-center items-center px-5 py-3 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                  style="background: var(--accent); color: #fff">
+                  Place order
+                </button>
+
+                <p class="mt-3 text-[11px] text-center" style="color: var(--ink-soft)">
+                  Test mode. No card is charged.
+                </p>` : ''}
+            </div>
+          </div>`
+      }
+
+      function bind() {
+        root.querySelectorAll('[data-option]').forEach((el) => {
+          el.addEventListener('click', () => {
+            const itemId = Number(el.dataset.item)
+            const groupId = Number(el.dataset.group)
+            const item = state.menu.sections.flatMap(s => s.items).find(i => i.id === itemId)
+            const group = item.groups.find(g => g.id === groupId)
+            toggleOption(itemId, group, Number(el.dataset.option))
+          })
+        })
+
+        root.querySelectorAll('[data-add]').forEach((el) => {
+          el.addEventListener('click', () => {
+            const item = state.menu.sections.flatMap(s => s.items).find(i => i.id === Number(el.dataset.add))
+            addToCart(item)
+          })
+        })
+
+        root.querySelectorAll('[data-remove]').forEach((el) => {
+          el.addEventListener('click', () => removeLine(Number(el.dataset.remove)))
+        })
+
+        root.querySelectorAll('[data-fulfilment]').forEach((el) => {
+          el.addEventListener('click', () => {
+            state.fulfilment = el.dataset.fulfilment
+            quote()
+          })
+        })
+
+        root.querySelectorAll('[data-tip]').forEach((el) => {
+          el.addEventListener('click', () => {
+            state.tipCents = Number(el.dataset.tip)
+            quote()
+          })
+        })
+
+        const place = root.querySelector('#place')
+        if (place) place.addEventListener('click', submit)
+      }
+
+      load()
+    </script>
+  </body>
+</html>
