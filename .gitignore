@@ -44,6 +44,9 @@ dist*
 # so it showed as untracked after every run.
 **/database/stacks_testing.sqlite
 **/database/stacks.sqlite
+# This app's database. The scaffold names its own file, so renaming the
+# database silently un-ignored it - the pattern is a glob now.
+**/database/*.sqlite
 **/database/*.sqlite-wal
 **/database/*.sqlite-shm
 
