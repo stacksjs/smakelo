@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "business_reviews" (
   "visited_at" TEXT,
   "business_id" INTEGER REFERENCES "businesses"("id"),
   "customer_id" INTEGER,
-  "order_id" INTEGER,
+  "order_id" INTEGER REFERENCES "orders"("id"),
   "created_at" TEXT not null default CURRENT_TIMESTAMP,
   "updated_at" TEXT,
   "deleted_at" TEXT,
