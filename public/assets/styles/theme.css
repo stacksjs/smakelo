@@ -1,0 +1,276 @@
+/*
+ * The palette, and the handful of primitives every surface of stacksjs.com
+ * builds out of: the three themes, the type tokens, the theme control, the
+ * reset, the shell width, the kicker and the buttons.
+ *
+ * It is a separate file because the marketing pages are not the only surface.
+ * The holding page at /coming-soon stated the same three theme blocks and the
+ * same primitives in its own <style>, which is two places to change a colour
+ * and one place to forget. Anything shared by both lives here; anything only
+ * the marketing pages need stays in marketing.css, which assumes this file is
+ * already linked.
+ */
+
+/*
+ * Stacks marketing design system, 2026 refresh.
+ *
+ * Direction: minimal modern developer-framework page with a nature
+ * motif. ONE accent across every theme and section: the golden-hour
+ * ember #C14A15, a California-sunset red-orange. The nature reads come
+ * from the line-art (topography + park ridge) and the tinted surfaces,
+ * never from a second hue.
+ *
+ * The ramp is a sunset at the coast: ember #C14A15 through burnt
+ * sienna #9C3510 on light grounds, cooling to the last-light coral
+ * glow #FF8A4C on dark ones, over creams (#FFF4E4, #FBE2CF) and warm
+ * umbers rather than plums.
+ *
+ * Three themes, switched by `data-theme` on <html>, matching the blog
+ * (content/blog/.theme.css) so / and /blog stay one product:
+ *
+ *   colored - dusk: warm cream paper, the default.
+ *   light   - clean paper-white with the same ember accent.
+ *   dark    - after sundown: burnt-umber ground, coral-glow accent.
+ *             Coral only carries contrast on a dark ground, so it
+ *             never labels anything in a light theme.
+ *
+ * Shape rule (one radius system): panels and cards 16px, code windows
+ * and chips 10px, buttons and the theme toggle full pill. Nothing else.
+ */
+
+:root[data-theme='colored'] {
+  color-scheme: light;
+  --bg: #fff4e4;
+  --surface: #fffbf5;
+  --badge-bg: #fbe2cf;
+  --field-bg: #ffffff;
+  --text: #2b180e;
+  --muted: #75503c;
+  --accent: #c14a15;
+  --accent-strong: #9c3510;
+  --button-bg: #c14a15;
+  --on-accent: #ffffff;
+  --on-field: #2b180e;
+  --ink-rgb: 43, 24, 14;
+  --accent-rgb: 193, 74, 21;
+  --line: rgba(43, 24, 14, 0.12);
+  --line-strong: rgba(43, 24, 14, 0.22);
+  --shadow: 0 24px 60px rgba(158, 62, 16, 0.14);
+  --page-a: #fff4e4;
+  --page-b: #fce8d2;
+  --page-c: #fff4e4;
+  --panel-a: rgba(193, 74, 21, 0.07);
+  --panel-b: rgba(251, 226, 207, 0.55);
+  --nav-bg: rgba(255, 244, 228, 0.82);
+  --grad-a: #a83a10;
+  --grad-b: #e06a28;
+  --ridge-opacity: 0.28;
+  --topo-opacity: 0.05;
+}
+
+/*
+ * Light (white + the ember accent) is the no-JS default: the bare :root
+ * carries these values so a first paint is already on-brand.
+ */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #fffaf2;
+  --surface: #fdf3ea;
+  --badge-bg: #fae5d6;
+  --field-bg: #ffffff;
+  --text: #271710;
+  --muted: #75503c;
+  --accent: #c14a15;
+  --accent-strong: #9c3510;
+  --button-bg: #c14a15;
+  --on-accent: #ffffff;
+  --on-field: #271710;
+  --ink-rgb: 39, 23, 16;
+  --accent-rgb: 193, 74, 21;
+  --line: rgba(39, 23, 16, 0.10);
+  --line-strong: rgba(39, 23, 16, 0.20);
+  --shadow: 0 24px 60px rgba(158, 62, 16, 0.10);
+  --page-a: #fffaf2;
+  --page-b: #fdf0e4;
+  --page-c: #fffaf2;
+  --panel-a: rgba(193, 74, 21, 0.05);
+  --panel-b: rgba(250, 229, 214, 0.50);
+  --nav-bg: rgba(255, 250, 242, 0.80);
+  --grad-a: #a83a10;
+  --grad-b: #c14a15;
+  --ridge-opacity: 0.20;
+  --topo-opacity: 0.035;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1d110b;
+  --surface: #291910;
+  --badge-bg: #3d2415;
+  --field-bg: #20130c;
+  --text: #f9ecdf;
+  --muted: #cba78e;
+  --accent: #ff8a4c;
+  --accent-strong: #ffb37e;
+  --button-bg: #ff8a4c;
+  --on-accent: #2b180e;
+  --on-field: #f9ecdf;
+  --ink-rgb: 249, 236, 223;
+  --accent-rgb: 255, 138, 76;
+  --line: rgba(249, 236, 223, 0.10);
+  --line-strong: rgba(249, 236, 223, 0.22);
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  --page-a: #1d110b;
+  --page-b: #26160d;
+  --page-c: #170d08;
+  --panel-a: rgba(61, 36, 21, 0.85);
+  --panel-b: rgba(23, 13, 8, 0.92);
+  --nav-bg: rgba(29, 17, 11, 0.78);
+  --grad-a: #a83a10;
+  --grad-b: #ff8a4c;
+  --ridge-opacity: 0.22;
+  --topo-opacity: 0.05;
+}
+
+/* Font roles: Geist carries display and body (weight builds the
+  hierarchy); Geist Mono carries the kicker, chips, code, terminal. */
+:root {
+  --font-body: "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-hero: "Geist", var(--font-body);
+  --font-head: "Geist", var(--font-body);
+}
+
+/* The code window and terminal stay dark in every theme, the way an
+   editor and a shell are. Dark, but on the page's own burnt umber
+   rather than the usual editor navy: a cool code block on a warm page
+   is the one place the palette used to break. */
+:root {
+  --term-bg: #190d07;
+  --term-fg: #f0a07e;
+}
+
+/* Theme toggle. Mirrors .blog-theme-toggle in content/blog/.theme.css. */
+.theme-toggle {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  z-index: 60;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.theme-toggle button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.theme-toggle button:hover {
+  background: rgba(var(--ink-rgb), 0.1);
+}
+
+.theme-toggle button:active {
+  transform: scale(0.94);
+}
+
+/* The active mode reads as pressed, not just hovered. */
+.theme-toggle button[aria-pressed='true'] {
+  background: rgba(var(--ink-rgb), 0.16);
+}
+
+.theme-toggle button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.site-shell {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.kicker {
+  display: inline-flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 1.1rem;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.kicker::before {
+  width: 34px;
+  height: 2px;
+  content: "";
+  background: var(--accent);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0 1.35rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 620;
+  white-space: nowrap;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.button.primary {
+  border-color: var(--button-bg);
+  color: var(--on-accent);
+  background: var(--button-bg);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(var(--accent-rgb), 0.22);
+}
+
+.button:not(.primary):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.button:active {
+  transform: translateY(0) scale(0.98);
+}

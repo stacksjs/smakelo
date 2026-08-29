@@ -1,0 +1,2254 @@
+/*
+ * Shared marketing stylesheet: the home page and every /features page.
+ *
+ * This lived inline in index.stx. Once the feature pages arrived it would
+ * have had to be copied into each of them, and nine copies of a design
+ * system drift by the second edit. One file, linked from every marketing
+ * view, is the whole reason this is not still inline.
+ */
+
+body {
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  background:
+    radial-gradient(circle at 85% 4%, rgba(var(--accent-rgb), 0.14), transparent 30rem),
+    radial-gradient(circle at 8% 20%, rgba(var(--accent-rgb), 0.08), transparent 26rem),
+    linear-gradient(180deg, var(--page-a) 0%, var(--page-b) 52%, var(--page-c) 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Topographic survey lines, fixed and quiet. */
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  content: "";
+  background-image: url("/assets/images/topography.svg");
+  background-size: 760px auto;
+  opacity: var(--topo-opacity);
+}
+
+/* The ridge line the whole site stands on. */
+body::after {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: -1;
+  height: min(30vh, 22rem);
+  content: "";
+  background: url("/assets/images/park-ridge.svg") center bottom / cover no-repeat;
+  opacity: var(--ridge-opacity);
+  pointer-events: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Entrance motion (MOTION 5): hero rises on load, sections rise into
+  view on scroll via CSS view() timelines. Transform + opacity only,
+  and everything collapses to static under reduced motion. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: none; }
+}
+
+.hero-animate > * {
+  animation: rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-animate > *:nth-child(2) { animation-delay: 0.07s; }
+.hero-animate > *:nth-child(3) { animation-delay: 0.14s; }
+.hero-animate > *:nth-child(4) { animation-delay: 0.21s; }
+
+.rise {
+  animation: rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 45%;
+}
+
+@supports not (animation-timeline: view()) {
+  .rise { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-animate > *,
+  .rise {
+    animation: none;
+  }
+  .theme-toggle button {
+    transition: none;
+  }
+  .theme-toggle button:active {
+    transform: none;
+  }
+}
+
+/* ── Coming-soon holding card ─────────────────────────────────── */
+
+body[data-site-mode="coming-soon"] .site-content {
+  display: none;
+}
+
+body[data-site-mode="coming-soon"].site-mode-unlocked .site-content {
+  display: block;
+}
+
+body[data-site-mode="coming-soon"].site-mode-unlocked .mode-screen,
+body:not([data-site-mode="coming-soon"]) .mode-screen {
+  display: none;
+}
+
+.mode-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+
+.mode-card {
+  position: relative;
+  width: min(1140px, 100%);
+  min-height: min(720px, 86vh);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  padding: clamp(2.25rem, 6vw, 5.5rem);
+  background:
+    radial-gradient(120% 92% at 84% -12%, rgba(var(--accent-rgb), 0.16), transparent 46%),
+    linear-gradient(178deg, var(--panel-a), var(--panel-b) 78%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.mode-card::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-image: url("/assets/images/topography.svg");
+  background-size: 720px auto;
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+/* Layered ridge across the bottom of the card. */
+.mode-card::after {
+  position: absolute;
+  inset: auto -1% -1px;
+  height: 40%;
+  content: "";
+  background: url("/assets/images/park-ridge.svg") center bottom / 102% 100% no-repeat;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Soft alpine glow where the sun would sit. */
+.mode-glow {
+  position: absolute;
+  top: clamp(2rem, 9%, 5.5rem);
+  right: clamp(2rem, 10%, 7rem);
+  width: clamp(58px, 8vw, 108px);
+  height: clamp(58px, 8vw, 108px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #fff6cb, var(--accent) 62%, var(--accent-strong));
+  box-shadow: 0 0 64px rgba(var(--accent-rgb), 0.38);
+  opacity: 0.9;
+  z-index: 0;
+}
+
+.mode-content {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
+}
+
+.mode-content > * {
+  animation: rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mode-content > *:nth-child(2) { animation-delay: 0.06s; }
+.mode-content > *:nth-child(3) { animation-delay: 0.12s; }
+.mode-content > *:nth-child(4) { animation-delay: 0.18s; }
+.mode-content > *:nth-child(5) { animation-delay: 0.24s; }
+
+.mode-title {
+  margin: 0 0 1.4rem;
+  color: var(--text);
+  font-family: var(--font-hero);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  font-size: clamp(3.6rem, 11vw, 6.4rem);
+  line-height: 1.02;
+}
+
+.mode-lead {
+  margin: 1rem 0 0;
+  color: var(--accent);
+  font-family: var(--font-head);
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.24;
+  letter-spacing: -0.01em;
+}
+
+.mode-copy {
+  max-width: 30rem;
+  margin: 1.05rem 0 0;
+  color: rgba(var(--ink-rgb), 0.82);
+  font-size: 1.05rem;
+  line-height: 1.62;
+}
+
+.mode-subscribe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.9rem;
+  max-width: 30rem;
+}
+
+.mode-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.4rem;
+  margin-top: 1.6rem;
+}
+.mode-textlink {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.4);
+  padding-bottom: 1px;
+}
+.mode-textlink:hover { color: var(--accent-strong); border-color: var(--accent-strong); }
+.mode-social { display: inline-flex; gap: 0.55rem; }
+.mode-social a {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(var(--ink-rgb), 0.22);
+  border-radius: 50%;
+  color: var(--text);
+}
+.mode-social a:hover { color: var(--accent); border-color: var(--accent); }
+.mode-social svg { width: 19px; height: 19px; fill: currentColor; }
+
+/* ── Chrome: nav, shell, footer ───────────────────────────────── */
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid var(--line);
+  background: var(--nav-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  gap: 1rem;
+}
+
+.brand {
+  display: inline-flex;
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.brand-mark {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--on-accent);
+  font-weight: 800;
+  font-size: 1rem;
+  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
+}
+
+.brand-name {
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.4rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 550;
+}
+
+.nav-links a {
+  transition: color 0.15s ease;
+}
+
+.nav-links a:hover {
+  color: var(--accent);
+}
+
+/* ── Features mega menu ───────────────────────────────────────────
+ *
+ * Opens on hover and on focus-within. The second half is what makes it
+ * usable from a keyboard: tabbing into the trigger opens the panel and
+ * tabbing out of the last link closes it, with no script holding state
+ * that can get stuck open.
+ *
+ * The panel is hidden with `visibility` rather than `display`. Both keep
+ * its links out of the tab order, which `opacity: 0` alone would not, but
+ * only visibility can be transitioned, so the panel can fade instead of
+ * appearing instantly.
+ *
+ * `allow-discrete` is what makes that work: visibility flips to visible at
+ * the START of the open and back to hidden at the END of the close, so the
+ * fade is seen in both directions and a transparent panel never sits over
+ * the page eating clicks. A browser without it simply gets an instant show
+ * and hide, which is correct, just less soft.
+ */
+
+.nav-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-trigger {
+  display: inline-flex;
+  gap: 0.28rem;
+  align-items: center;
+}
+
+.nav-caret {
+  width: 0.85em;
+  height: 0.85em;
+  opacity: 0.6;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.nav-item:hover .nav-caret,
+.nav-item:focus-within .nav-caret {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.mega {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 50%;
+  z-index: 40;
+  width: min(920px, calc(100vw - 48px));
+  padding-top: 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  transition-behavior: allow-discrete;
+}
+
+.nav-item:hover .mega,
+.nav-item:focus-within .mega {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.mega-inner {
+  display: grid;
+  grid-template-columns: 1fr 250px;
+  gap: 1.6rem;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 28px 70px rgba(var(--ink-rgb), 0.16);
+}
+
+.mega-groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+}
+
+.mega-group-title {
+  margin-bottom: 0.2rem;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mega-group-copy {
+  margin-bottom: 0.85rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.mega-list {
+  display: grid;
+  gap: 0.2rem;
+  list-style: none;
+}
+
+.mega-link {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.5rem;
+  border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+
+.mega-link:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.mega-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.mega-icon i {
+  width: 15px;
+  height: 15px;
+}
+
+.mega-text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.mega-text strong {
+  color: var(--text);
+  font-size: 0.83rem;
+  font-weight: 620;
+  line-height: 1.3;
+}
+
+.mega-text span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.mega-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 1.1rem;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+.mega-aside-copy {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.mega-aside-actions {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.mega-aside-actions .button {
+  justify-content: center;
+  width: 100%;
+}
+
+/* No hover on a touch device, so the panel would be unreachable there and
+  is left closed: the trigger is a link to /features, which is the same
+  content laid out for a small screen. */
+@media (max-width: 900px) {
+  .mega {
+    display: none;
+  }
+
+  /* With no panel to open, a caret promises a menu that cannot appear.
+    The trigger is simply a link to the overview page at this width.
+
+    Two classes, not one: the caret also carries its Iconify class, and
+    crosswind's generated icon CSS (which sets display: inline-block)
+    loads after this file. At equal specificity that one would win. */
+  .nav-trigger .nav-caret {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mega,
+  .nav-caret {
+    transition-duration: 0.01ms;
+  }
+
+  .mega {
+    transform: translate(-50%, 0);
+  }
+}
+
+.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 36px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.nav-cta:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(380px, 0.98fr);
+  gap: clamp(2rem, 4.5vw, 4.5rem);
+  align-items: center;
+  padding: clamp(2.5rem, 4.5vw, 4.5rem) 0 clamp(2.25rem, 3.5vw, 3.5rem);
+}
+
+.hero-title {
+  max-width: 18ch;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-hero);
+  font-size: clamp(2.6rem, 4.2vw, 3.9rem);
+  font-weight: 780;
+  letter-spacing: -0.035em;
+  line-height: 1.06;
+}
+
+.hero-title em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.hero-copy {
+  max-width: 34rem;
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 1.08rem;
+  line-height: 1.62;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.9rem;
+}
+
+/* Real code, not a fake dashboard: an authentic defineModel() as you
+  would actually write it. The code + terminal panels stay dark in
+  every theme, the way an editor and a shell are. */
+.product-preview {
+  position: relative;
+  z-index: 1;
+}
+
+.product-preview::before {
+  position: absolute;
+  inset: -12% -14% auto auto;
+  width: 22rem;
+  height: 22rem;
+  content: "";
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.20), transparent 65%);
+  z-index: -1;
+}
+
+.code-window {
+  overflow: hidden;
+  border: 1px solid rgba(255, 138, 76, 0.20);
+  border-radius: 10px;
+  background: #1f1109;
+  box-shadow: 0 24px 60px rgba(26, 9, 3, 0.45);
+}
+
+.code-titlebar {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.code-dots {
+  display: inline-flex;
+  gap: 0.42rem;
+}
+
+.code-dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.code-dots i:nth-child(2) { background: #febc2e; }
+.code-dots i:nth-child(3) { background: #28c840; }
+
+.code-file {
+  color: #bd9f90;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.code-body {
+  margin: 0;
+  padding: 1.05rem 1.15rem;
+  overflow-x: auto;
+  color: #efe2d6;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.62;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* Syntax on the sunset ramp: ember keywords, wheat strings, coral calls.
+   Every one of these clears 4.5:1 on the window's #1f1109. */
+.tok-key { color: #ff9d72; }
+.tok-str { color: #dcc47f; }
+.tok-fn { color: #f0a07e; }
+.tok-prop { color: #ecdcd0; }
+.tok-bool { color: #d79ad2; }
+.tok-com { color: #9c7f70; font-style: italic; }
+
+.terminal-strip {
+  margin-top: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(255, 138, 76, 0.22);
+  border-radius: 10px;
+  color: var(--term-fg);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  background: var(--term-bg);
+  white-space: pre-wrap;
+}
+
+.term-com { color: #9a7a84; }
+
+/* ── Sections ─────────────────────────────────────────────────── */
+
+.section {
+  padding: clamp(2.5rem, 5vw, 4.25rem) 0;
+}
+
+.section-head {
+  max-width: 40rem;
+  margin-bottom: 1.75rem;
+}
+
+.section-title {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+  font-weight: 720;
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+}
+
+.section-copy {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 1.04rem;
+  line-height: 1.65;
+}
+
+/* Platform bento: 12-col grid, mixed spans, three cell treatments
+  (image / tint / gradient) so the grid has rhythm instead of rows
+  of identical white cards. */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(168px, auto);
+  gap: 0.9rem;
+}
+
+/* Each cell is a link to its feature page, so the whole tile is the target
+  rather than a small "read more" at the bottom of it. The column layout
+  pins that affordance to the foot of the tile whatever the copy length. */
+.cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  grid-column: span 4;
+  min-height: 168px;
+  overflow: hidden;
+  padding: 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.cell-more {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 0.9rem;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.cell--gradient .cell-more {
+  color: var(--on-accent);
+}
+
+.cell:hover .cell-more,
+.cell:focus-visible .cell-more {
+  opacity: 1;
+  transform: none;
+}
+
+.cell-more i {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+/* Touch has no hover, so the affordance would never appear there. */
+@media (hover: none) {
+  .cell-more {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell-more {
+    transform: none;
+    transition-duration: 0.01ms;
+  }
+}
+
+.cell:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: var(--shadow);
+}
+
+.cell--wide {
+  grid-column: span 8;
+}
+
+.cell--tall {
+  grid-row: span 2;
+}
+
+.cell--tint {
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(var(--accent-rgb), 0.12), transparent 55%),
+    var(--surface);
+}
+
+.cell--gradient {
+  border-color: transparent;
+  color: #fff3e8;
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+}
+
+/*
+ * Doubled class, so this beats `.cell p` below rather than tying with it.
+ * At equal specificity the later rule won, which painted this cell's copy
+ * in --muted: dark slate on the solid accent tile, about 1.7:1. The card
+ * looked blank unless you leaned in.
+ */
+.cell--gradient.cell p {
+  color: rgba(255, 243, 232, 0.88);
+}
+
+/* Every cell carries the feature's own glyph now, not only the three with
+  illustration art - eight of the twelve had nothing but a title and a
+  paragraph, which is the generic-card look the rest of the page avoids.
+  The data already had an icon per feature (the nav menu and the feature
+  page both use it); this was the one surface not reading it. */
+.cell-icon {
+  position: relative;
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 0.85rem;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--badge-bg);
+}
+
+.cell-icon i {
+  width: 18px;
+  height: 18px;
+}
+
+.cell--gradient .cell-icon {
+  color: #f4f8ff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cell h3 {
+  position: relative;
+  margin: 0 0 0.5rem;
+  font-family: var(--font-head);
+  font-size: 1.06rem;
+  font-weight: 680;
+  letter-spacing: -0.012em;
+}
+
+.cell p {
+  position: relative;
+  max-width: 26rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.58;
+}
+
+.cell-art {
+  position: absolute;
+  right: -1.5rem;
+  bottom: -2rem;
+  width: 15rem;
+  height: 15rem;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.cell-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Workflow: three verb-led steps, horizontal on desktop, with a
+  connecting hairline that the numbers sit on. */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.step {
+  position: relative;
+  padding: 1.35rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.step em {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.95rem;
+  border-radius: 999px;
+  color: var(--accent);
+  font-style: normal;
+  background: var(--badge-bg);
+}
+
+.step em i {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Horizon band ─────────────────────────────────────────────── */
+
+.horizon {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  align-items: flex-end;
+  min-height: clamp(20rem, 34vw, 30rem);
+  margin: clamp(2.5rem, 5vw, 4.25rem) 0;
+  padding: clamp(2rem, 4vw, 3.25rem) 0;
+  border-block: 1px solid var(--line);
+  isolation: isolate;
+}
+
+/*
+ * Wider than the band and nudged left, so the slow drift below never
+ * exposes an edge. Painting the scene on its own layer is also what
+ * lets it move on `transform` alone.
+ */
+.horizon-scene {
+  position: absolute;
+  z-index: -1;
+  inset: 0 -6% 0 -6%;
+  /* The 1600x500 cut, not the 1024 square. Cropping the square into a
+     band this wide magnified it about 1.6x, which pushed the village
+     half out of frame and swelled the atmospheric bloom into white
+     saucers. The wide variant is composed for these proportions, so
+     `cover` now trims a few pixels top and bottom and nothing else. */
+  background: url("/assets/images/horizon-dawn.svg") center / cover no-repeat;
+  animation: horizon-drift 64s ease-in-out infinite;
+}
+
+/* Legibility over artwork: the copy sits on its own scrim rather than
+   trusting whichever part of the dune it lands on. Opaque where the text
+   starts, gone by the time the scene has anything worth seeing. */
+.horizon-scene::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    96deg,
+    var(--page-a) 0%,
+    var(--page-a) 26%,
+    rgba(var(--accent-rgb), 0.07) 58%,
+    transparent 78%
+  );
+}
+
+/*
+ * The sun, echoed as a soft glow rather than cut out of the artwork.
+ * Placed where the illustration's own sun sits once the scene is
+ * cover-cropped, so the two read as one light source.
+ */
+/*
+ * Aligned to the sun the artwork already draws, at 86% across and 31%
+ * down its 1600x500 frame. Left at the old coordinates it sat a
+ * quarter-width to the left of the disc and the band read as two
+ * separate light sources. Centring lives inside the keyframes because
+ * the animation owns `transform`.
+ */
+.horizon-sun {
+  position: absolute;
+  top: 31%;
+  left: 86%;
+  width: clamp(7rem, 13vw, 12rem);
+  height: clamp(7rem, 13vw, 12rem);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.5), rgba(var(--accent-rgb), 0.16) 45%, transparent 70%);
+  animation: horizon-sun 11s ease-in-out infinite;
+}
+
+.horizon-copy {
+  position: relative;
+  max-width: 34rem;
+}
+
+:root[data-theme='dark'] .horizon-scene {
+  background-image: url("/assets/images/horizon-dawn-dark.svg");
+}
+
+@keyframes horizon-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(2.5%, 0, 0); }
+}
+
+@keyframes horizon-sun {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.09); opacity: 1; }
+}
+
+/* Ambient motion only. Nothing here carries meaning, so reduced motion
+   loses nothing by stopping both. */
+@media (prefers-reduced-motion: reduce) {
+  .horizon-scene,
+  .horizon-sun {
+    animation: none;
+  }
+
+  /* The keyframes carry the centring, so switching them off would drop
+     the glow half its own width down and right of the disc. */
+  .horizon-sun {
+    transform: translate(-50%, -50%);
+  }
+}
+
+.step h3 {
+  margin: 0 0 0.45rem;
+  font-family: var(--font-head);
+  font-size: 1.05rem;
+  font-weight: 680;
+  letter-spacing: -0.012em;
+}
+
+.step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.58;
+}
+
+.step p code,
+.section-copy code {
+  padding: 0.08em 0.38em;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--badge-bg);
+}
+
+/* Get started: split copy + numbered steps, terminal proof on the right.
+  Same split-panel shape as CMS and deploy below it, so all three read as
+  one family of "claim, then prove it" sections. */
+.start-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 130% at 100% 0%, rgba(var(--accent-rgb), 0.10), transparent 52%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.start-steps {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1.4rem 0 1.6rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: start-step;
+}
+
+.start-steps li {
+  position: relative;
+  padding: 0.15rem 0 0.15rem 2.35rem;
+}
+
+.start-steps li::before {
+  counter-increment: start-step;
+  content: counter(start-step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-grid;
+  width: 1.6rem;
+  height: 1.6rem;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--badge-bg);
+}
+
+.start-steps strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.start-steps span {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+/* One UI, many builds: same split-panel shape, device chips instead of
+  route chips, terminal proof for the native build commands. */
+.builds-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(var(--accent-rgb), 0.08), transparent 50%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* DX/AX: same split-panel shape as the ones above, copy plus a compact
+  capability grid on the left, a buddy setup:ai proof terminal on the right. */
+.dx-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 130% at 100% 0%, rgba(var(--accent-rgb), 0.09), transparent 52%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dx-panel .resource-grid {
+  margin: 1.4rem 0 1.6rem;
+}
+
+/* CMS: split copy + compact resource grid. */
+.cms-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(340px, 1.15fr);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(var(--accent-rgb), 0.08), transparent 50%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.resource {
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(var(--ink-rgb), 0.03);
+}
+
+.resource strong {
+  display: block;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 680;
+}
+
+.resource span {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* Deploy: full-width band, route chips in mono, terminal proof. */
+.deploy-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: clamp(1.5rem, 3.5vw, 3rem);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 130% at 100% 0%, rgba(var(--accent-rgb), 0.10), transparent 52%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.route-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.4rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: var(--badge-bg);
+}
+
+.deploy-terminal {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid rgba(255, 138, 76, 0.25);
+  border-radius: 10px;
+  color: #e8dbcd;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.75;
+  background: var(--term-bg);
+  white-space: pre-wrap;
+}
+
+.term-ok { color: #7fdca4; }
+.term-dim { color: #6f5b4d; }
+
+/* Signup: one quiet centered band. */
+.signup-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 140% at 8% 0%, rgba(var(--accent-rgb), 0.09), transparent 46%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.signup-panel form {
+  display: flex;
+  gap: 0.6rem;
+  width: min(430px, 100%);
+}
+
+input[type="email"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--on-field);
+  font: inherit;
+  font-size: 0.92rem;
+  background: var(--field-bg);
+}
+
+input[type="email"]::placeholder {
+  color: var(--muted);
+}
+
+input[type="email"]:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgba(var(--accent-rgb), 0.22);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────
+ *
+ * A site map rather than a copyright line: the brand column, then the
+ * three menus flattened into link columns beside the resources and the
+ * community links. It is the only navigation left on a page a reader has
+ * finished, which is the argument for it carrying the whole site.
+ *
+ * The columns are `auto-fit` with a 150px floor, so they reflow from five
+ * across to two on a phone without a breakpoint per step.
+ */
+
+.site-footer {
+  margin-top: clamp(3rem, 7vw, 5.5rem);
+  padding: clamp(2.5rem, 5vw, 4rem) 0 2.5rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.84rem;
+  background:
+    linear-gradient(180deg, transparent, rgba(var(--accent-rgb), 0.04));
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 3fr);
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  padding-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+  max-width: 34ch;
+}
+
+.footer-blurb {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.footer-actions .button {
+  min-height: 38px;
+  padding: 0 1rem;
+  font-size: 0.82rem;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1.6rem 1.4rem;
+}
+
+.footer-column-title {
+  margin-bottom: 0.75rem;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.footer-column ul {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+}
+
+.footer-column a {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  transition: color 0.15s ease;
+}
+
+.footer-column a:hover {
+  color: var(--accent);
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
+.footer-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-link {
+  color: var(--muted);
+  font-weight: 550;
+}
+
+.footer-link:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 920px) {
+  .footer-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+
+@media (max-width: 920px) {
+  .site-shell {
+    width: min(100% - 32px, 720px);
+  }
+
+  .hero,
+  .start-panel,
+  .builds-panel,
+  .dx-panel,
+  .cms-panel,
+  .deploy-panel,
+  .signup-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero {
+    gap: 2rem;
+    padding: 2.25rem 0 2.5rem;
+  }
+
+  .hero-title {
+    max-width: 100%;
+    font-size: clamp(2.4rem, 9vw, 3.4rem);
+  }
+
+  .cell,
+  .cell--wide {
+    grid-column: span 6;
+  }
+
+  .cell--tall {
+    grid-row: span 1;
+  }
+
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .signup-panel form {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav-inner {
+    gap: 0.7rem;
+    min-height: 58px;
+  }
+
+  /* Five links plus the wordmark do not fit at 375px, and shrinking the
+    type further only makes them unreadable. The row scrolls instead, with
+    no visible scrollbar: nothing is dropped from the navigation and
+    nothing overlaps the brand. */
+  .nav-links {
+    flex: 1;
+    gap: 0.9rem;
+    min-width: 0;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-links a {
+    white-space: nowrap;
+  }
+
+  .nav-cta {
+    display: none;
+  }
+
+  .cell,
+  .cell--wide {
+    grid-column: span 12;
+    min-height: 0;
+  }
+
+  .resource-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .signup-panel form {
+    flex-direction: column;
+  }
+}
+
+/* ── Feature pages (/features and /features/:slug) ────────────────
+ *
+ * These reuse the home page's tokens, chrome and code window wholesale;
+ * only the page-specific layout lives here. The hero is deliberately
+ * split rather than centred, matching the home page's, so moving
+ * between them does not feel like moving between two sites.
+ */
+
+.page-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 3rem;
+  align-items: center;
+  padding: 4.5rem 0 3.5rem;
+}
+
+.page-hero--solo {
+  grid-template-columns: minmax(0, 760px);
+  padding-bottom: 2.5rem;
+}
+
+.breadcrumb {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin-bottom: 1.1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.breadcrumb a:hover {
+  color: var(--accent);
+}
+
+.breadcrumb i {
+  width: 0.8em;
+  height: 0.8em;
+  opacity: 0.6;
+}
+
+.page-title {
+  margin-bottom: 1.1rem;
+  font-size: clamp(2.1rem, 4.4vw, 3.1rem);
+  font-weight: 780;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.page-lede {
+  max-width: 60ch;
+  margin-bottom: 1.8rem;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+/* The feature's own glyph, at a size that reads as an illustration
+  rather than as another icon in a list. */
+.page-glyph {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 1.1rem;
+  border-radius: 13px;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.page-glyph i {
+  width: 24px;
+  height: 24px;
+}
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.capability {
+  padding: 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.capability h3 {
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 640;
+}
+
+.capability p {
+  color: var(--muted);
+  font-size: 0.87rem;
+  line-height: 1.6;
+}
+
+/* Buddy commands. A shell strip rather than three more cards: these are
+  lines you paste, and they should look like it. */
+.command-strip {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.2rem 1.3rem;
+  border: 1px solid rgba(255, 138, 76, 0.22);
+  border-radius: 12px;
+  color: var(--term-fg);
+  font-family: var(--font-mono);
+  font-size: 0.83rem;
+  background: var(--term-bg);
+}
+
+.command-strip span::before {
+  margin-right: 0.6rem;
+  color: rgba(255, 255, 255, 0.38);
+  content: "$";
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.related-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.related-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: var(--shadow);
+}
+
+.related-card h3 {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 640;
+}
+
+.related-card h3 i {
+  width: 1em;
+  height: 1em;
+  color: var(--accent);
+}
+
+.related-card p {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+/* The /features index: the same eight, grouped the way the menu groups
+  them, so the overview and the menu teach the same shape. */
+.feature-group {
+  padding-top: 2.6rem;
+}
+
+.feature-group-head {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.feature-group-head h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.feature-group-head p {
+  color: var(--muted);
+  font-size: 0.87rem;
+}
+
+.not-found-panel {
+  max-width: 60ch;
+  padding: 2.2rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+@media (max-width: 980px) {
+  .capability-grid,
+  .related-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .page-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding: 3rem 0 2.5rem;
+  }
+
+  .capability-grid,
+  .related-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .feature-group-head {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+}
+
+/* ── Compact mega menu ────────────────────────────────────────────
+ *
+ * The Use cases and Compare menus carry eighteen entries each, where
+ * Features carries twelve. Same panel, tighter rows: smaller icons, one
+ * line of supporting text that truncates rather than wraps, and a little
+ * less air between rows. Nothing about the open/close behaviour changes.
+ */
+
+/* Eighteen entries want a little more width than twelve do, so the
+  compact panel is wider and its aside narrower. */
+.mega--compact {
+  width: min(1040px, calc(100vw - 48px));
+}
+
+.mega--compact .mega-inner {
+  grid-template-columns: 1fr 230px;
+}
+
+.mega--compact .mega-link {
+  gap: 0.5rem;
+  padding: 0.36rem 0.5rem;
+}
+
+.mega--compact .mega-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+
+.mega--compact .mega-icon i {
+  width: 13px;
+  height: 13px;
+}
+
+.mega--compact .mega-text strong {
+  font-size: 0.8rem;
+}
+
+/* Two lines, clamped. A single line with an ellipsis turned every row of
+  the Use cases menu into a truncated sentence, which reads as broken
+  rather than terse; the Compare entries are short labels and never reach
+  the second line. */
+.mega--compact .mega-text span {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.71rem;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mega--compact .mega-group-copy {
+  margin-bottom: 0.6rem;
+}
+
+/* Three menus plus three links needs the room back before the layout
+  wraps. Below 900px the panels are hidden anyway and the triggers are
+  plain links to their overview pages. */
+@media (max-width: 1180px) {
+  .nav-links {
+    gap: 1rem;
+    font-size: 0.82rem;
+  }
+}
+
+/* ── Use case pages ───────────────────────────────────────────────
+ *
+ * Same furniture as the feature pages (page-hero, capability-grid,
+ * command-strip, related-grid) plus two pieces of their own: the numbered
+ * "what is hard about this" cards, and the strip of feature links that
+ * says which layers a build of this shape leans on.
+ */
+
+.challenge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  counter-reset: challenge;
+}
+
+.challenge {
+  position: relative;
+  padding: 1.25rem 1.25rem 1.25rem 3.35rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.challenge::before {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.15rem;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(var(--accent-rgb), 0.12);
+  counter-increment: challenge;
+  content: counter(challenge);
+}
+
+.challenge h3 {
+  margin-bottom: 0.4rem;
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.challenge p {
+  color: var(--muted);
+  font-size: 0.87rem;
+  line-height: 1.6;
+}
+
+.stack-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stack-chip {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.83rem;
+  font-weight: 560;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.stack-chip i {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+
+.stack-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ── Comparison pages ─────────────────────────────────────────────
+ *
+ * Three shapes carry these pages: the two-column "where each one wins"
+ * panels, the dimension table, and the verdict pair. The panels are
+ * deliberately symmetrical, because a comparison where the other side
+ * gets a smaller box has already told you how honest it is.
+ */
+
+.glance-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(130% 120% at 100% 0%, rgba(var(--accent-rgb), 0.10), transparent 55%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.glance-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.glance-head i {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+
+.glance-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.glance-kind {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.glance-rows {
+  display: grid;
+  gap: 0.35rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+  list-style: none;
+}
+
+.glance-rows li {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.glance-rows span:first-child {
+  color: var(--muted);
+}
+
+.level {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.level::before {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  content: "";
+}
+
+.level--built-in {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.level--built-in::before {
+  background: currentColor;
+}
+
+.level--partial {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.level--partial::before {
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+}
+
+.level--hosted {
+  color: var(--muted);
+  border-color: var(--line-strong);
+  border-style: dashed;
+}
+
+.level--byo {
+  color: var(--muted);
+}
+
+.versus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.1rem;
+}
+
+.versus {
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.versus--us {
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(var(--accent-rgb), 0.09), transparent 50%),
+    var(--surface);
+}
+
+.versus-title {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 1.02rem;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+}
+
+.versus-title i {
+  width: 17px;
+  height: 17px;
+  color: var(--accent);
+}
+
+.versus ul {
+  display: grid;
+  gap: 0.9rem;
+  list-style: none;
+}
+
+.versus strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.9rem;
+  font-weight: 640;
+}
+
+.versus p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+/* Tables scroll inside their own box; the page never scrolls sideways. */
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table thead th {
+  position: sticky;
+  top: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--surface);
+}
+
+.compare-table tbody tr:last-child th,
+.compare-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.compare-table tbody th {
+  color: var(--text);
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.compare-table td {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.compare-table .col-stacks {
+  color: var(--text);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.compare-table tbody tr:hover td,
+.compare-table tbody tr:hover th {
+  background: rgba(var(--ink-rgb), 0.03);
+}
+
+.compare-table tbody tr:hover .col-stacks {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.matrix-name {
+  display: inline-flex;
+  gap: 0.55rem;
+  align-items: center;
+  color: var(--text);
+  font-weight: 640;
+}
+
+.matrix-name i {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+
+.matrix-name small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.72rem;
+}
+
+.matrix-row--stacks th,
+.matrix-row--stacks td {
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+.legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1.1rem;
+}
+
+.legend-item {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.legend-item p {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.1rem;
+}
+
+.verdict {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.verdict--stacks {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background:
+    radial-gradient(120% 130% at 100% 0%, rgba(var(--accent-rgb), 0.10), transparent 55%),
+    var(--surface);
+}
+
+.verdict h3 {
+  font-size: 1rem;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+}
+
+.verdict p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.compare-summary {
+  padding: clamp(1.25rem, 3vw, 1.9rem);
+  border: 1px solid var(--line);
+  border-left: 3px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: 16px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  background: var(--surface);
+}
+
+@media (max-width: 700px) {
+  .challenge {
+    padding-left: 1.25rem;
+  }
+
+  .challenge::before {
+    position: static;
+    margin-bottom: 0.6rem;
+  }
+}
+
+/* ── Home: the two hubs ───────────────────────────────────────────
+ *
+ * The Use cases and Compare menus are a hover away in the nav, which is
+ * no help to someone who scrolls. These two cards are that landing on the
+ * page itself, sitting under the bento: a sample of each list as chips,
+ * and a way into the whole thing.
+ */
+
+.paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.1rem;
+}
+
+.path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: clamp(1.4rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(130% 120% at 100% 0%, rgba(var(--accent-rgb), 0.09), transparent 55%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.path-card .kicker {
+  margin-bottom: 0;
+}
+
+.path-card h3 {
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.path-card p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* The chips are a sample, not the list, so the strip fills the space it
+  has and the button below it is the way to the rest. */
+.path-card .stack-strip {
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.path-card .stack-chip {
+  min-height: 34px;
+  padding: 0 0.75rem;
+  font-size: 0.79rem;
+}
+
+.path-card .button {
+  margin-top: 0.35rem;
+}
