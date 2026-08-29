@@ -1,9 +1,9 @@
 {
-  "name": "stacks",
+  "name": "smakelo",
   "type": "module",
   "version": "0.70.52",
   "private": true,
-  "description": "Your project description",
+  "description": "Find the good places near you, order from them, and watch it arrive.",
   "author": "your-name <your-email>",
   "contributors": [
     "Chris Breuer <chris@stacksjs.org>"
@@ -76,8 +76,10 @@
     "stx": "./buddy"
   },
   "dependencies": {
-    "stacks": "^0.72.103",
-    "pickier": "^0.1.65"
+    "pickier": "^0.1.65",
+    "stacks": "^0.73.0",
+    "ts-maps": "^0.3.2",
+    "ts-qr-codes": "^0.1.8"
   },
   "workspaces": [
     "storage/framework",

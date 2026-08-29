@@ -1,13 +1,129 @@
-button:
-  about: Über
+demo:
+  banner: Alles hier ist eine Demonstration. Die Orte gibt es wirklich; die Speisekarten, Bewertungen, Bestellungen und Zahlungen nicht.
+  dismiss: Verstanden
+  sandbox: Testmodus. Es wird keine Karte belastet und keine Bestellung erreicht jemanden.
+
+nav:
+  discover: Entdecken
+  orders: Bestellungen
+  favorites: Gemerkt
+  account: Konto
+  partner: Für Betriebe
+  sign_in: Anmelden
+  sign_out: Abmelden
+
+search:
+  placeholder: Nach einem Ort oder Gericht suchen
+  near_me: In meiner Nähe
+  open_now: Jetzt geöffnet
+  filters: Filter
+  sort: Sortieren
+  sort_distance: Am nächsten
+  sort_rating: Beste Bewertung
+  no_results: Hier ist noch nichts. Versuche eine größere Umgebung.
+  results_count: '{count} Orte'
+
+business:
+  menu: Speisekarte
+  reviews: Bewertungen
+  about: Über uns
+  hours: Öffnungszeiten
+  open: Geöffnet
+  closed: Geschlossen
+  closes_at: 'Schließt um {time}'
+  opens_at: 'Öffnet um {time}'
+  directions: Route
+  call: Anrufen
+  save: Merken
+  saved: Gemerkt
+  claim: Ist das dein Betrieb?
+  rating_count: '{count} Bewertungen'
+  price_tier: Preis
+  no_reviews: Noch keine Bewertungen.
+
+order:
+  add_to_cart: Hinzufügen
+  cart: Warenkorb
+  cart_empty: Dein Warenkorb ist leer.
+  subtotal: Zwischensumme
+  delivery_fee: Lieferung
+  service_fee: Service
+  tax: MwSt.
+  tip: Trinkgeld
+  total: Gesamt
+  checkout: Zur Kasse
+  place_order: Bestellung aufgeben
+  delivery: Lieferung
+  pickup: Abholung
+  dine_in: Vor Ort
+  schedule: Für später planen
+  asap: So schnell wie möglich
+  notes: Hinweise für die Küche
+  address: Lieferadresse
+
+status:
+  pending: Bestellung eingegangen
+  processing: Wird zubereitet
+  out_for_delivery: Unterwegs
+  delivered: Geliefert
+  cancelled: Storniert
+  ready_for_pickup: Zur Abholung bereit
+
+tracking:
+  title: Wo deine Bestellung ist
+  eta: 'Ankunft in etwa {minutes} Min.'
+  arriving_now: Kommt jetzt an
+  courier_nearby: Dein Kurier ist gleich da
+  picked_up: Im Restaurant abgeholt
+  contact_courier: Kurier kontaktieren
+
+review:
+  write: Bewertung schreiben
+  rating: Deine Bewertung
+  body: Wie war es?
+  photos: Fotos hinzufügen
+  submit: Bewertung posten
+  helpful: Hilfreich
+  owner_response: Antwort des Betriebs
+  verified: Bestellung bestätigt
+
+table:
+  scan_prompt: Scannen für die Speisekarte
+  tab_open: Deine Rechnung
+  add_round: Mehr bestellen
+  split: Rechnung teilen
+  split_evenly: Gleichmäßig teilen
+  split_by_item: Ich zahle, was ich hatte
+  close_tab: Rechnung abschließen
+
+partner:
+  dashboard: Übersicht
+  menu_editor: Speisekarte
+  orders_board: Bestellungen
+  hours: Öffnungszeiten
+  tables: Tische
+  qr_codes: QR-Codes
+  earnings: Einnahmen
+  payouts: Auszahlungen
+  onboarding: Zahlungen einrichten
+
+courier:
+  shift_start: Online gehen
+  shift_end: Offline gehen
+  offer: Neue Lieferung
+  accept: Annehmen
+  decline: Ablehnen
+  navigate: Navigation
+  arrived: Ich bin da
+  picked_up: Abgeholt
+  delivered: Geliefert
+  earnings: Einnahmen
+
+common:
   back: Zurück
-  go: Los
-  home: Startseite
-  toggle_dark: Dunkelmodus umschalten
-  toggle_langs: Sprachen ändern
-intro:
-  desc: Rapid Application Development
-  dynamic-route: Demo einer dynamischen Route
-  hi: Hi, {name}!
-  aka: Auch bekannt als
-  whats-your-name: Wie heißt du?
+  cancel: Abbrechen
+  save: Speichern
+  close: Schließen
+  loading: Lädt
+  retry: Erneut versuchen
+  error: Etwas ist schiefgelaufen.

@@ -154,7 +154,6 @@ declare global {
   const FormSubmission: typeof import('../defaults/app/Models/Forms/FormSubmission')['default']
   const Websocket: typeof import('../defaults/app/Models/realtime/Websocket')['default']
   const SendWelcomeEmail: typeof import('../../../app/Jobs/SendWelcomeEmail')['default']
-  const Inspire: typeof import('../../../app/Jobs/Inspire')['default']
   const ExampleTwoJob: typeof import('../defaults/app/Jobs/ExampleTwoJob')['default']
   const SyncSearchIndexJob: typeof import('../defaults/app/Jobs/SyncSearchIndexJob')['default']
   const PruneQueryLogsJob: typeof import('../defaults/app/Jobs/PruneQueryLogsJob')['default']
@@ -166,5 +165,7 @@ declare global {
   const SendPasswordResetEmailJob: typeof import('../defaults/app/Jobs/SendPasswordResetEmailJob')['default']
   const QueryController: typeof import('../defaults/app/Controllers/QueryController')['default']
   const ComingSoonController: typeof import('../defaults/app/Controllers/ComingSoonController')['default']
+  const Courier: typeof import('@stacksjs/orm')['Courier']
+  const CourierPing: typeof import('@stacksjs/orm')['CourierPing']
   const ErrorModel: typeof import('@stacksjs/orm')['ErrorModel']
 }

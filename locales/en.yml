@@ -1,15 +1,129 @@
-default:
-  button:
-    about: About
-    back: Back
-    go: GO
-    home: Home
-    toggle_dark: Toggle dark mode
-    toggle_langs: Change languages
-  intro:
-    desc: Rapid Application Development
-    dynamic_route: Demo of dynamic route
-    hi: 'Hi, {name}!'
-    aka: Also known as
-    whats_your_name: What’s your name?
-    not_found: Not found
+demo:
+  banner: Everything here is a demonstration. The places are real; the menus, reviews, orders and payments are not.
+  dismiss: Got it
+  sandbox: Test mode. No card is charged and no order reaches anyone.
+
+nav:
+  discover: Discover
+  orders: Orders
+  favorites: Saved
+  account: Account
+  partner: For businesses
+  sign_in: Sign in
+  sign_out: Sign out
+
+search:
+  placeholder: Search for a place or a dish
+  near_me: Near me
+  open_now: Open now
+  filters: Filters
+  sort: Sort
+  sort_distance: Closest
+  sort_rating: Best rated
+  no_results: Nothing here yet. Try a wider search.
+  results_count: '{count} places'
+
+business:
+  menu: Menu
+  reviews: Reviews
+  about: About
+  hours: Hours
+  open: Open
+  closed: Closed
+  closes_at: 'Closes {time}'
+  opens_at: 'Opens {time}'
+  directions: Directions
+  call: Call
+  save: Save
+  saved: Saved
+  claim: Is this your business?
+  rating_count: '{count} reviews'
+  price_tier: Price
+  no_reviews: No reviews yet.
+
+order:
+  add_to_cart: Add
+  cart: Cart
+  cart_empty: Your cart is empty.
+  subtotal: Subtotal
+  delivery_fee: Delivery
+  service_fee: Service
+  tax: Tax
+  tip: Tip
+  total: Total
+  checkout: Checkout
+  place_order: Place order
+  delivery: Delivery
+  pickup: Pickup
+  dine_in: Dine in
+  schedule: Schedule for later
+  asap: As soon as possible
+  notes: Notes for the kitchen
+  address: Delivery address
+
+status:
+  pending: Order received
+  processing: Being prepared
+  out_for_delivery: On the way
+  delivered: Delivered
+  cancelled: Cancelled
+  ready_for_pickup: Ready for pickup
+
+tracking:
+  title: Where your order is
+  eta: 'Arriving in about {minutes} min'
+  arriving_now: Arriving now
+  courier_nearby: Your courier is nearby
+  picked_up: Picked up from the restaurant
+  contact_courier: Contact courier
+
+review:
+  write: Write a review
+  rating: Your rating
+  body: How was it?
+  photos: Add photos
+  submit: Post review
+  helpful: Helpful
+  owner_response: Response from the owner
+  verified: Verified order
+
+table:
+  scan_prompt: Scan to see the menu
+  tab_open: Your tab
+  add_round: Order more
+  split: Split the check
+  split_evenly: Split evenly
+  split_by_item: Pay for what I had
+  close_tab: Close tab
+
+partner:
+  dashboard: Dashboard
+  menu_editor: Menu
+  orders_board: Orders
+  hours: Hours
+  tables: Tables
+  qr_codes: QR codes
+  earnings: Earnings
+  payouts: Payouts
+  onboarding: Set up payments
+
+courier:
+  shift_start: Go online
+  shift_end: Go offline
+  offer: New delivery
+  accept: Accept
+  decline: Decline
+  navigate: Navigate
+  arrived: I have arrived
+  picked_up: Picked up
+  delivered: Delivered
+  earnings: Earnings
+
+common:
+  back: Back
+  cancel: Cancel
+  save: Save
+  close: Close
+  loading: Loading
+  retry: Try again
+  error: Something went wrong.

@@ -1,0 +1,129 @@
+demo:
+  banner: Alles hier is een demonstratie. De zaken bestaan echt; de menu's, reviews, bestellingen en betalingen niet.
+  dismiss: Duidelijk
+  sandbox: Testmodus. Er wordt niets afgeschreven en geen bestelling bereikt iemand.
+
+nav:
+  discover: Ontdekken
+  orders: Bestellingen
+  favorites: Bewaard
+  account: Account
+  partner: Voor zaken
+  sign_in: Inloggen
+  sign_out: Uitloggen
+
+search:
+  placeholder: Zoek een zaak of gerecht
+  near_me: Bij mij in de buurt
+  open_now: Nu open
+  filters: Filters
+  sort: Sorteren
+  sort_distance: Dichtstbij
+  sort_rating: Best beoordeeld
+  no_results: Hier is nog niets. Probeer een ruimere omgeving.
+  results_count: '{count} zaken'
+
+business:
+  menu: Menu
+  reviews: Reviews
+  about: Over
+  hours: Openingstijden
+  open: Open
+  closed: Gesloten
+  closes_at: 'Sluit om {time}'
+  opens_at: 'Opent om {time}'
+  directions: Route
+  call: Bellen
+  save: Bewaren
+  saved: Bewaard
+  claim: Is dit jouw zaak?
+  rating_count: '{count} reviews'
+  price_tier: Prijs
+  no_reviews: Nog geen reviews.
+
+order:
+  add_to_cart: Toevoegen
+  cart: Winkelmand
+  cart_empty: Je winkelmand is leeg.
+  subtotal: Subtotaal
+  delivery_fee: Bezorging
+  service_fee: Service
+  tax: Btw
+  tip: Fooi
+  total: Totaal
+  checkout: Afrekenen
+  place_order: Bestelling plaatsen
+  delivery: Bezorgen
+  pickup: Afhalen
+  dine_in: Ter plaatse
+  schedule: Voor later plannen
+  asap: Zo snel mogelijk
+  notes: Opmerkingen voor de keuken
+  address: Bezorgadres
+
+status:
+  pending: Bestelling ontvangen
+  processing: Wordt bereid
+  out_for_delivery: Onderweg
+  delivered: Bezorgd
+  cancelled: Geannuleerd
+  ready_for_pickup: Klaar om af te halen
+
+tracking:
+  title: Waar je bestelling is
+  eta: 'Over ongeveer {minutes} min.'
+  arriving_now: Komt nu aan
+  courier_nearby: Je koerier is vlakbij
+  picked_up: Opgehaald bij de zaak
+  contact_courier: Koerier bereiken
+
+review:
+  write: Review schrijven
+  rating: Jouw beoordeling
+  body: Hoe was het?
+  photos: Foto's toevoegen
+  submit: Review plaatsen
+  helpful: Nuttig
+  owner_response: Reactie van de zaak
+  verified: Bestelling bevestigd
+
+table:
+  scan_prompt: Scan voor het menu
+  tab_open: Je rekening
+  add_round: Meer bestellen
+  split: Rekening splitsen
+  split_evenly: Gelijk verdelen
+  split_by_item: Ik betaal wat ik had
+  close_tab: Rekening afsluiten
+
+partner:
+  dashboard: Overzicht
+  menu_editor: Menu
+  orders_board: Bestellingen
+  hours: Openingstijden
+  tables: Tafels
+  qr_codes: QR-codes
+  earnings: Inkomsten
+  payouts: Uitbetalingen
+  onboarding: Betalingen instellen
+
+courier:
+  shift_start: Online gaan
+  shift_end: Offline gaan
+  offer: Nieuwe bezorging
+  accept: Aannemen
+  decline: Afwijzen
+  navigate: Navigeren
+  arrived: Ik ben er
+  picked_up: Opgehaald
+  delivered: Bezorgd
+  earnings: Inkomsten
+
+common:
+  back: Terug
+  cancel: Annuleren
+  save: Opslaan
+  close: Sluiten
+  loading: Laden
+  retry: Opnieuw proberen
+  error: Er ging iets mis.

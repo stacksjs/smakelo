@@ -6,6 +6,7 @@
 // would make every compilation that touches a name resolve every module.
 export const actions = {
   'Actions/NotifyUser': '../../../app/Actions/NotifyUser.ts',
+  'Actions/RobotsAction': '../../../app/Actions/RobotsAction.ts',
   'Actions/SendWelcomeEmail': '../../../app/Actions/SendWelcomeEmail.ts',
   'Actions/AI/AskAction': '../defaults/app/Actions/AI/AskAction.ts',
   'Actions/AI/SummaryAction': '../defaults/app/Actions/AI/SummaryAction.ts',
@@ -596,7 +597,6 @@ export const actions = {
   'Actions/Payment/UpdateSubscriptionAction': '../defaults/app/Actions/Payment/UpdateSubscriptionAction.ts',
   'Actions/Queue/FetchQueuesAction': '../defaults/app/Actions/Queue/FetchQueuesAction.ts',
   'Actions/Realtime/FetchWebsocketsAction': '../defaults/app/Actions/Realtime/FetchWebsocketsAction.ts',
-  'Actions/RobotsAction': '../defaults/app/Actions/RobotsAction.ts',
   'Actions/SitemapAction': '../defaults/app/Actions/SitemapAction.ts',
   'Actions/Storefront/AddToCartAction': '../defaults/app/Actions/Storefront/AddToCartAction.ts',
   'Actions/Storefront/CheckoutContactAction': '../defaults/app/Actions/Storefront/CheckoutContactAction.ts',
