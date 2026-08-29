@@ -1,0 +1,7 @@
+# Smakelo is a demonstration. It lists real Los Angeles businesses alongside
+# invented menus, reviews and prices, so it must not appear in search results:
+# fiction about a real restaurant, indexed, is the one outcome this site has to
+# avoid. Every page also carries <meta name="robots" content="noindex">, which
+# is the directive that actually prevents indexing rather than crawling.
+User-agent: *
+Disallow: /

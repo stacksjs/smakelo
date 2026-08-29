@@ -3,14 +3,23 @@ import type { CloudConfig as TsCloudConfig } from '@stacksjs/ts-cloud'
 import { env } from '@stacksjs/env'
 
 const APP_SLUG = 'smakelo'
-const APP_DOMAIN = env.APP_DOMAIN || undefined
+const APP_DOMAIN = env.APP_DOMAIN || 'smakelo.stacksjs.com'
 
 /**
- * Safe application cloud defaults.
+ * Cloud configuration.
  *
- * Set APP_DOMAIN and provider credentials before the first deploy. Use
- * `cloud.attachTo` only when this app is intentionally joining a server owned
- * by another ts-cloud project.
+ * A TENANT on the shared Hetzner box the `stacks` project owns
+ * (`cloud.attachTo`), not a box of its own. Two rules follow, and both have
+ * caused outages here before:
+ *
+ *   1. `project.slug` names the files this deploy OWNS on the box:
+ *      `/etc/rpx/sites.d/<slug>.json` and `rpx-cert-renew-<slug>.*`. The
+ *      fragment is replaced wholesale, so a slug colliding with another tenant
+ *      - or with `stacks` itself - deletes that tenant's routes.
+ *   2. Ports must be clear of every other tenant. 3210/3218 came from a live
+ *      `ss -lntp` on the box, where everything from 3000 to 3201 was already
+ *      taken. Reading another tenant's config file instead is how two services
+ *      end up quietly bound to one port.
  */
 export const tsCloud: TsCloudConfig = {
   project: {
@@ -23,6 +32,8 @@ export const tsCloud: TsCloudConfig = {
 
   cloud: {
     provider: 'hetzner',
+    // Join the box the `stacks` project provisions instead of creating one.
+    attachTo: 'stacks',
   },
 
   mode: 'server',
@@ -41,6 +52,26 @@ export const tsCloud: TsCloudConfig = {
   },
 
   infrastructure: {
+    /**
+     * DNS lives on Cloudflare, which is authoritative for the whole
+     * `stacksjs.com` zone — this app owns four names on it, not the zone.
+     *
+     * `domain` is the zone apex rather than this app's host: it is what tells
+     * ts-cloud where `smakelo.stacksjs.com` lives, instead of leaving it to
+     * guess from the last two labels (which is right here and wrong the moment a
+     * name has a multi-label suffix).
+     *
+     * `records` stays empty on purpose. Reconciliation is upsert-only, so a
+     * record declared here is one this app will publish on EVERY deploy — and the
+     * zone's mail, DKIM and certificate-validation records belong to the zone
+     * owner, not to a tenant. Declaring them here would mean four apps racing to
+     * own the same SPF policy.
+     */
+    dns: {
+      provider: 'cloudflare',
+      domain: 'stacksjs.com',
+    },
+
     compute: {
       instances: 1,
       size: 'small',
@@ -52,39 +83,153 @@ export const tsCloud: TsCloudConfig = {
       webServer: 'rpx',
       proxy: {
         engine: 'rpx',
+        // Emits this tenant's own cert units rather than sitting on the box's
+        // fallback certificate.
         onDemandTls: true,
+
+        /**
+         * Serve the frontends from Cloudflare's edge.
+         *
+         * `frontedHosts` is listed rather than defaulted, and the name missing
+         * from it is the point. Cloudflare terminates TLS at the edge,
+         * so a proxied host needs an edge certificate covering its name — and
+         * Universal SSL (the free plan's certificate) issues exactly the apex
+         * plus ONE wildcard level: `stacksjs.com` and `*.stacksjs.com`.
+         *
+         * `smakelo.stacksjs.com` sits one label under the apex, so the
+         * wildcard covers it. `www.smakelo.stacksjs.com` sits two levels down,
+         * which no wildcard in that certificate matches; it would need
+         * `*.smakelo.stacksjs.com` from Advanced Certificate Manager.
+         *
+         * Proxying them regardless does not degrade gracefully — Cloudflare
+         * answers the handshake with no certificate for the name and the host
+         * stops serving HTTPS entirely, while port 80 still redirects and the
+         * origin stays healthy, so nothing that does not speak TLS notices.
+         * ts-cloud now refuses to proxy an uncovered host, but naming the set
+         * here keeps the redirects DNS-only by intent rather than by rescue.
+         *
+         * No `secret`: rpx enforces a single origin-guard header/value for the
+         * entire gateway, so a co-tenant on this box cannot bring its own. If
+         * this app declared one and `stacks` declared another, ts-cloud leaves
+         * THIS app's hosts unguarded rather than guarding them with a value the
+         * gateway would reject — which would reject every request instead. The
+         * origin guard therefore belongs to whoever owns the box.
+         */
+        cdn: {
+          provider: 'cloudflare',
+          frontedHosts: ['smakelo.stacksjs.com'],
+          cloudflare: {
+            /**
+             * These are ZONE-WIDE, and this app is a tenant on a zone with
+             * roughly twenty other sites — so the set here is deliberately the
+             * subset that is safe for all of them. Every host on the zone is
+             * already HTTPS-only behind a real Let's Encrypt certificate, so
+             * `strict` and `alwaysUseHttps` change nothing for anyone else.
+             *
+             * HSTS is NOT set. `includeSubdomains` on the apex would commit
+             * every name under `stacksjs.com` to HTTPS-only in every visitor's
+             * browser for a year, including names this app has never heard of
+             * and any that are added later without a certificate ready. That is
+             * a zone owner's decision to make once, not a side effect of
+             * deploying a tenant.
+             */
+            settings: {
+              ssl: 'strict',
+              alwaysUseHttps: true,
+              minTlsVersion: '1.2',
+              brotli: true,
+              http3: true,
+              // Cloudflare turns this on for new zones and it rewrites the HTML
+              // the origin sent: `mailto:` links become spans a script decodes.
+              // This site's primary call to action is emailing the club, and
+              // through the edge those links had silently become
+              // JavaScript-dependent. Delivery is the CDN's job; editing the
+              // document is not.
+              emailObfuscation: false,
+            },
+            cache: {
+              // Build output is fingerprinted, so the bytes at a URL never
+              // change and a long edge TTL is free.
+              assetEdgeTtl: 2592000,
+              // HTML carries the references to those fingerprinted files.
+              // Caching it as long would pin visitors to a stale release.
+              documentEdgeTtl: 3600,
+            },
+            // Purge the edge for these hosts at the end of every deploy, so a
+            // release is visible immediately rather than after the document TTL
+            // lapses. This is the default; it is spelled out because it is the
+            // thing most likely to be turned off by accident.
+            purgeOnDeploy: true,
+          },
+        },
       },
     },
   },
 
   sites: {
+    /**
+     * The stx app server.
+     *
+     * `preStart` migrates, seeds and then regenerates the place pages, in that
+     * order, because each needs the one before it: the seed needs tables, and
+     * the generated pages are one file per seeded business. Regenerating on
+     * every release is what keeps the pages and the data from drifting apart -
+     * a page for a business no longer in the seed would route to nothing.
+     *
+     * The database lives outside the atomic release directories, so a deploy
+     * never swaps it out from under the running service.
+     */
     main: {
       root: '.',
       path: '/',
       domain: APP_DOMAIN,
       start: 'bun node_modules/@stacksjs/buddy/dist/serve-entry.js',
-      port: 3000,
+      port: 3210,
       preStart: [
         'bun install --frozen-lockfile',
-        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate',
+        'mkdir -p /var/lib/smakelo',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate || true',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js build:places',
       ],
       env: {
+        HOST: '127.0.0.1',
         APP_ENV: 'production',
         NODE_ENV: 'production',
-        PORT_API: '3008',
-        API_URL: 'http://127.0.0.1:3008',
+        APP_NAME: 'Smakelo',
+        APP_URL: APP_DOMAIN,
+        APP_KEY: env.APP_KEY || '',
+        PORT_API: '3218',
+        API_URL: 'http://127.0.0.1:3218',
+        DB_CONNECTION: 'sqlite',
+        DB_DATABASE_PATH: '/var/lib/smakelo/smakelo.sqlite',
       },
     },
 
+    // People type it. A redirect rather than a second copy, so one host stays
+    // canonical.
+    wwwMain: {
+      domain: 'www.smakelo.stacksjs.com',
+      redirect: 'https://smakelo.stacksjs.com',
+    },
+
+    // API (bun-router). Deliberately no `domain`/`path`: the rpx gateway skips
+    // domain-less sites, so this stays loopback-only and is reached only
+    // through the app's same-origin /api proxy.
     api: {
       root: '.',
       start: 'bun node_modules/@stacksjs/actions/dist/serve/api.js',
-      port: 3008,
+      port: 3218,
       preStart: ['bun install --frozen-lockfile'],
       env: {
         HOST: '127.0.0.1',
         APP_ENV: 'production',
         NODE_ENV: 'production',
+        APP_NAME: 'Smakelo',
+        APP_URL: APP_DOMAIN,
+        APP_KEY: env.APP_KEY || '',
+        DB_CONNECTION: 'sqlite',
+        DB_DATABASE_PATH: '/var/lib/smakelo/smakelo.sqlite',
       },
     },
   },

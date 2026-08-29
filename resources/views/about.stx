@@ -1,0 +1,95 @@
+<script server>
+/*
+ * What this site is, and which parts of it are true.
+ *
+ * The banner says it in one line on every page; this is the long version, for
+ * anyone who wants to know exactly which half is real before they read a review
+ * of a restaurant they might actually go to.
+ */
+const pageTitle = 'About this demo - Smakelo'
+const pageDescription = 'What Smakelo is, which parts of it are real, and which are invented.'
+const canonicalPath = '/about'
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body>
+    @include('chrome')
+
+    <main class="mx-auto px-4 sm:px-8 max-w-3xl">
+      <section class="pt-16 pb-24 sm:pt-24 sm:pb-40">
+        <span class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
+          About
+        </span>
+
+        <h1 class="mt-6 text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-balance">
+          A working demonstration, not a business.
+        </h1>
+
+        <div class="mt-10 space-y-6 text-[17px] leading-relaxed" style="color: var(--ink-soft)">
+          <p>
+            Smakelo is a demonstration of what one framework can carry: discovery and
+            reviews, ordering and delivery with live courier tracking, and ordering
+            from a table by scanning a code. It is built on
+            <a href="https://github.com/stacksjs/stacks" class="underline underline-offset-4" style="color: var(--ink)">Stacks</a>,
+            and it exists to be used rather than described.
+          </p>
+
+          <h2 class="pt-6 text-[22px] font-semibold tracking-[-0.02em]" style="color: var(--ink)">What is real</h2>
+
+          <p>
+            The businesses you can find here are real places in Los Angeles, Santa
+            Monica and Venice, along with a few farms further out that supply the
+            markets. Their names, neighbourhoods and approximate locations come from
+            open data: OpenStreetMap and Foursquare's Open Source Places, both openly
+            licensed. A few addresses are approximate.
+          </p>
+
+          <p>
+            Those listings can be searched, mapped and read about. They cannot take an
+            order. Nobody who works at any of them has agreed to sell anything through
+            a demonstration, so the app does not offer to sell on their behalf, and not
+            one review here is attached to a real business.
+          </p>
+
+          <h2 class="pt-6 text-[22px] font-semibold tracking-[-0.02em]" style="color: var(--ink)">What is invented</h2>
+
+          <p>
+            Everything else. The partner businesses, the ones with menus and an order
+            button, do not exist. Their menus were written for this demo, their reviews
+            were written for this demo, and the couriers, orders and payouts are all
+            fabricated. Payments run against Stripe's sandbox, so no card is ever
+            charged and no order reaches a kitchen.
+          </p>
+
+          <h2 class="pt-6 text-[22px] font-semibold tracking-[-0.02em]" style="color: var(--ink)">Why the split</h2>
+
+          <p>
+            Because a marketplace is only interesting at real density. Twenty invented
+            restaurants in an invented city prove nothing about search, distance
+            sorting or a map. Real places give the discovery half something honest to
+            work on, and the invented partners give the transactional half somewhere to
+            happen without putting words in a stranger's mouth.
+          </p>
+
+          <p>
+            The site is excluded from search engines for the same reason.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t" style="border-color: var(--line)">
+      <div class="mx-auto px-4 sm:px-8 py-12 max-w-3xl text-[13px]" style="color: var(--ink-soft)">
+        <p>
+          Listings from OpenStreetMap contributors and Foursquare Open Source Places.
+          Map tiles from OpenStreetMap. Everything else is invented.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
