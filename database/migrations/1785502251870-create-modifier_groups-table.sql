@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "modifier_groups" (
   "max_selections" INTEGER not null default 1,
   "allows_quantity" INTEGER not null default 0,
   "position" INTEGER not null default 0,
-  "product_id" INTEGER,
+  "product_id" INTEGER REFERENCES "products"("id"),
   "created_at" TEXT not null default CURRENT_TIMESTAMP,
   "updated_at" TEXT,
   "uuid" TEXT

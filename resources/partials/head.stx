@@ -1,0 +1,98 @@
+{{-- Shared <head> for every Smakelo page.
+
+  Partials inherit the including page's scope, so a page sets pageTitle,
+  pageDescription and canonicalPath in its own <script server> and this reads
+  them. --}}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{{ pageDescription }}">
+<title>{{ pageTitle }}</title>
+
+{{-- Nothing here may be indexed. The listings name real Los Angeles businesses
+  and sit beside invented reviews, menus and prices; a search result putting
+  that fiction in front of somebody looking for the real restaurant is the one
+  outcome this demo must not have. Belt and braces with /robots.txt, which
+  disallows everything. --}}
+<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0b0a" media="(prefers-color-scheme: dark)">
+
+{{-- Geist for everything. Preconnect so the first paint is not waiting on
+  a font handshake. --}}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
+
+<style>
+  :root {
+    --ink: #14110f;
+    --ink-soft: #5c534c;
+    --paper: #faf9f7;
+    --paper-raised: #ffffff;
+    --line: rgba(20, 17, 15, 0.08);
+    --accent: #b4532a;
+    --accent-soft: #f3e6df;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #f5f2ef;
+      --ink-soft: #a89f97;
+      --paper: #0c0b0a;
+      --paper-raised: #171513;
+      --line: rgba(245, 242, 239, 0.10);
+      --accent: #e0794a;
+      --accent-soft: rgba(224, 121, 74, 0.14);
+    }
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: Geist, ui-sans-serif, system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Cards rise as they enter the viewport.
+
+     Done with a scroll-driven animation rather than an IntersectionObserver,
+     which is a deliberate retreat: the observer version hid every card up front
+     and revealed them from script, so the one time the client bundle failed to
+     evaluate, the page served a 200 with an empty grid and said nothing about
+     it. Here the animation is the only thing that can go missing. A browser
+     without `animation-timeline` support runs the @supports block not at all,
+     the cards never animate, and the page is simply a page. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: rise-in linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 55%;
+      }
+    }
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* The map is the one place a third-party stylesheet paints, so it gets the
+     app's radius and hairline rather than the library's defaults. */
+  .tsmap-container { background: var(--paper-raised); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; filter: none; transition: none; }
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>

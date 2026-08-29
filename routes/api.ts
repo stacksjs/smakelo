@@ -1,33 +1,44 @@
 import { response, route } from '@stacksjs/router'
+import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
 
 /**
- * This file is the entry point for your application's API routes.
- * The routes defined here are automatically registered. Last but
- * not least, you may also create any other `routes/*.ts` files.
+ * Smakelo's JSON API, mounted under `/api` and answered by the API process.
  *
- * Every route in this file is mounted under `/api`. The prefix comes from
- * the `'api'` key in `app/Routes.ts` and lines up with the path the dev
- * proxy forwards (`/api/*`), so `route.get('/hello', ...)` below answers
- * `GET /api/hello`. Paths at the document root belong in a route file
- * whose registry entry sets `prefix: ''`.
- *
- * Framework routes (auth, dashboard, commerce, CMS, etc.) are loaded
- * automatically from storage/framework/defaults/routes/dashboard.ts.
- * You do NOT need to define them here — only add your own custom routes.
- *
- * @see https://docs.stacksjs.com/routing
+ * These call the same functions the server-rendered pages do, so a client and
+ * a page cannot drift apart on what counts as open, near, or orderable.
  */
 
-// Your custom routes go here. This one answers `GET /api/hello`:
-route.get('/hello', () => response.text('hello world'))
+/** `GET /api/businesses?lat=&lng=&radius=&q=&type=&open_now=&partners_only=&sort=` */
+route.get('/businesses', async (request: any) => {
+  const number = (value: unknown): number | undefined => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
 
-// `/coming-soon` is served as an STX view from
-// `storage/framework/defaults/resources/views/coming-soon.stx`. The
-// view auto-resolves through stx-serve, so no route registration is
-// needed here. To activate the holding page across the whole app:
-//
-//   ./buddy coming-soon [--secret=my-magic-token]
-//
-// Launch the site with `./buddy launch`. Maintenance mode (503 page,
-// distinct cookie + state file) is the separate `./buddy down` /
-// `./buddy up` pair.
+  const flag = (value: unknown): boolean => value === '1' || value === 'true'
+
+  const results = await searchBusinesses({
+    latitude: number(request?.query?.lat),
+    longitude: number(request?.query?.lng),
+    radiusMeters: number(request?.query?.radius),
+    q: request?.query?.q ? String(request.query.q) : undefined,
+    type: request?.query?.type ? String(request.query.type) : undefined,
+    openNow: flag(request?.query?.open_now),
+    partnersOnly: flag(request?.query?.partners_only),
+    sort: request?.query?.sort as 'distance' | 'rating' | 'name' | undefined,
+    limit: number(request?.query?.limit),
+  })
+
+  return response.json({ data: results, count: results.length })
+})
+
+/** `GET /api/businesses/{slug}` - one business with hours, menu and reviews. */
+route.get('/businesses/{slug}', async (request: any) => {
+  const slug = String(request?.getParam?.('slug') ?? request?.params?.slug ?? '')
+  const found = await businessBySlug(slug)
+
+  if (!found)
+    return response.json({ message: `No business with slug "${slug}".` }, 404)
+
+  return response.json({ data: found })
+})

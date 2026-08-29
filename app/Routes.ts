@@ -1,8 +1,10 @@
 /**
  * Route Registry
  *
- * This file re-exports the default route registry.
- * Customize this file to add your own route files.
+ * `routes/api.ts` is auto-prefixed with `/api` and answered by the API
+ * process. The pages themselves are stx views under `resources/views/`, which
+ * the views server resolves by file, so most of this app needs no routes at
+ * all.
  *
  * @see https://docs.stacksjs.org/routing
  */
