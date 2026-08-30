@@ -43,7 +43,10 @@ const canonicalPath = '/earnings'
 
           <div class="grid grid-cols-1 gap-3 mt-8 sm:grid-cols-3">
             <div :for="tile in tiles()" class="p-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-              <p class="text-[28px] font-semibold tracking-[-0.02em] tabular-nums">{{ money(tile.cents) }}</p>
+              <span class="flex justify-center items-center w-9 h-9 rounded-[0.75rem]" style="background: var(--accent-soft); color: var(--accent)">
+                <i class="w-4.5 h-4.5" :class="tile.icon"></i>
+              </span>
+              <p class="mt-4 text-[28px] font-semibold tracking-[-0.02em] tabular-nums">{{ money(tile.cents) }}</p>
               <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
             </div>
           </div>
@@ -55,9 +58,14 @@ const canonicalPath = '/earnings'
               class="flex gap-4 justify-between items-center p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
               style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)"
             >
-              <span class="min-w-0">
-                <span class="block text-[15px] font-medium truncate">{{ row.name }}</span>
-                <span class="block text-[12px]" style="color: var(--ink-soft)">{{ row.partyType }}</span>
+              <span class="flex flex-1 gap-3 items-center min-w-0">
+                <span class="flex justify-center items-center w-9 h-9 rounded-[0.7rem] shrink-0" style="background: var(--accent-soft); color: var(--accent)">
+                  <i class="w-4 h-4" :class="partyIcon(row.partyType)"></i>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-[15px] font-medium truncate">{{ row.name }}</span>
+                  <span class="block text-[12px]" style="color: var(--ink-soft)">{{ row.partyType }}</span>
+                </span>
               </span>
               <span class="text-[15px] tabular-nums shrink-0">{{ money(row.balanceCents) }}</span>
             </a>
@@ -142,6 +150,15 @@ const canonicalPath = '/earnings'
         payout: 'Paid out',
       }
 
+      function partyIcon(type) {
+        return {
+          business: 'i-hugeicons-restaurant-01',
+          courier: 'i-hugeicons-bicycle-01',
+          platform: 'i-hugeicons-money-bag-02',
+          tax: 'i-hugeicons-checkmark-circle-02',
+        }[type] || 'i-hugeicons-user-circle'
+      }
+
       function label(kind) {
         return LABELS[kind] || String(kind).replace(/_/g, ' ')
       }
@@ -151,9 +168,9 @@ const canonicalPath = '/earnings'
         .reduce((total, row) => total + row.balanceCents, 0)
 
       const tiles = derived(() => [
-        { label: 'Owed to merchants and couriers', cents: sumOf(['business', 'courier']) },
-        { label: 'Kept by the platform', cents: sumOf(['platform']) },
-        { label: 'Sales tax held', cents: sumOf(['tax']) },
+        { label: 'Owed to merchants and couriers', cents: sumOf(['business', 'courier']), icon: 'i-hugeicons-delivery-truck-01' },
+        { label: 'Kept by the platform', cents: sumOf(['platform']), icon: 'i-hugeicons-money-bag-02' },
+        { label: 'Sales tax held', cents: sumOf(['tax']), icon: 'i-hugeicons-checkmark-circle-02' },
       ])
 
       // Everything except payouts, which are money leaving rather than earned.
