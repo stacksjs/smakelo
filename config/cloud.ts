@@ -236,6 +236,19 @@ export const tsCloud: TsCloudConfig = {
         API_URL: 'http://127.0.0.1:3218',
         DB_CONNECTION: 'sqlite',
         DB_DATABASE_PATH: '/var/lib/smakelo/smakelo.sqlite',
+        /*
+         * Lift the production guard on `migrate:fresh`, deliberately.
+         *
+         * The guard is right by default and wrong here. It exists to stop a
+         * command wiping a database somebody cares about, and every row in this
+         * one comes from `seed:demo`, which runs on the very next line of
+         * preStart. The framework cannot know that, so this says it out loud
+         * rather than the deploy quietly routing around the check.
+         *
+         * If this app ever holds a row a person would miss, delete this line
+         * before anything else.
+         */
+        DB_MIGRATE_FRESH: 'allow',
       },
     },
 
