@@ -15419,10 +15419,140 @@
             "type": "unique"
           }
         ]
+      },
+      {
+        "table": "addresses",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "label",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "Home",
+            "maxLength": 40
+          },
+          {
+            "name": "line",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 255
+          },
+          {
+            "name": "city",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 120
+          },
+          {
+            "name": "postal_code",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 20
+          },
+          {
+            "name": "latitude",
+            "type": "float",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "longitude",
+            "type": "float",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "notes",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 300
+          },
+          {
+            "name": "is_default",
+            "type": "boolean",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": false
+          },
+          {
+            "name": "customer_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "customers",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "UTC_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "uuid",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": true,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "addresses_uuid_unique",
+            "columns": [
+              "uuid"
+            ],
+            "type": "unique"
+          }
+        ]
       }
     ]
   },
-  "hash": "a67e35e5f9a3c0595695bf4e721e2972a2d0ca40cfaa2da0d419fbcd5da4ff8c",
+  "hash": "9b2ecebf34382943048f7feb937bf06db3f4d0b13c3a5fe26e049afc78dbaf14",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-30T01:50:02.456Z"
+  "updatedAt": "2026-08-30T05:48:22.668Z"
 }

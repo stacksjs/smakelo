@@ -10,6 +10,7 @@ import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
 import { runGuards } from '../app/Actions/Admin/guards'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
+import { addressesFor, removeAddress, saveAddress } from '../app/Actions/Customer/addresses'
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
 import { join, membershipsFor, plansFor, setMembershipState } from '../app/Actions/Csa/membership'
 import { favoritesFor, toggleFavorite } from '../app/Actions/Favorite/favorites'
@@ -694,4 +695,38 @@ route.post('/courier/{id}/pings', async (request: any) => {
   const result = await recordBatch(Number(request?.getParam?.('id') ?? 0), positions.slice(0, 500))
 
   return response.json({ data: result })
+})
+
+/** `GET /api/addresses`, `POST /api/addresses`, `POST /api/addresses/{id}/remove` */
+route.get('/addresses', async (request: any) => {
+  return response.json({ data: await addressesFor(visitorOf(request)) })
+})
+
+route.post('/addresses', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await saveAddress({
+    visitorToken: visitorOf(request),
+    label: String(body?.label ?? 'Home'),
+    line: String(body?.line ?? ''),
+    city: String(body?.city ?? ''),
+    postalCode: String(body?.postalCode ?? ''),
+    latitude: body?.latitude === undefined ? undefined : Number(body.latitude),
+    longitude: body?.longitude === undefined ? undefined : Number(body.longitude),
+    notes: String(body?.notes ?? ''),
+  })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: result.address }, 201)
+})
+
+route.post('/addresses/{id}/remove', async (request: any) => {
+  const result = await removeAddress(Number(request?.getParam?.('id') ?? 0), visitorOf(request))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
 })

@@ -107,6 +107,46 @@ const canonicalPath = '/order'
 
           <p :if="error()" class="px-4 py-3 mt-6 text-[14px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ error() }}</p>
 
+          {{-- Only for delivery, and only then. An address field on a pickup
+            order is a question with no reason behind it. --}}
+          <div :if="fulfilment() === 'delivery'" class="p-1.5 mt-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+            <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Deliver to</p>
+
+              <div :if="addresses().length > 0" class="flex flex-wrap gap-2 mt-3">
+                <button
+                  :for="address in addresses()"
+                  @click="chooseAddress(address)"
+                  class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
+                  :style="chosenAddress() && chosenAddress().id === address.id ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+                >{{ address.label }} · {{ address.line }}</button>
+              </div>
+
+              <input
+                placeholder="Street and number"
+                maxlength="255"
+                :value="addressLine()"
+                @input="addressLine.set($event.target.value)"
+                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]"
+                style="background: var(--paper); border: 1px solid var(--line)"
+              >
+
+              <div class="flex flex-wrap gap-2 items-center mt-3">
+                <input
+                  placeholder="Label it (Home, work)"
+                  maxlength="40"
+                  :value="addressLabel()"
+                  @input="addressLabel.set($event.target.value)"
+                  class="px-4 py-2.5 flex-1 min-w-[160px] text-[14px] rounded-full"
+                  style="background: var(--paper); border: 1px solid var(--line)"
+                >
+                <button @click="keepAddress()" class="px-4 py-2.5 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Save it</button>
+              </div>
+
+              <p :if="addressError()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ addressError() }}</p>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 gap-10 mt-10 lg:grid-cols-12">
             <div class="space-y-10 lg:col-span-7">
               <section :for="section in menu().sections">
@@ -222,7 +262,7 @@ const canonicalPath = '/order'
     </main>
 
     <script client>
-      import { money, send } from '../functions/session'
+      import { money, send, visitorToken } from '../functions/session'
 
       const slug = state('')
       const menu = state(null)
@@ -235,6 +275,12 @@ const canonicalPath = '/order'
       const placed = state(null)
       const payment = state(null)
       const payStatus = state('')
+
+      const addresses = state([])
+      const chosenAddress = state(null)
+      const addressLine = state('')
+      const addressLabel = state('Home')
+      const addressError = state('')
 
       /*
        * Chosen options, as plain data rather than a Map of Sets.
@@ -389,12 +435,70 @@ const canonicalPath = '/order'
         refreshQuote()
       }
 
+      async function loadAddresses() {
+        const response = await fetch('/api/addresses', { headers: { 'x-visitor': visitorToken() } })
+
+        if (!response.ok)
+          return
+
+        const { data } = await response.json()
+
+        addresses.set(data)
+
+        // A person with one address should never have to choose it.
+        const preferred = data.find(address => address.isDefault) ?? data[0]
+
+        if (preferred && !chosenAddress())
+          chooseAddress(preferred)
+      }
+
+      function chooseAddress(address) {
+        chosenAddress.set(address)
+        addressLine.set(address.line)
+        addressLabel.set(address.label)
+        refreshQuote()
+      }
+
+      async function keepAddress() {
+        const response = await send('/api/addresses', {
+          label: addressLabel(),
+          line: addressLine(),
+        })
+
+        if (!response.ok) {
+          addressError.set((await response.json()).message)
+          return
+        }
+
+        addressError.set('')
+        chosenAddress.set((await response.json()).data)
+        loadAddresses()
+      }
+
       function lines() {
         return cart().map(line => ({
           productId: line.productId,
           quantity: line.quantity,
           modifierIds: line.modifierIds,
         }))
+      }
+
+      /*
+       * The address travels with the quote as well as the order, because the
+       * delivery fee is distance-based: quoting without it and charging with it
+       * would show a total that changes at the last step.
+       */
+      function deliveryFields() {
+        if (fulfilment() !== 'delivery')
+          return {}
+
+        const address = chosenAddress()
+
+        return {
+          deliveryAddress: addressLine() || (address ? address.line : ''),
+          deliveryLatitude: address ? address.latitude : undefined,
+          deliveryLongitude: address ? address.longitude : undefined,
+        }
       }
 
       async function refreshQuote() {
@@ -408,6 +512,7 @@ const canonicalPath = '/order'
           fulfilment: fulfilment(),
           tipCents: tipCents(),
           lines: lines(),
+          ...deliveryFields(),
         })
 
         const payload = await response.json()
@@ -422,6 +527,7 @@ const canonicalPath = '/order'
           fulfilment: fulfilment(),
           tipCents: tipCents(),
           lines: lines(),
+          ...deliveryFields(),
         })
 
         const payload = await response.json()
@@ -515,6 +621,7 @@ const canonicalPath = '/order'
       }
 
       load()
+      loadAddresses()
     </script>
   </body>
 </html>
