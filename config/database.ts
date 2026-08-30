@@ -113,7 +113,18 @@ export default {
      *
      * Override for one run with `STACKS_INCLUDE_FRAMEWORK_MODELS=1`.
      */
-    includeFrameworkDefaults: false,
+    /*
+     * On, because this app genuinely uses built-in models it has not
+     * published: Category carries the menu sections, OrderItem the lines,
+     * Customer and User the people. Its own models override Product and Order
+     * and add the marketplace on top.
+     *
+     * Off, the generator emits 22 tables and the app cannot store an order
+     * line. It is also what keeps the corpus generated in one pass, which is
+     * what fixed the ordering bug where a rebuild of `markets` was emitted
+     * before the migration that creates it.
+     */
+    includeFrameworkDefaults: true,
   },
 
   /**

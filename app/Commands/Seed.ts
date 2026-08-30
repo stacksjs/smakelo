@@ -23,7 +23,7 @@ export default defineCommand((cli) => {
     .action(async (options: { fresh?: boolean }) => {
       if (options.fresh) {
         // Children first: nothing here relies on cascade being configured.
-        for (const table of ['order_item_modifiers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'businesses', 'markets'])
+        for (const table of ['order_item_modifiers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'tabs', 'tables', 'businesses', 'markets'])
           await db.deleteFrom(table as never).execute().catch(() => undefined)
 
         log.info('Cleared existing demo rows')
@@ -33,8 +33,10 @@ export default defineCommand((cli) => {
       const businessIds = await seedBusinesses(marketId)
       const menuItems = await seedMenus(businessIds)
       const reviewCount = await seedReviews(businessIds)
+      const tableCount = await seedTables(businessIds)
+      const courierCount = await seedCouriers()
 
-      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews`)
+      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers`)
     })
 })
 
@@ -292,4 +294,89 @@ async function recomputeRating(businessId: number): Promise<void> {
     } as never)
     .where('id', '=', businessId)
     .execute()
+}
+
+/**
+ * Tables for the places that seat people.
+ *
+ * Each carries its own QR token. Generated rather than written into the seed
+ * data because a token is a secret, and a secret committed to a repository is
+ * not one.
+ */
+async function seedTables(businessIds: Record<string, number>): Promise<number> {
+  let count = 0
+
+  for (const [slug, businessId] of Object.entries(businessIds)) {
+    const business = await db.selectFrom('businesses').where('id', '=', businessId).select(['offers_dine_in']).executeTakeFirst() as { offers_dine_in?: number } | undefined
+
+    if (Number(business?.offers_dine_in) !== 1)
+      continue
+
+    const existing = await db.selectFrom('tables').where('business_id', '=', businessId).select(['id']).executeTakeFirst() as { id: number } | undefined
+
+    if (existing)
+      continue
+
+    for (let number = 1; number <= 6; number++) {
+      await db.insertInto('tables').values({
+        uuid: crypto.randomUUID(),
+        business_id: businessId,
+        label: String(number),
+        qr_token: crypto.randomUUID().replace(/-/g, ''),
+        seats: number <= 2 ? 2 : 4,
+        is_active: 1,
+      } as never).executeTakeFirst()
+
+      count += 1
+    }
+  }
+
+  return count
+}
+
+/**
+ * Couriers.
+ *
+ * Invented people with invented vehicles, positioned around Santa Monica so a
+ * dispatch has somebody plausible to pick. They are `Courier` rows in the
+ * framework's own table - the rename in stacksjs/stacks#2382 is what let this
+ * app call them what they are.
+ */
+async function seedCouriers(): Promise<number> {
+  const couriers = [
+    { name: 'Rosa Delgado', vehicle: 'Vespa 2141', lat: 34.0195, lng: -118.4912 },
+    { name: 'Tomas Neal', vehicle: 'Bike 0071', lat: 34.0089, lng: -118.4973 },
+    { name: 'Priya Raman', vehicle: 'Vespa 3382', lat: 33.9903, lng: -118.4664 },
+    { name: 'Bea Whitfield', vehicle: 'Bike 0114', lat: 34.0270, lng: -118.4880 },
+    { name: 'Ade Okonjo', vehicle: 'Car 8820', lat: 34.0161, lng: -118.4956 },
+    { name: 'Sam Ruiz', vehicle: 'Bike 0203', lat: 33.9928, lng: -118.4741 },
+    { name: 'Nia Fletcher', vehicle: 'Vespa 5566', lat: 34.0316, lng: -118.4977 },
+    { name: 'Ivan Petrov', vehicle: 'Car 4417', lat: 34.0104, lng: -118.4917 },
+  ]
+
+  let count = 0
+
+  for (const courier of couriers) {
+    const existing = await db.selectFrom('couriers').where('name', '=', courier.name).select(['id']).executeTakeFirst() as { id: number } | undefined
+
+    if (existing)
+      continue
+
+    await db.insertInto('couriers').values({
+      uuid: crypto.randomUUID(),
+      name: courier.name,
+      phone: '+15550000000',
+      vehicle_number: courier.vehicle,
+      license: 'DEMO',
+      status: 'active',
+      latitude: courier.lat,
+      longitude: courier.lng,
+      heading: 0,
+      speed: 0,
+    } as never).executeTakeFirst()
+
+    count += 1
+  }
+
+  return count
 }
