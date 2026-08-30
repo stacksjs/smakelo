@@ -1,4 +1,5 @@
 import { formatMinuteOfDay } from './hours'
+import { visualFor } from './identity'
 
 /**
  * Everything a place page renders, computed once.
@@ -20,6 +21,17 @@ export interface PlaceViewModel {
   name: string
   slug: string
   type: string
+  /** Generated cover art; see Business/identity.ts for why not a photograph. */
+  hue: number
+  hueEnd: number
+  icon: string
+  /** The full class, so the template never builds one: Crosswind generates an
+   * icon's CSS from literals it can find in source, and a class assembled in
+   * the template is applied but never generated. */
+  iconClass: string
+  monogram: string
+  /** How much of the five stars to fill, so the template does no arithmetic. */
+  ratingPercent: number
   description: string
   cuisine: string
   address: string
@@ -60,6 +72,8 @@ export function placeViewModel(found: any): PlaceViewModel {
     canonicalPath: `/places/${String(business.slug ?? '')}`,
     name,
     slug: String(business.slug ?? ''),
+    ...withIconClass(visualFor({ name: business.name, slug: business.slug, type: business.type, cuisine: business.cuisine })),
+    ratingPercent: Math.round((Number(business.rating_average ?? 0) / 5) * 100),
     type: String(business.type ?? ''),
     description: String(business.description ?? ''),
     cuisine: String(business.cuisine ?? ''),
@@ -168,4 +182,9 @@ function weekTable(hours: any[]): Array<{ name: string, text: string }> {
         : intervals.map(hour => `${formatMinuteOfDay(hour.opensAt)} to ${formatMinuteOfDay(hour.closesAt)}`).join(', '),
     }
   })
+}
+
+/** Attach the full icon class; see `iconClass` on PlaceView for why. */
+function withIconClass<T extends { icon: string }>(visual: T): T & { iconClass: string } {
+  return { ...visual, iconClass: `i-hugeicons-${visual.icon}` }
 }

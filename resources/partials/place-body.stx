@@ -14,6 +14,14 @@
         Back to discover
       </a>
 
+      {{-- A cover band, generated from the name rather than photographed. Real
+        places here come from open data and never agreed to be pictured; see
+        app/Actions/Business/identity.ts. --}}
+      <div class="cover flex overflow-hidden relative justify-center items-center mt-6 h-40 rounded-[1.75rem] sm:h-52" style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}">
+        <i class="cover-mark w-14 h-14 sm:w-16 sm:h-16 {{ vm.iconClass }}"></i>
+        <span class="cover-mark absolute right-5 bottom-4 text-[13px] font-semibold tracking-[0.18em]" style="opacity: .45">{{ vm.monogram }}</span>
+      </div>
+
       <section class="grid grid-cols-1 gap-10 items-start pt-8 pb-16 lg:grid-cols-12">
         <div class="lg:col-span-7">
           <div class="flex flex-wrap gap-2 items-center">
@@ -37,10 +45,10 @@
 
           <div class="flex flex-wrap gap-x-5 gap-y-2 items-center mt-6 text-[14px]" style="color: var(--ink-soft)">
             @if (vm.hasRating)
-              <span class="inline-flex gap-1.5 items-center">
-                <i class="w-4 h-4 i-hugeicons-star" style="color: var(--accent)"></i>
+              <span class="inline-flex gap-2 items-center">
+                <span class="stars text-[15px]">★★★★★<span style="width: {{ vm.ratingPercent }}%">★★★★★</span></span>
                 <strong style="color: var(--ink)">{{ vm.ratingAverage }}</strong>
-                {{ vm.ratingCount }} reviews
+                <span>{{ vm.ratingCount }} reviews</span>
               </span>
             @endif
             <span>{{ vm.cuisine }}</span>

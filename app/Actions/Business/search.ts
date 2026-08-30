@@ -1,6 +1,7 @@
 import type { OpeningInterval, OpenState } from './hours'
 import { db } from '@stacksjs/database'
 import { boundingBox, distanceInMeters } from './geo'
+import { visualFor } from './identity'
 import { openStatus } from './hours'
 
 /**
@@ -55,6 +56,11 @@ export interface BusinessResult {
   openState: OpenState
   closesInMinutes?: number
   opensInMinutes?: number
+  /** Generated cover art, so every card has something to look at. */
+  hue: number
+  hueEnd: number
+  icon: string
+  monogram: string
 }
 
 const DEFAULT_RADIUS_METERS = 5000
@@ -173,6 +179,7 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
       openState: status.state,
       closesInMinutes: status.closesInMinutes,
       opensInMinutes: status.opensInMinutes,
+      ...visualFor({ name: row.name, slug: row.slug, type: row.type, cuisine: row.cuisine }),
     })
   }
 

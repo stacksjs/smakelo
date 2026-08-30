@@ -91,11 +91,104 @@
      app's radius and hairline rather than the library's defaults. */
   .tsmap-container { background: var(--paper-raised); }
 
+  /* --- Generated cover art -------------------------------------------------
+
+     Every business gets a cover derived from its name rather than a photograph.
+     268 of these are real places taken from open data, and a stock photo of
+     somebody else's dining room under a real restaurant's name is a fabricated
+     record of a real place; see app/Actions/Business/identity.ts.
+
+     The hue arrives as a custom property so the markup carries two numbers
+     rather than a whole gradient, and so light and dark can light it
+     differently without the server knowing which one is on. */
+  .cover {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 22% 26%, hsl(var(--h) 78% 93% / 0.95), transparent 58%),
+      linear-gradient(140deg, hsl(var(--h) 62% 88%), hsl(var(--h2) 54% 78%));
+  }
+
+  /* A faint grid, so a flat gradient reads as a surface rather than a swatch. */
+  .cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(hsl(var(--h) 40% 30% / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--h) 40% 30% / 0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+    pointer-events: none;
+  }
+
+  .cover-mark { color: hsl(var(--h) 46% 26%); }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .cover {
+      background:
+        radial-gradient(circle at 22% 26%, hsl(var(--h) 42% 30% / 0.9), transparent 58%),
+        linear-gradient(140deg, hsl(var(--h) 34% 22%), hsl(var(--h2) 30% 16%));
+    }
+
+    :root:not([data-theme='light']) .cover::after {
+      background-image:
+        linear-gradient(hsl(var(--h) 60% 80% / 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, hsl(var(--h) 60% 80% / 0.05) 1px, transparent 1px);
+    }
+
+    :root:not([data-theme='light']) .cover-mark { color: hsl(var(--h) 60% 82%); }
+  }
+
+  /* --- Stars ---------------------------------------------------------------
+
+     A rating is the first thing anybody reads on a listing, and "4.5" is a
+     number while ★★★★½ is a judgement. Drawn as a clipped overlay rather than
+     as five separate glyphs, so a 4.3 is actually 4.3 wide instead of being
+     rounded to the nearest half by the markup. */
+  .stars {
+    position: relative;
+    display: inline-block;
+    color: var(--line);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .stars > span {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    color: var(--accent);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .reveal { opacity: 1; transform: none; filter: none; transition: none; }
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 </style>
+
+{{-- Icon safelist.
+
+  Crosswind generates an icon's CSS by finding the class as a literal in the
+  source. Cards and category tiles build theirs at runtime from the business's
+  cuisine (`'i-hugeicons-' + card.icon`), which no scanner can see, so every
+  such class is written out once here. Without this the markup is correct, the
+  class is applied, and the icon is simply invisible.
+
+  Kept in the head partial so one list covers every page that renders a card. --}}
+<div hidden aria-hidden="true">
+  <i class="i-hugeicons-restaurant-01"></i><i class="i-hugeicons-coffee-01"></i>
+  <i class="i-hugeicons-plant-01"></i><i class="i-hugeicons-bread-01"></i>
+  <i class="i-hugeicons-shopping-basket-01"></i><i class="i-hugeicons-drink"></i>
+  <i class="i-hugeicons-sushi-01"></i><i class="i-hugeicons-noodles"></i>
+  <i class="i-hugeicons-rice-bowl-01"></i><i class="i-hugeicons-pizza-01"></i>
+  <i class="i-hugeicons-hamburger-01"></i><i class="i-hugeicons-egg-fried"></i>
+  <i class="i-hugeicons-taco-01"></i><i class="i-hugeicons-fish-food"></i>
+  <i class="i-hugeicons-shellfish"></i><i class="i-hugeicons-steak"></i>
+  <i class="i-hugeicons-salad"></i><i class="i-hugeicons-organic-food"></i>
+  <i class="i-hugeicons-vegetarian-food"></i><i class="i-hugeicons-ice-cream-01"></i>
+  <i class="i-hugeicons-tea"></i><i class="i-hugeicons-croissant"></i>
+  <i class="i-hugeicons-carrot"></i><i class="i-hugeicons-apple-01"></i>
+</div>
 
 <script>
   /*

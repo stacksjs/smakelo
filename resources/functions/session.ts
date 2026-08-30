@@ -46,15 +46,56 @@ export function visitorToken(): string {
   }
 }
 
-/** POST JSON with both tokens attached, which is what every write here needs. */
+/**
+ * The bearer for a signed-in account, when there is one.
+ *
+ * Accounts are optional: everything works from the visitor token alone, and
+ * this is only present once somebody has signed in. Kept in localStorage
+ * rather than a cookie because the framework's auth endpoints answer with a
+ * bearer and expect it back in a header.
+ */
+export function authToken(): string {
+  try {
+    return localStorage.getItem('smakelo.auth') ?? ''
+  }
+  catch {
+    return ''
+  }
+}
+
+export function setAuthToken(token: string): void {
+  try {
+    localStorage.setItem('smakelo.auth', String(token ?? ''))
+  }
+  catch {
+    // A browser refusing storage cannot stay signed in between pages. It can
+    // still use the whole site as a guest, which is the point of guests.
+  }
+}
+
+export function clearAuthToken(): void {
+  try {
+    localStorage.removeItem('smakelo.auth')
+  }
+  catch {}
+}
+
+/** POST JSON with every token this request could need. */
 export function send(url: string, body?: unknown): Promise<Response> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-csrf-token': csrfToken(),
+    'x-visitor': visitorToken(),
+  }
+
+  const bearer = authToken()
+
+  if (bearer)
+    headers.Authorization = `Bearer ${bearer}`
+
   return fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-csrf-token': csrfToken(),
-      'x-visitor': visitorToken(),
-    },
+    headers,
     credentials: 'same-origin',
     body: JSON.stringify(body ?? {}),
   })

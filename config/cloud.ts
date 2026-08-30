@@ -238,6 +238,10 @@ export const tsCloud: TsCloudConfig = {
         APP_KEY: env.APP_KEY || '',
         PORT_API: '3218',
         API_URL: 'http://127.0.0.1:3218',
+        // Only the framework's auth routes (login, register, logout, refresh).
+        // Naming a bundle narrows the surface: without it an app also mounts
+        // the dashboard storefront, reviews, AI and voice routes it never uses.
+        STACKS_DEFAULT_ROUTES: 'auth',
         DB_CONNECTION: 'sqlite',
         /*
          * Both names, on purpose. The app reads DB_DATABASE_PATH for sqlite;
@@ -287,6 +291,10 @@ export const tsCloud: TsCloudConfig = {
         APP_NAME: 'Smakelo',
         APP_URL: APP_DOMAIN,
         APP_KEY: env.APP_KEY || '',
+        // Only the framework's auth routes (login, register, logout, refresh).
+        // Naming a bundle narrows the surface: without it an app also mounts
+        // the dashboard storefront, reviews, AI and voice routes it never uses.
+        STACKS_DEFAULT_ROUTES: 'auth',
         DB_CONNECTION: 'sqlite',
         /*
          * Both names, on purpose. The app reads DB_DATABASE_PATH for sqlite;

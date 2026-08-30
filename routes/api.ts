@@ -7,6 +7,7 @@ import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
+import { accountState, linkVisitorToUser } from '../app/Actions/Account/session'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
 import { runGuards } from '../app/Actions/Admin/guards'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
@@ -730,3 +731,56 @@ route.post('/addresses/{id}/remove', async (request: any) => {
 
   return response.json({ data: { ok: true } })
 })
+
+/**
+ * Accounts.
+ *
+ * Optional by design: everything here works from a browser token, and an
+ * account exists so the same list appears on a second device. The framework's
+ * own `/login` and `/register` handle credentials; these two cover what this
+ * app adds on top.
+ */
+route.get('/account', async (request: any) => {
+  const header = String(request?.headers?.get?.('authorization') ?? '')
+  const userId = await userIdFromBearer(header)
+
+  return response.json({ data: await accountState(userId, visitorOf(request)) })
+})
+
+/** `POST /api/account/link` - carry this browser's history onto an account. */
+route.post('/account/link', async (request: any) => {
+  const header = String(request?.headers?.get?.('authorization') ?? '')
+  const userId = await userIdFromBearer(header)
+
+  if (!userId)
+    return response.json({ message: 'Sign in first.' }, 401)
+
+  return response.json({ data: await linkVisitorToUser(userId, visitorOf(request)) })
+})
+
+/**
+ * Resolve a bearer token to a user.
+ *
+ * Handed to the framework's `findToken`, which hashes the plain text before
+ * looking it up. The first version of this queried `oauth_access_tokens` by
+ * the token as sent and matched nothing, because what is stored is a hash -
+ * failing closed, but for the wrong reason and in a way that would have
+ * quietly stayed broken.
+ */
+async function userIdFromBearer(header: string): Promise<number | null> {
+  const plain = header.replace(/^Bearer\s+/i, '').trim()
+
+  if (!plain)
+    return null
+
+  const { findToken } = await import('@stacksjs/auth')
+  const token = await findToken(plain).catch(() => null)
+
+  if (!token || token.revoked)
+    return null
+
+  if (token.expiresAt && new Date(token.expiresAt).getTime() < Date.now())
+    return null
+
+  return Number(token.userId)
+}

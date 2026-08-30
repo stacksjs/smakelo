@@ -40,6 +40,14 @@
       <a href="/partner" data-i18n="nav.partner" class="transition-colors duration-500 hover:opacity-70">For businesses</a>
       <a href="/about" data-i18n="nav.about" class="transition-colors duration-500 hover:opacity-70">About this demo</a>
 
+      {{-- Says who you are once you are somebody. Filled in by the script at
+        the foot of this partial rather than rendered, because these pages are
+        built once and served to everybody. --}}
+      <a href="/account" id="account-link" class="inline-flex gap-1.5 items-center px-3 py-1.5 rounded-full transition-all duration-500 hover:opacity-70" style="border: 1px solid var(--line)">
+        <i class="w-3.5 h-3.5 i-hugeicons-user-circle"></i>
+        <span data-account-label>Sign in</span>
+      </a>
+
       {{-- Three languages, named in their own. A flag would be wrong: German is
         not Germany, and Dutch is not only the Netherlands. --}}
       <div class="flex gap-1 items-center pl-1 text-[12px]" id="lang-switch">
@@ -66,5 +74,40 @@
       }
     }
     catch {}
+  })()
+</script>
+
+<script>
+  /* Who is signed in, for the nav.
+
+     Plain script rather than a signal: the chrome partial is included by every
+     page, and stx builds a page's setup from the signals declared in that
+     page's own script, so a signal here would be dead on all of them. One
+     fetch, one label. */
+  ;(function () {
+    try {
+      var token = localStorage.getItem('smakelo.auth')
+
+      if (!token)
+        return
+
+      fetch('/api/account', { headers: { Authorization: 'Bearer ' + token } })
+        .then(function (response) { return response.ok ? response.json() : null })
+        .then(function (payload) {
+          var user = payload && payload.data && payload.data.user
+
+          if (!user)
+            return
+
+          var label = document.querySelector('#account-link [data-account-label]')
+
+          if (label)
+            label.textContent = (user.name || user.email).split(' ')[0]
+        })
+        .catch(function () {})
+    }
+    catch (error) {
+      // No storage, no account state. The link still goes to /account.
+    }
   })()
 </script>

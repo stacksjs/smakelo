@@ -1,0 +1,291 @@
+<script server>
+/*
+ * Sign in, or make an account.
+ *
+ * Optional by design. Everything on this site works from a browser token:
+ * saved places, orders, reviews, shares. An account binds that token to a
+ * person so the same list appears on a second device, which is the only thing
+ * it actually buys and so the only thing it is sold as here.
+ *
+ * One page rather than two. Somebody who does not know whether they have an
+ * account should not have to guess which page to be on, and the difference
+ * between the two forms is one field.
+ */
+const pageTitle = 'Account - Smakelo'
+const pageDescription = 'Sign in to keep your saved places across devices.'
+const canonicalPath = '/account'
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body>
+    @include('chrome')
+
+    <main class="mx-auto px-4 sm:px-8 max-w-lg" data-stx-content>
+      <div class="pt-14 pb-24 sm:pb-40">
+        {{-- Signed in. --}}
+        <div :if="user()">
+          <div class="cover flex justify-center items-center mb-8 w-20 h-20 rounded-full" style="--h: 24; --h2: 62">
+            <span class="cover-mark text-[24px] font-semibold">{{ initials() }}</span>
+          </div>
+
+          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">{{ user().name || 'Your account' }}</h1>
+          <p class="mt-2 text-[15px]" style="color: var(--ink-soft)">{{ user().email }}</p>
+
+          <div class="grid grid-cols-2 gap-3 mt-8 sm:grid-cols-4">
+            <a :for="tile in tiles()" :href="tile.href" class="p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+              <i class="w-5 h-5" :class="tile.icon"></i>
+              <p class="mt-3 text-[20px] font-semibold tabular-nums">{{ tile.count }}</p>
+              <p class="text-[12px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
+            </a>
+          </div>
+
+          <button @click="signOut()" class="px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="border: 1px solid var(--line); color: var(--ink-soft)">
+            Sign out
+          </button>
+        </div>
+
+        {{-- Signed out. --}}
+        <div :if="!user()">
+          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">
+            {{ mode() === 'register' ? 'Make an account' : 'Sign in' }}
+          </h1>
+
+          <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+            You do not need one. Everything works from this browser already{{ carriesLine() }}.
+            An account is how that follows you to another device.
+          </p>
+
+          {{-- Rendered from what the server says is configured, so a provider
+            with no keys is never a dead button that sends somebody to an
+            error page reading as this site's fault. --}}
+          <div :if="providers().length > 0" class="mt-8 space-y-2">
+            <a
+              :for="provider in providers()"
+              :href="'/auth/' + provider.name"
+              class="flex gap-3 justify-center items-center px-5 py-3.5 w-full text-[15px] font-medium rounded-full transition-all duration-500 active:scale-[0.99]"
+              style="border: 1px solid var(--line)"
+            >
+              <i class="w-5 h-5" :class="provider.icon"></i>
+              {{ provider.label }}
+            </a>
+          </div>
+
+          <p :if="providers().length === 0" class="p-4 mt-8 text-[13px] leading-relaxed rounded-[1rem]" style="background: var(--paper-raised); color: var(--ink-soft)">
+            Google and Apple sign-in are wired up and waiting on keys. Until
+            they are set, this page offers the one method it can actually
+            complete rather than a button that would fail on the other side.
+          </p>
+
+          <div :if="providers().length > 0" class="flex gap-4 items-center my-8">
+            <span class="flex-1 h-px" style="background: var(--line)"></span>
+            <span class="text-[12px]" style="color: var(--ink-soft)">or with an email</span>
+            <span class="flex-1 h-px" style="background: var(--line)"></span>
+          </div>
+
+          <div class="mt-6 space-y-3">
+            <label :if="mode() === 'register'" class="block">
+              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">Your name</span>
+              <input
+                :value="name()"
+                @input="name.set($event.target.value)"
+                maxlength="120"
+                class="px-4 py-3 mt-1.5 w-full text-[15px] rounded-[1rem]"
+                style="background: var(--paper-raised); border: 1px solid var(--line)"
+              >
+            </label>
+
+            <label class="block">
+              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">Email</span>
+              <input
+                type="email"
+                autocomplete="email"
+                :value="email()"
+                @input="email.set($event.target.value)"
+                maxlength="200"
+                class="px-4 py-3 mt-1.5 w-full text-[15px] rounded-[1rem]"
+                style="background: var(--paper-raised); border: 1px solid var(--line)"
+              >
+            </label>
+
+            <label class="block">
+              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">Password</span>
+              <input
+                type="password"
+                :autocomplete="mode() === 'register' ? 'new-password' : 'current-password'"
+                :value="password()"
+                @input="password.set($event.target.value)"
+                maxlength="200"
+                class="px-4 py-3 mt-1.5 w-full text-[15px] rounded-[1rem]"
+                style="background: var(--paper-raised); border: 1px solid var(--line)"
+              >
+            </label>
+          </div>
+
+          <p :if="error()" class="mt-4 text-[14px]" style="color: var(--accent)">{{ error() }}</p>
+
+          <button
+            @click="submit()"
+            class="flex gap-3 justify-center items-center px-5 py-3.5 mt-6 w-full text-[15px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
+            style="background: var(--ink); color: var(--paper)"
+          >
+            {{ busy() ? 'One moment…' : (mode() === 'register' ? 'Make the account' : 'Sign in') }}
+          </button>
+
+          <p class="mt-5 text-[14px] text-center" style="color: var(--ink-soft)">
+            {{ mode() === 'register' ? 'Already have one?' : 'No account yet?' }}
+            <button @click="toggleMode()" class="underline underline-offset-4" style="color: var(--ink)">
+              {{ mode() === 'register' ? 'Sign in' : 'Make one' }}
+            </button>
+          </p>
+
+          <p class="mt-8 text-[12px] leading-relaxed" style="color: var(--ink-soft)">
+            This is a demonstration. Use an address you do not mind typing into
+            one: nothing is ever sent to it, and the whole database is rebuilt
+            on every deploy.
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <script client>
+      import { authToken, clearAuthToken, send, setAuthToken, visitorToken } from '../functions/session'
+
+      const user = state(null)
+      const providers = state([])
+      const carries = state({ saved: 0, orders: 0, reviews: 0, shares: 0 })
+      const mode = state('login')
+      const name = state('')
+      const email = state('')
+      const password = state('')
+      const error = state('')
+      const busy = state(false)
+
+      const initials = derived(() => {
+        const current = user()
+
+        if (!current)
+          return ''
+
+        const words = String(current.name || current.email).split(/[\s@.]+/).filter(Boolean)
+
+        return words.length > 1
+          ? `${words[0][0]}${words[1][0]}`.toUpperCase()
+          : String(words[0] || '?').slice(0, 2).toUpperCase()
+      })
+
+      const tiles = derived(() => [
+        { label: carries().saved === 1 ? 'saved place' : 'saved places', count: carries().saved, href: '/saved', icon: 'i-hugeicons-bookmark-02' },
+        { label: carries().orders === 1 ? 'order' : 'orders', count: carries().orders, href: '/orders', icon: 'i-hugeicons-delivery-truck-01' },
+        { label: carries().reviews === 1 ? 'review' : 'reviews', count: carries().reviews, href: '/', icon: 'i-hugeicons-star' },
+        { label: carries().shares === 1 ? 'share' : 'shares', count: carries().shares, href: '/shares', icon: 'i-hugeicons-plant-01' },
+      ])
+
+      /*
+       * "Everything works already" is a claim; this puts a number on it, or
+       * admits there is nothing to keep yet rather than pretending otherwise.
+       */
+      const carriesLine = derived(() => {
+        const total = carries().saved + carries().orders + carries().reviews + carries().shares
+
+        if (total === 0)
+          return ', though there is nothing saved here yet'
+
+        // Counted properly: "1 reviews" is the tell of a number pushed through
+        // a template that never looked at it.
+        const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
+
+        const parts = []
+
+        if (carries().saved > 0)
+          parts.push(`${carries().saved} saved`)
+
+        if (carries().orders > 0)
+          parts.push(plural(carries().orders, 'order', 'orders'))
+
+        if (carries().reviews > 0)
+          parts.push(plural(carries().reviews, 'review', 'reviews'))
+
+        if (carries().shares > 0)
+          parts.push(plural(carries().shares, 'share', 'shares'))
+
+        return `, with ${parts.join(', ')}`
+      })
+
+      function toggleMode() {
+        mode.set(mode() === 'register' ? 'login' : 'register')
+        error.set('')
+      }
+
+      async function load() {
+        const headers = { 'x-visitor': visitorToken() }
+        const token = authToken()
+
+        if (token)
+          headers.Authorization = `Bearer ${token}`
+
+        const response = await fetch('/api/account', { headers })
+
+        if (!response.ok)
+          return
+
+        const { data } = await response.json()
+
+        user.set(data.user)
+        providers.set(data.providers)
+        carries.set(data.carries)
+      }
+
+      async function submit() {
+        busy.set(true)
+        error.set('')
+
+        /*
+         * The framework's own endpoints, unprefixed: `/login` and `/register`
+         * are mounted by the auth route bundle, not by this app's `/api`
+         * routes. Rate limited server-side at 5 and 3 a minute.
+         */
+        const response = await send(mode() === 'register' ? '/register' : '/login', {
+          name: name(),
+          email: email(),
+          password: password(),
+        })
+
+        const payload = await response.json().catch(() => ({}))
+
+        busy.set(false)
+
+        if (!response.ok) {
+          error.set(payload.message || 'That did not work.')
+          return
+        }
+
+        setAuthToken(payload.access_token)
+
+        // Carry this browser's saved places and orders onto the account, so
+        // signing up after ordering as a guest does not look like starting over.
+        await send('/api/account/link')
+
+        load()
+      }
+
+      async function signOut() {
+        clearAuthToken()
+        user.set(null)
+        password.set('')
+
+        // Back to signing in, not to making a second account. Somebody who has
+        // just signed out has an account by definition.
+        mode.set('login')
+
+        load()
+      }
+
+      load()
+    </script>
+  </body>
+</html>
