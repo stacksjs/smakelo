@@ -20,6 +20,12 @@ const surfaces = [
     href: '/order?business=marisol-cocina',
   },
   {
+    name: 'Menu and hours',
+    detail: 'Take a dish off when it runs out and it stops being orderable, not just hidden. Change today\'s hours from the same screen. These are the two edits that matter during service, so they are one tap from the top.',
+    state: 'Built',
+    href: '/manage?business=nonna-pia',
+  },
+  {
     name: 'Orders board',
     detail: 'Incoming orders as they arrive, oldest first, with the modifiers spelled out for the cook and a note when one has been waiting.',
     state: 'Built',

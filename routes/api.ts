@@ -4,6 +4,7 @@ import { menuFor } from '../app/Actions/Order/menu'
 import { createOrder, ordersForVisitor, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
+import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
@@ -552,4 +553,72 @@ route.post('/csa/{id}/{action}', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { status: result.status, nextBoxAt: result.nextBoxAt } })
+})
+
+/**
+ * The merchant's own edits.
+ *
+ * There are no merchant accounts here, so the business is named in the path
+ * rather than resolved from a session. That is the demo's honest limitation,
+ * not a design: every action already takes the business first, so a real
+ * deployment swaps the source of that argument and nothing else.
+ */
+route.get('/manage/{slug}', async (request: any) => {
+  const view = await manageView(String(request?.getParam?.('slug') ?? ''))
+
+  if (!view)
+    return response.json({ message: 'No management view for that business.' }, 404)
+
+  return response.json({ data: view })
+})
+
+route.post('/manage/{slug}/items/{id}', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await updateItem(
+    String(request?.getParam?.('slug') ?? ''),
+    Number(request?.getParam?.('id') ?? 0),
+    {
+      priceCents: body?.priceCents === undefined ? undefined : Number(body.priceCents),
+      description: body?.description === undefined ? undefined : String(body.description),
+      isAvailable: body?.isAvailable === undefined ? undefined : Boolean(body.isAvailable),
+    },
+  )
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
+})
+
+route.post('/manage/{slug}/hours', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await updateHours(
+    String(request?.getParam?.('slug') ?? ''),
+    Number(body?.dayOfWeek ?? -1),
+    Number(body?.opensAt ?? 0),
+    Number(body?.closesAt ?? 0),
+    Boolean(body?.isClosed),
+  )
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
+})
+
+route.post('/manage/{slug}/fulfilment', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await updateFulfilment(String(request?.getParam?.('slug') ?? ''), {
+    delivery: body?.delivery === undefined ? undefined : Boolean(body.delivery),
+    pickup: body?.pickup === undefined ? undefined : Boolean(body.pickup),
+    dineIn: body?.dineIn === undefined ? undefined : Boolean(body.dineIn),
+  })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
 })
