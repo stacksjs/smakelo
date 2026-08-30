@@ -239,6 +239,15 @@ export const tsCloud: TsCloudConfig = {
         PORT_API: '3218',
         API_URL: 'http://127.0.0.1:3218',
         DB_CONNECTION: 'sqlite',
+        /*
+         * Both names, on purpose. The app reads DB_DATABASE_PATH for sqlite;
+         * ts-cloud's pre-flight looks for DB_DATABASE and warned on every
+         * deploy that it could not tell where the database lived, which is the
+         * kind of warning that trains you to ignore warnings. The path is
+         * outside the release directory either way, so a deploy never
+         * discards it.
+         */
+        DB_DATABASE: '/var/lib/smakelo/smakelo.sqlite',
         DB_DATABASE_PATH: '/var/lib/smakelo/smakelo.sqlite',
         /*
          * Lift the production guard on `migrate:fresh`, deliberately.
@@ -279,6 +288,15 @@ export const tsCloud: TsCloudConfig = {
         APP_URL: APP_DOMAIN,
         APP_KEY: env.APP_KEY || '',
         DB_CONNECTION: 'sqlite',
+        /*
+         * Both names, on purpose. The app reads DB_DATABASE_PATH for sqlite;
+         * ts-cloud's pre-flight looks for DB_DATABASE and warned on every
+         * deploy that it could not tell where the database lived, which is the
+         * kind of warning that trains you to ignore warnings. The path is
+         * outside the release directory either way, so a deploy never
+         * discards it.
+         */
+        DB_DATABASE: '/var/lib/smakelo/smakelo.sqlite',
         DB_DATABASE_PATH: '/var/lib/smakelo/smakelo.sqlite',
       },
     },
