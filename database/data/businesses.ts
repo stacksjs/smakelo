@@ -573,4 +573,19 @@ export const PARTNERS: SeedBusiness[] = [
   },
 ]
 
-export const ALL_BUSINESSES: SeedBusiness[] = [...LISTINGS, ...PARTNERS]
+import { OSM_LISTINGS } from './osm-listings'
+
+/**
+ * Everything the seeder loads.
+ *
+ * Curated first, then the OpenStreetMap import minus anything already curated.
+ * The hand-written entries win on a slug collision because they carry a
+ * description somebody wrote and hours somebody checked; the import is breadth,
+ * not depth, and overwriting depth with breadth would be a strange trade.
+ */
+export const ALL_BUSINESSES: SeedBusiness[] = (() => {
+  const curated = [...LISTINGS, ...PARTNERS]
+  const taken = new Set(curated.map(business => business.slug))
+
+  return [...curated, ...OSM_LISTINGS.filter(business => !taken.has(business.slug))]
+})()

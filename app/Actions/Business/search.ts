@@ -58,7 +58,15 @@ export interface BusinessResult {
 }
 
 const DEFAULT_RADIUS_METERS = 5000
-const MAX_LIMIT = 200
+/*
+ * A bound on how much one search can return, not a business rule.
+ *
+ * It was 200, which was under the number of seeded listings, so eighty real
+ * places were in the database and reachable by nothing: not the discover page,
+ * not the search box, not the API. A cap below the size of the data is not a
+ * guard, it is a silent truncation.
+ */
+const MAX_LIMIT = 400
 
 export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise<BusinessResult[]> {
   const hasCentre = typeof query.latitude === 'number' && typeof query.longitude === 'number'
@@ -284,4 +292,19 @@ export async function businessBySlug(slug: string): Promise<{
     .execute() as Array<Record<string, unknown>>
 
   return { business, hours, status, menu, reviews }
+}
+
+/**
+ * How many businesses are listed at all.
+ *
+ * The discover page renders the nearest sixty and needs to say what it is a
+ * subset of, so the number is asked for rather than inferred from the length
+ * of a list that was deliberately cut short.
+ */
+export async function countBusinesses(): Promise<number> {
+  const rows = await db.selectFrom('businesses')
+    .select(['id'])
+    .execute() as Array<{ id: number }>
+
+  return rows.length
 }
