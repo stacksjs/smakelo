@@ -254,6 +254,7 @@ async function seedReviews(businessIds: Record<string, number>): Promise<number>
       await db.insertInto('business_reviews').values({
         uuid: crypto.randomUUID(),
         business_id: businessId,
+        customer_id: await reviewerId(review.author),
         rating: review.rating,
         title: review.title,
         body: review.body,
@@ -649,4 +650,41 @@ async function seedCsaPlans(businessIds: Record<string, number>): Promise<number
   }
 
   return count
+}
+
+/**
+ * The customer row behind a seeded reviewer.
+ *
+ * Invented people, on the same reserved `.invalid` domain the visitor
+ * identities use, so the operations page's "no real contact details" guard
+ * still passes over them. Reused by name, so one person reviewing two places
+ * is one person.
+ */
+async function reviewerId(name: string): Promise<number | null> {
+  const email = `seed-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}@demo.smakelo.invalid`
+
+  const existing = await db.selectFrom('customers')
+    .where('email', '=', email)
+    .select(['id'])
+    .executeTakeFirst() as { id: number } | undefined
+
+  if (existing)
+    return Number(existing.id)
+
+  await db.insertInto('customers').values({
+    uuid: crypto.randomUUID(),
+    name,
+    email,
+    phone: '',
+    status: 'Active',
+    avatar: '',
+    total_spent: 0,
+  } as never).executeTakeFirst()
+
+  const created = await db.selectFrom('customers')
+    .where('email', '=', email)
+    .select(['id'])
+    .executeTakeFirst() as { id: number } | undefined
+
+  return created ? Number(created.id) : null
 }

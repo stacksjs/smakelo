@@ -90,9 +90,15 @@ const canonicalPath = '/order'
         {{-- The menu and the cart. --}}
         <div :if="menu() && !placed()">
           <div class="flex flex-wrap gap-4 justify-between items-baseline">
-            <div>
-              <a :href="'/places/' + menu().business.slug" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">{{ menu().business.name }}</a>
-              <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Order</h1>
+            <div class="flex gap-4 items-center">
+              <div class="cover flex justify-center items-center w-14 h-14 rounded-[1rem] shrink-0" :style="'--h: ' + menu().business.hue + '; --h2: ' + menu().business.hueEnd">
+                <i class="cover-mark w-6 h-6" :class="menu().business.iconClass"></i>
+              </div>
+
+              <div>
+                <a :href="'/places/' + menu().business.slug" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">{{ menu().business.name }}</a>
+                <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Order</h1>
+              </div>
             </div>
 
             <div class="flex gap-1 p-1 rounded-full" style="background: var(--paper-raised); border: 1px solid var(--line)">
@@ -155,8 +161,12 @@ const canonicalPath = '/order'
                 <div class="mt-4 space-y-3">
                   <div :for="item in section.items" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
                     <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-                      <div class="flex gap-6 justify-between items-start">
-                        <div class="min-w-0">
+                      <div class="flex gap-4 justify-between items-start">
+                        <div class="cover flex justify-center items-center w-11 h-11 rounded-[0.85rem] shrink-0" :style="'--h: ' + menu().business.hue + '; --h2: ' + menu().business.hueEnd">
+                          <i class="cover-mark w-5 h-5" :class="item.iconClass"></i>
+                        </div>
+
+                        <div class="flex-1 min-w-0">
                           <p class="text-[15px] font-medium">{{ item.name }}</p>
                           <p class="mt-1.5 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ item.description }}</p>
                           <p :if="item.allergens.length > 0" class="mt-2 text-[12px]" style="color: var(--ink-soft)">Contains {{ item.allergens.join(', ') }}</p>

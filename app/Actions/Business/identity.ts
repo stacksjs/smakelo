@@ -151,3 +151,102 @@ function monogramFor(name: string): string {
 
   return `${words[0]![0]}${words[1]![0]}`.toUpperCase()
 }
+
+/**
+ * An icon for a dish, from what it is called.
+ *
+ * The same trick as the business covers, one level down: a menu of twenty
+ * identical rows is hard to scan, and a small glyph per item gives the eye
+ * something to land on. Matched against the name and description together,
+ * because "Vongole" says nothing and "Spaghetti, clams, white wine" says
+ * plenty.
+ *
+ * Falls back to the business's own category icon rather than to a generic
+ * plate, so a coffee shop's untagged items still read as a coffee shop's.
+ */
+const DISH_ICONS: Array<[string, string]> = [
+  ['pizza', 'pizza-01'],
+  ['pasta', 'noodles'],
+  ['spaghetti', 'noodles'],
+  ['tonnarelli', 'noodles'],
+  ['tagliatelle', 'noodles'],
+  ['ravioli', 'noodles'],
+  ['ramen', 'noodles'],
+  ['noodle', 'noodles'],
+  ['rice', 'rice-bowl-01'],
+  ['burger', 'hamburger-01'],
+  ['patty melt', 'hamburger-01'],
+  ['taco', 'taco-01'],
+  ['burrito', 'taco-01'],
+  ['quesadilla', 'taco-01'],
+  ['oyster', 'shellfish'],
+  ['clam', 'shellfish'],
+  ['shrimp', 'shellfish'],
+  ['prawn', 'shellfish'],
+  ['fish', 'fish-food'],
+  ['salmon', 'fish-food'],
+  ['anchovy', 'fish-food'],
+  ['steak', 'steak'],
+  ['lamb', 'steak'],
+  ['chicken', 'steak'],
+  ['pork', 'steak'],
+  ['skewer', 'steak'],
+  ['salad', 'salad'],
+  ['gem', 'salad'],
+  ['lettuce', 'salad'],
+  ['chard', 'organic-food'],
+  ['vegetable', 'organic-food'],
+  ['potato', 'carrot'],
+  ['carrot', 'carrot'],
+  ['egg', 'egg-fried'],
+  ['pancake', 'egg-fried'],
+  ['chilaquiles', 'egg-fried'],
+  ['toast', 'bread-01'],
+  ['bread', 'bread-01'],
+  ['flatbread', 'bread-01'],
+  ['sourdough', 'bread-01'],
+  ['croissant', 'croissant'],
+  ['bun', 'croissant'],
+  ['pastry', 'croissant'],
+  ['cake', 'ice-cream-01'],
+  ['tiramisu', 'ice-cream-01'],
+  ['affogato', 'ice-cream-01'],
+  ['ice cream', 'ice-cream-01'],
+  ['coffee', 'coffee-01'],
+  ['espresso', 'coffee-01'],
+  ['latte', 'coffee-01'],
+  ['cortado', 'coffee-01'],
+  ['cappuccino', 'coffee-01'],
+  ['flat white', 'coffee-01'],
+  ['filter', 'coffee-01'],
+  ['pour over', 'coffee-01'],
+  ['batch brew', 'coffee-01'],
+  ['tea', 'tea'],
+  ['juice', 'apple-01'],
+  ['peach', 'apple-01'],
+  ['pluot', 'apple-01'],
+  ['lemon', 'apple-01'],
+  ['citrus', 'apple-01'],
+  ['fruit', 'apple-01'],
+  ['share', 'shopping-basket-01'],
+  ['box', 'shopping-basket-01'],
+  ['hummus', 'salad'],
+  ['labneh', 'salad'],
+  ['muhammara', 'salad'],
+  ['cauliflower', 'organic-food'],
+  ['chowder', 'rice-bowl-01'],
+  ['chips', 'french-fries-01'],
+  ['olives', 'organic-food'],
+  ['cheese', 'cheese'],
+]
+
+export function dishIcon(name: unknown, description: unknown, fallback = 'restaurant-01'): string {
+  const haystack = `${String(name ?? '')} ${String(description ?? '')}`.toLowerCase()
+
+  for (const [needle, icon] of DISH_ICONS) {
+    if (haystack.includes(needle))
+      return icon
+  }
+
+  return fallback
+}

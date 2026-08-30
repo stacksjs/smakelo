@@ -265,6 +265,7 @@ export async function reviewsFor(businessId: number, visitorToken?: unknown): Pr
       helpfulCount: Number(row.helpful_count ?? 0),
       verified: row.order_id != null,
       authorName: String(author?.name ?? 'Guest'),
+      ...authorMark(String(author?.name ?? 'Guest')),
       visitedAt: row.visited_at ?? null,
       createdAt: row.created_at ?? null,
       votedByMe: mine.has(Number(row.id)),
@@ -305,4 +306,27 @@ async function recomputeRating(businessId: number): Promise<void> {
     .set({ rating_average: stats.average, rating_count: stats.count } as never)
     .where('id', '=', businessId)
     .execute()
+}
+
+/**
+ * A reviewer's initials and colour.
+ *
+ * The same derivation the businesses use, one scale down. A column of reviews
+ * with no faces reads as a wall of text, and this is the honest version of a
+ * face: a person's initials in a colour that is theirs, rather than a stock
+ * portrait of somebody who never wrote it.
+ */
+function authorMark(name: string): { authorHue: number, authorInitials: string } {
+  let hash = 5381
+
+  for (let index = 0; index < name.length; index++)
+    hash = ((hash << 5) + hash + name.charCodeAt(index)) >>> 0
+
+  const words = name.split(/\s+/).filter(Boolean)
+
+  const initials = words.length > 1
+    ? `${words[0]![0]}${words[1]![0]}`.toUpperCase()
+    : name.slice(0, 2).toUpperCase()
+
+  return { authorHue: hash % 360, authorInitials: initials || '??' }
 }

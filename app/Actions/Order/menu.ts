@@ -1,4 +1,5 @@
 import { db } from '@stacksjs/database'
+import { dishIcon, visualFor } from '../Business/identity'
 
 /**
  * A business's menu, shaped for the ordering screen.
@@ -32,6 +33,8 @@ export interface MenuItem {
   priceCents: number
   prepMinutes: number
   allergens: string[]
+  /** A glyph for the dish, so a menu of twenty rows can be scanned. */
+  iconClass: string
   groups: MenuGroup[]
 }
 
@@ -48,6 +51,12 @@ export interface Menu {
     offersDineIn: boolean
     latitude: number
     longitude: number
+    /** Generated cover art; see Business/identity.ts for why not a photograph. */
+    hue: number
+    hueEnd: number
+    icon: string
+    iconClass: string
+    monogram: string
   }
   sections: Array<{ name: string, items: MenuItem[] }>
 }
@@ -67,6 +76,20 @@ export async function menuFor(slug: string): Promise<Menu | null> {
     .executeTakeFirst() as { currency?: string } | undefined
 
   const businessId = Number(business.id)
+
+  /*
+   * The business's own identity, so an untagged dish falls back to the
+   * category rather than to a generic plate: a coffee shop's items still read
+   * as a coffee shop's.
+   */
+  const businessVisual = visualFor({
+    name: business.name,
+    slug: business.slug,
+    type: business.type,
+    cuisine: business.cuisine,
+  })
+
+  const businessIcon = businessVisual.icon
 
   const rows = await db.selectFrom('products')
     .where('business_id', '=', businessId)
@@ -134,6 +157,7 @@ export async function menuFor(slug: string): Promise<Menu | null> {
       priceCents: Number(row.price ?? 0),
       prepMinutes: Number(row.preparation_time ?? 0),
       allergens: parseAllergens(row.allergens),
+      iconClass: `i-hugeicons-${dishIcon(row.name, row.description, businessIcon)}`,
       groups: groupsByProduct.get(Number(row.id)) ?? [],
     })
 
@@ -153,6 +177,8 @@ export async function menuFor(slug: string): Promise<Menu | null> {
       offersDineIn: Number(business.offers_dine_in) === 1,
       latitude: Number(business.latitude),
       longitude: Number(business.longitude),
+      ...businessVisual,
+      iconClass: `i-hugeicons-${businessVisual.icon}`,
     },
     sections: [...sections.entries()]
       .sort((a, b) => a[1].order - b[1].order)

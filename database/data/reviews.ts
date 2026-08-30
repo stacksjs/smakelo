@@ -14,6 +14,14 @@
 
 export interface SeedReview {
   rating: number
+  /**
+   * Who wrote it.
+   *
+   * Invented people reviewing invented restaurants, which is the only
+   * combination this site allows. A review with no author renders as "Guest",
+   * and a column of identical Guests is the tell of seed data nobody finished.
+   */
+  author: string
   title: string
   body: string
   dishes?: string
@@ -25,6 +33,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'aster-and-ash': [
     {
       rating: 5,
+      author: 'Dana Whitlock',
       title: 'The branzino is worth the wait',
       body: 'Half an hour for a whole fish and they tell you that when you order, which I appreciated. It came out with the skin properly blistered and they filleted it at the table without making a performance of it. The flatbread beforehand is dangerous - we ordered a second.',
       dishes: 'Whole branzino, wood-fired flatbread',
@@ -32,6 +41,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 4,
+      author: 'Marcus Bell',
       title: 'Loud, but good loud',
       body: 'Sat near the fire on a Friday and could not really hear across the table. Food was excellent, service was quick without rushing us. Would come back on a weeknight.',
       dishes: 'Half chicken, coal-roasted carrots',
@@ -40,6 +50,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 5,
+      author: 'Yuki Tanaka',
       title: 'Carrots. Carrots!',
       body: 'I did not expect to be writing a review about carrots but here we are. Dukkah, yoghurt, honey, and they somehow taste more like carrots than carrots do.',
       dishes: 'Coal-roasted carrots',
@@ -50,6 +61,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'marisol-cocina': [
     {
       rating: 5,
+      author: 'Aisha Rahman',
       title: 'The mole is the real thing',
       body: 'Three days of work and you can taste every one of them. Deep and a little bitter in the way a good mole should be. Ask for extra tortillas, you will want them.',
       dishes: 'Mole negro',
@@ -57,6 +69,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 5,
+      author: 'Peter Lindqvist',
       title: 'Masa ground on site and it shows',
       body: 'The tortillas alone are worth the trip. Ordered carnitas and hongos tacos and the mushroom ones were better, which surprised everyone at the table including me.',
       dishes: 'Tacos (carnitas, hongos)',
@@ -64,6 +77,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 4,
+      author: 'Rosa Iglesias',
       title: 'Small room, go early',
       body: 'Twenty minute wait at seven on a Tuesday. Worth it, but go at six if you can. The horchata is made properly, not from a mix.',
       dishes: 'Tlayuda, horchata',
@@ -74,6 +88,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'little-bird-ramen': [
     {
       rating: 5,
+      author: 'Tom Okafor',
       title: 'Best paitan I have had outside Japan',
       body: 'Genuinely. The broth has that thickness that only comes from actually cooking it that long, and the confit thigh falls apart. Twelve seats so expect to wait, and it moves fast.',
       dishes: 'Chicken paitan, extra ajitama',
@@ -81,6 +96,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 4,
+      author: '清 Nakamura',
       title: 'The vegetable one is not an afterthought',
       body: 'Came with a friend who does not eat meat and the shio held up on its own - roasted kombu doing a lot of work. Gyoza are good but not the reason to come.',
       dishes: 'Vegetable shio, gyoza',
@@ -92,6 +108,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'fog-and-filter': [
     {
       rating: 5,
+      author: 'Elena Fischer',
       title: 'No laptops after eleven is a public service',
       body: 'The rule is on a small sign and they enforce it kindly. The room actually functions as a cafe as a result. Cortado was dialled in both times I went.',
       dishes: 'Cortado, morning bun',
@@ -99,6 +116,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 4,
+      author: 'Sam Whitfield',
       title: 'One origin at a time',
       body: 'If you like choosing, this is not your place. If you like someone else having chosen well, it very much is. The filter changed between my two visits and both were good.',
       dishes: 'Filter coffee',
@@ -109,6 +127,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'the-salted-anchor': [
     {
       rating: 4,
+      author: 'Nadia Haddad',
       title: 'Chips in beef fat, as promised',
       body: 'They are not lying on the menu and it makes a real difference. Raw bar was fresh, oysters shucked in front of you. A little pricey for what it is but the quality is there.',
       dishes: 'Oysters, chips',
@@ -119,6 +138,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'nonna-pia': [
     {
       rating: 5,
+      author: 'Joon-ho Park',
       title: 'Twelve pastas and no distractions',
       body: 'A menu with one thing on it done properly beats a menu with forty. Rolled that morning and it tastes like it. No starters, no mains, just pasta and a short wine list.',
       dishes: 'Cacio e pepe',
@@ -126,6 +146,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 4,
+      author: 'Bea Castellanos',
       title: 'Go with someone who shares',
       body: 'Portions are honest rather than huge, which means you can have two between two people and try more. That is clearly the intent.',
       helpful: 7,
@@ -135,6 +156,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'golden-hour-diner': [
     {
       rating: 4,
+      author: 'Owen Pryce',
       title: 'Breakfast at four in the afternoon',
       body: 'Which is the entire point. Pancakes really are the size of the plate. Coffee is diner coffee and I mean that as a compliment.',
       dishes: 'Pancakes, eggs over easy',
@@ -145,6 +167,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'saffron-and-sumac': [
     {
       rating: 5,
+      author: 'Marta Nowak',
       title: 'The bread arrives still puffed',
       body: 'Straight from the oven to the table, inflated, and it deflates while you watch. Order more mezze than you think you need and skip the skewers if you must choose.',
       dishes: 'Mezze spread, bread',
@@ -155,6 +178,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'ember-coffee-roasters': [
     {
       rating: 5,
+      author: 'Kwame Mensah',
       title: 'Bags still warm',
       body: 'Roasting happens at the back while you drink, which is either charming or distracting depending on your mood. Took a bag home the same day it was roasted.',
       dishes: 'Cortado',
@@ -165,6 +189,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'cardoon-farm': [
     {
       rating: 5,
+      author: 'Ingrid Solberg',
       title: 'The box has changed how we cook',
       body: 'You get what is ready rather than what you chose, and after a month of that I am cooking things I would never have bought. Add the eggs.',
       dishes: 'Family share, eggs',
@@ -172,6 +197,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
     },
     {
       rating: 4,
+      author: 'Luca Ferrari',
       title: 'Small share is right for two',
       body: 'We tried the family share first and wasted some of it. The small share is the right size for two people who cook most nights.',
       ownerResponse: 'Appreciated - we would rather you finish a small box than compost half a big one. Happy to switch anyone over mid-season.',
@@ -182,6 +208,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'two-crows-orchard': [
     {
       rating: 5,
+      author: 'Priya Raman',
       title: 'Stone fruit that tastes like something',
       body: 'Picked ripe because it only travels an hour, and the difference against a supermarket peach is not subtle. Seasonal, so check before you make the trip.',
       dishes: 'White peaches',
@@ -192,6 +219,7 @@ export const REVIEWS: Record<string, SeedReview[]> = {
   'the-slow-pour': [
     {
       rating: 4,
+      author: 'Hal Bergstrom',
       title: 'Newspaper on a stick',
       body: 'An actual newspaper, on an actual stick. Filter coffee and sourdough toast and nowhere to plug in a laptop, which seems deliberate.',
       dishes: 'Filter, sourdough toast',
