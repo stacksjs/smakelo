@@ -90,10 +90,20 @@ export function placeViewModel(found: any): PlaceViewModel {
       ownerResponse: String(review.owner_response ?? ''),
       helpful: Number(review.helpful_count ?? 0),
     })),
+    /*
+     * Carries the slug as well as the coordinates.
+     *
+     * The client script needs the slug to call the API, and reading it from a
+     * data attribute avoids interpolating it into `<script client>`, which the
+     * views build does not process (stacksjs/stacks#2391). Building it here in
+     * TypeScript also sidesteps `{{ vm.slug }}` rendering empty in the dev
+     * server (stacksjs/stacks#2392).
+     */
     mapPoint: JSON.stringify({
       lat: Number(business.latitude ?? 0),
       lng: Number(business.longitude ?? 0),
       name,
+      slug: String(business.slug ?? ''),
     }),
   }
 }
