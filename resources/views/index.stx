@@ -191,10 +191,13 @@ function openLabel(business) {
                 class="py-3 pr-4 pl-11 w-full text-[15px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
             </label>
 
-            <div class="flex flex-wrap gap-1 p-1 rounded-full" style="background: var(--paper)" id="filter-type">
-              <button type="button" data-type="" class="px-4 py-2 text-[13px] font-medium rounded-full transition-all duration-500">All</button>
+            {{-- Scrolls sideways rather than wrapping: a rounded pill group that
+              wraps onto three rows on a phone reads as a blob, and the row is
+              short enough that a nudge reaches the end of it. --}}
+            <div class="flex overflow-x-auto gap-1 p-1 rounded-full" style="background: var(--paper); scrollbar-width: none" id="filter-type">
+              <button type="button" data-type="" class="px-4 py-2 text-[13px] font-medium rounded-full shrink-0 transition-all duration-500">All</button>
               @foreach (types as entry)
-                <button type="button" data-type="{{ entry.type }}" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500">{{ entry.label }}</button>
+                <button type="button" data-type="{{ entry.type }}" class="px-4 py-2 text-[13px] rounded-full shrink-0 transition-all duration-500">{{ entry.label }}</button>
               @endforeach
             </div>
 
