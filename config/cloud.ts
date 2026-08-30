@@ -191,6 +191,10 @@ export const tsCloud: TsCloudConfig = {
         'bun node_modules/@stacksjs/buddy/dist/cli.js migrate || true',
         'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo',
         'bun node_modules/@stacksjs/buddy/dist/cli.js build:places',
+        // The production server serves what the build produced, so a page added
+        // without this simply 404s. It runs after build:places because that is
+        // what writes the per-business views the build then compiles.
+        'bunx --bun @stacksjs/stx build --pages resources/views --out dist',
       ],
       env: {
         HOST: '127.0.0.1',
