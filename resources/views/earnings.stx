@@ -25,24 +25,114 @@ const canonicalPath = '/earnings'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-4xl">
-      <div id="earnings-root" class="pt-10 pb-24">
-        <p class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+    <main class="mx-auto px-4 sm:px-8 max-w-4xl" data-stx-content>
+      <div class="pt-10 pb-24 sm:pb-40">
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+
+        {{-- Everyone's balance, for the operator. --}}
+        <div :if="!loading() && !party()">
+          <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Balances</h1>
+
+          <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+            Every order writes one row per party: the food to the merchant, the
+            delivery fee and the whole tip to the courier, the service fee to
+            the platform, and the sales tax into a pile that belongs to the
+            state. The rows add up to exactly what the customer paid. Nothing
+            here is recomputed from the orders, it is summed from those rows.
+          </p>
+
+          <div class="grid grid-cols-1 gap-3 mt-8 sm:grid-cols-3">
+            <div :for="tile in tiles()" class="p-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+              <p class="text-[28px] font-semibold tracking-[-0.02em] tabular-nums">{{ money(tile.cents) }}</p>
+              <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
+            </div>
+          </div>
+
+          <div class="mt-10 space-y-2">
+            <a
+              :for="row in balances()"
+              :href="'/earnings?party=' + row.partyType + ':' + row.partyId"
+              class="flex gap-4 justify-between items-center p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
+              style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)"
+            >
+              <span class="min-w-0">
+                <span class="block text-[15px] font-medium truncate">{{ row.name }}</span>
+                <span class="block text-[12px]" style="color: var(--ink-soft)">{{ row.partyType }}</span>
+              </span>
+              <span class="text-[15px] tabular-nums shrink-0">{{ money(row.balanceCents) }}</span>
+            </a>
+          </div>
+        </div>
+
+        {{-- One party's statement. --}}
+        <div :if="!loading() && party() && statement()">
+          <a href="/earnings" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">← All balances</a>
+
+          <h1 class="mt-4 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ statement().party.name }}</h1>
+          <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ statement().party.type }}</p>
+
+          <div class="grid grid-cols-1 gap-3 mt-8 sm:grid-cols-3">
+            <div :for="tile in statementTiles()" class="p-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+              <p class="text-[26px] font-semibold tracking-[-0.02em] tabular-nums">{{ money(tile.cents, statement().currency) }}</p>
+              <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
+            </div>
+          </div>
+
+          <section :if="earned().length > 0" class="mt-10">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Where it came from</h2>
+            <ul class="mt-4 space-y-2 text-[15px]">
+              <li :for="row in earned()" class="flex gap-4 justify-between">
+                <span>{{ label(row.kind) }}</span>
+                <span class="tabular-nums">{{ money(row.cents, statement().currency) }}</span>
+              </li>
+            </ul>
+          </section>
+
+          <div :if="canPayOut()" class="p-6 mt-10 rounded-[1.5rem]" style="background: var(--accent-soft)">
+            <p class="text-[14px] leading-relaxed" style="color: var(--ink)">
+              Paying out writes a negative row rather than clearing the balance,
+              so the history of what was owed and then paid survives. No money
+              moves here: these accounts belong to invented businesses.
+            </p>
+            <button @click="payOut()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--accent); color: #fff">
+              Pay out {{ money(statement().outstandingCents, statement().currency) }}
+            </button>
+            <p :if="error()" class="mt-3 text-[13px]" style="color: var(--ink)">{{ error() }}</p>
+          </div>
+
+          <section class="mt-10">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Every row</h2>
+
+            <p :if="statement().lines.length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing yet.</p>
+
+            <ul class="mt-4 space-y-2 text-[14px]">
+              <li :for="line in statement().lines" class="flex gap-4 justify-between py-2 border-b" style="border-color: var(--line)">
+                <span class="min-w-0">
+                  <span class="block truncate">{{ line.description || label(line.kind) }}</span>
+                  <span :if="line.orderId" class="block text-[12px]" style="color: var(--ink-soft)">Order #{{ line.orderId }}</span>
+                </span>
+                <span class="tabular-nums shrink-0" :style="line.amountCents < 0 ? 'color: var(--ink-soft)' : ''">
+                  {{ line.amountCents < 0 ? '−' : '' }}{{ money(line.amountCents, statement().currency) }}
+                </span>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <p :if="!loading() && party() && !statement()" class="text-[15px]">No statement for that party.</p>
       </div>
     </main>
 
     <script client>
-      const root = document.getElementById('earnings-root')
-      const party = new URLSearchParams(location.search).get('party') || ''
+      import { money, send } from '../functions/session'
 
-      const money = (cents, currency = 'usd') =>
-        `${currency === 'eur' ? '€' : '$'}${(cents / 100).toFixed(2)}`
+      const party = state('')
+      const balances = state([])
+      const statement = state(null)
+      const loading = state(true)
+      const error = state('')
 
-      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-      }[ch]))
-
-      const KIND_LABEL = {
+      const LABELS = {
         order_revenue: 'Food and drink',
         delivery_fee: 'Delivery',
         tip: 'Tips',
@@ -52,147 +142,92 @@ const canonicalPath = '/earnings'
         payout: 'Paid out',
       }
 
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
+      function label(kind) {
+        return LABELS[kind] || String(kind).replace(/_/g, ' ')
       }
 
-      async function overview() {
-        const { data } = await (await fetch('/api/money/balances')).json()
+      const sumOf = types => balances()
+        .filter(row => types.includes(row.partyType))
+        .reduce((total, row) => total + row.balanceCents, 0)
 
-        const sumOf = types => data.filter(row => types.includes(row.partyType)).reduce((sum, row) => sum + row.balanceCents, 0)
+      const tiles = derived(() => [
+        { label: 'Owed to merchants and couriers', cents: sumOf(['business', 'courier']) },
+        { label: 'Kept by the platform', cents: sumOf(['platform']) },
+        { label: 'Sales tax held', cents: sumOf(['tax']) },
+      ])
 
-        const owed = sumOf(['business', 'courier'])
-        const platform = sumOf(['platform'])
-        const tax = sumOf(['tax'])
+      // Everything except payouts, which are money leaving rather than earned.
+      const earned = derived(() => {
+        const current = statement()
 
-        root.innerHTML = `
-          <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Balances</h1>
-          <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-            Every order writes one row per party: the food to the merchant, the
-            delivery fee and the whole tip to the courier, the service fee to the
-            platform, and the sales tax into a pile that belongs to the state.
-            The rows add up to exactly what the customer paid. Nothing here is
-            recomputed from the orders, it is summed from those rows.
-          </p>
+        if (!current)
+          return []
 
-          <div class="grid grid-cols-1 gap-3 mt-8 sm:grid-cols-3">
-            ${[['Owed to merchants and couriers', owed], ['Kept by the platform', platform], ['Sales tax held', tax]].map(([label, value]) => `
-              <div class="p-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-                <p class="text-[28px] font-semibold tracking-[-0.02em] tabular-nums">${money(value)}</p>
-                <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">${label}</p>
-              </div>`).join('')}
-          </div>
+        return Object.keys(current.byKind)
+          .filter(kind => kind !== 'payout')
+          .map(kind => ({ kind, cents: current.byKind[kind] }))
+      })
 
-          <div class="mt-10 space-y-2">
-            ${data.map(row => `
-              <a href="/earnings?party=${row.partyType}:${row.partyId}"
-                 class="flex gap-4 justify-between items-center p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
-                 style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-                <span class="min-w-0">
-                  <span class="block text-[15px] font-medium truncate">${escapeHtml(row.name)}</span>
-                  <span class="block text-[12px]" style="color: var(--ink-soft)">${escapeHtml(row.partyType)}</span>
-                </span>
-                <span class="text-[15px] tabular-nums shrink-0">${money(row.balanceCents)}</span>
-              </a>`).join('')}
-          </div>`
-      }
+      const statementTiles = derived(() => {
+        const current = statement()
 
-      async function statement() {
-        const [partyType, partyId] = party.split(':')
-        const response = await fetch(`/api/money/${encodeURIComponent(partyType)}/${encodeURIComponent(partyId)}`)
+        if (!current)
+          return []
 
-        if (!response.ok) {
-          root.innerHTML = '<p class="text-[15px]">No statement for that party.</p>'
+        return [
+          { label: 'Earned', cents: earned().reduce((total, row) => total + row.cents, 0) },
+          { label: 'Paid out', cents: current.paidOutCents },
+          { label: 'Outstanding', cents: current.outstandingCents },
+        ]
+      })
+
+      const canPayOut = derived(() => {
+        const current = statement()
+
+        return Boolean(current)
+          && current.party.type !== 'platform'
+          && current.party.type !== 'tax'
+          && current.outstandingCents > 0
+      })
+
+      async function load() {
+        const asked = new URLSearchParams(location.search).get('party') || ''
+
+        party.set(asked)
+
+        if (!asked) {
+          const { data } = await (await fetch('/api/money/balances')).json()
+
+          balances.set(data)
+          loading.set(false)
           return
         }
 
-        const { data } = await response.json()
-        const earned = Object.entries(data.byKind).filter(([kind]) => kind !== 'payout')
+        const [partyType, partyId] = asked.split(':')
+        const response = await fetch(`/api/money/${encodeURIComponent(partyType)}/${encodeURIComponent(partyId)}`)
 
-        root.innerHTML = `
-          <a href="/earnings" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">← All balances</a>
-
-          <h1 class="mt-4 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">${escapeHtml(data.party.name)}</h1>
-          <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">${escapeHtml(data.party.type)}</p>
-
-          <div class="grid grid-cols-1 gap-3 mt-8 sm:grid-cols-3">
-            ${[
-              ['Earned', earned.reduce((sum, [, value]) => sum + value, 0)],
-              ['Paid out', data.paidOutCents],
-              ['Outstanding', data.outstandingCents],
-            ].map(([label, value]) => `
-              <div class="p-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-                <p class="text-[26px] font-semibold tracking-[-0.02em] tabular-nums">${money(value, data.currency)}</p>
-                <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">${label}</p>
-              </div>`).join('')}
-          </div>
-
-          ${earned.length === 0 ? '' : `
-            <section class="mt-10">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Where it came from</h2>
-              <ul class="mt-4 space-y-2 text-[15px]">
-                ${earned.map(([kind, value]) => `
-                  <li class="flex gap-4 justify-between">
-                    <span>${escapeHtml(KIND_LABEL[kind] || kind.replace(/_/g, ' '))}</span>
-                    <span class="tabular-nums">${money(value, data.currency)}</span>
-                  </li>`).join('')}
-              </ul>
-            </section>`}
-
-          ${data.party.type === 'platform' || data.party.type === 'tax' || data.outstandingCents <= 0 ? '' : `
-            <div class="p-6 mt-10 rounded-[1.5rem]" style="background: var(--accent-soft)">
-              <p class="text-[14px] leading-relaxed" style="color: var(--ink)">
-                Paying out writes a negative row rather than clearing the balance,
-                so the history of what was owed and then paid survives. No money
-                moves here: these accounts belong to invented businesses.
-              </p>
-              <button id="payout" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
-                style="background: var(--accent); color: #fff">
-                Pay out ${money(data.outstandingCents, data.currency)}
-              </button>
-            </div>`}
-
-          <section class="mt-10">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Every row</h2>
-            ${data.lines.length === 0
-              ? '<p class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing yet.</p>'
-              : `<ul class="mt-4 space-y-2 text-[14px]">
-                  ${data.lines.map(line => `
-                    <li class="flex gap-4 justify-between py-2 border-b" style="border-color: var(--line)">
-                      <span class="min-w-0">
-                        <span class="block truncate">${escapeHtml(line.description || KIND_LABEL[line.kind] || line.kind)}</span>
-                        ${line.orderId ? `<span class="block text-[12px]" style="color: var(--ink-soft)">Order #${line.orderId}</span>` : ''}
-                      </span>
-                      <span class="tabular-nums shrink-0" style="${line.amountCents < 0 ? 'color: var(--ink-soft)' : ''}">
-                        ${line.amountCents < 0 ? '−' : ''}${money(Math.abs(line.amountCents), data.currency)}
-                      </span>
-                    </li>`).join('')}
-                </ul>`}
-          </section>`
-
-        const button = document.getElementById('payout')
-        if (button) {
-          button.addEventListener('click', async () => {
-            const response = await fetch(`/api/money/${partyType}/${partyId}/payout`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-              credentials: 'same-origin',
-              body: JSON.stringify({ amountCents: data.outstandingCents }),
-            })
-
-            if (!response.ok) {
-              const { message } = await response.json()
-              alert(message)
-              return
-            }
-
-            statement()
-          })
-        }
+        statement.set(response.ok ? (await response.json()).data : null)
+        loading.set(false)
       }
 
-      party ? statement() : overview()
+      async function payOut() {
+        const current = statement()
+        const [partyType, partyId] = party().split(':')
+
+        const response = await send(`/api/money/${partyType}/${partyId}/payout`, {
+          amountCents: current.outstandingCents,
+        })
+
+        if (!response.ok) {
+          error.set((await response.json()).message)
+          return
+        }
+
+        error.set('')
+        load()
+      }
+
+      load()
     </script>
   </body>
 </html>

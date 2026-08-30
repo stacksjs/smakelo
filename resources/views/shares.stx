@@ -21,134 +21,109 @@ const canonicalPath = '/shares'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-3xl">
-      <div id="shares-root" class="pt-12 pb-24 sm:pb-40">
+    <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
+      <div class="pt-12 pb-24 sm:pb-40">
         <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Shares</h1>
-        <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+
+        <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+          A share is a claim on the season rather than an order. Pause it when
+          you are away: a box nobody collects helps neither of you.
+        </p>
+
+        <p :if="loading()" class="mt-10 text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+
+        <div :if="!loading() && live().length === 0" class="p-8 mt-10 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+          <p class="text-[15px]" style="color: var(--ink-soft)">You have no shares.</p>
+          <a href="/places/cardoon-farm" class="inline-block mt-4 text-[14px] underline underline-offset-4">See what the farms offer</a>
+        </div>
+
+        <div class="mt-10 space-y-3">
+          <div :for="share in live()" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+            <div class="p-6 rounded-[calc(1.5rem-0.375rem)]">
+              <div class="flex flex-wrap gap-4 justify-between items-baseline">
+                <div>
+                  <a :href="'/places/' + share.farmSlug" class="text-[16px] font-semibold transition-opacity duration-500 hover:opacity-70">{{ share.farmName }}</a>
+                  <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">
+                    {{ share.planName }} · {{ money(share.priceCents) }} {{ cadence(share.cadence) }}
+                  </p>
+                </div>
+
+                <span
+                  class="px-2.5 py-1 text-[11px] rounded-full"
+                  :style="share.status === 'paused' ? 'border: 1px solid var(--line); color: var(--ink-soft)' : 'background: var(--accent-soft); color: var(--accent)'"
+                >{{ share.status === 'paused' ? 'Paused until ' + share.pausedUntil : 'Next box ' + share.nextBoxAt }}</span>
+              </div>
+
+              <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">
+                {{ share.fulfilment === 'delivery' ? 'Delivered' : 'Collected from the farm' }}{{ share.boxesDelivered > 0 ? ' · ' + share.boxesDelivered + ' boxes so far' : '' }}
+              </p>
+
+              <div class="flex flex-wrap gap-2 items-center mt-5">
+                <button :if="share.status === 'paused'" @click="act(share.id, 'resume')" class="px-4 py-2 text-[13px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Start it again</button>
+
+                <label :if="share.status !== 'paused'" class="flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
+                  Pause until
+                  <input type="date" :value="until()" @input="until.set($event.target.value)" class="px-3 py-1.5 text-[13px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
+                </label>
+                <button :if="share.status !== 'paused'" @click="act(share.id, 'pause')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Pause</button>
+
+                <button @click="act(share.id, 'cancel')" class="ml-auto text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">Leave the share</button>
+              </div>
+
+              <p :if="error() && erroredOn() === share.id" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>
+            </div>
+          </div>
+        </div>
+
+        <section :if="past().length > 0" class="mt-12">
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Ended</h2>
+          <ul class="mt-4 space-y-2 text-[14px]">
+            <li :for="share in past()" style="color: var(--ink-soft)">{{ share.farmName }} · {{ share.planName }}</li>
+          </ul>
+        </section>
       </div>
     </main>
 
     <script client>
-      const root = document.getElementById('shares-root')
+      import { money, send, visitorToken } from '../functions/session'
 
-      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-      }[ch]))
+      const shares = state([])
+      const loading = state(true)
+      const error = state('')
+      const erroredOn = state(0)
+      const until = state('')
 
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
+      const live = derived(() => shares().filter(share => share.status !== 'cancelled'))
+      const past = derived(() => shares().filter(share => share.status === 'cancelled'))
+
+      function cadence(value) {
+        if (value === 'weekly')
+          return 'every week'
+
+        if (value === 'biweekly')
+          return 'every other week'
+
+        return 'once a month'
       }
-
-      function visitorToken() {
-        let token = localStorage.getItem('smakelo.visitor')
-
-        if (!token) {
-          token = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
-          localStorage.setItem('smakelo.visitor', token)
-        }
-
-        return token
-      }
-
-      const send = (url, body) => fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken(), 'x-visitor': visitorToken() },
-        credentials: 'same-origin',
-        body: JSON.stringify(body || {}),
-      })
-
-      const CADENCE = { weekly: 'every week', biweekly: 'every other week', monthly: 'once a month' }
 
       async function load() {
         const { data } = await (await fetch('/api/csa/mine', { headers: { 'x-visitor': visitorToken() } })).json()
 
-        const live = data.filter(share => share.status !== 'cancelled')
-        const past = data.filter(share => share.status === 'cancelled')
-
-        root.innerHTML = `
-          <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Shares</h1>
-          <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-            A share is a claim on the season rather than an order. Pause it when
-            you are away: a box nobody collects helps neither of you.
-          </p>
-
-          ${live.length === 0
-            ? `<div class="p-8 mt-10 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-                 <p class="text-[15px]" style="color: var(--ink-soft)">You have no shares.</p>
-                 <a href="/places/cardoon-farm" class="inline-block mt-4 text-[14px] underline underline-offset-4">See what the farms offer</a>
-               </div>`
-            : `<div class="mt-10 space-y-3">${live.map(card).join('')}</div>`}
-
-          ${past.length === 0 ? '' : `
-            <section class="mt-12">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Ended</h2>
-              <ul class="mt-4 space-y-2 text-[14px]">
-                ${past.map(share => `<li style="color: var(--ink-soft)">${escapeHtml(share.farmName)} · ${escapeHtml(share.planName)}</li>`).join('')}
-              </ul>
-            </section>`}`
-
-        wire()
+        shares.set(data)
+        loading.set(false)
       }
 
-      function card(share) {
-        const paused = share.status === 'paused'
+      async function act(id, action) {
+        const response = await send(`/api/csa/${id}/${action}`, { until: until() })
 
-        return `
-          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-            <div class="p-6 rounded-[calc(1.5rem-0.375rem)]">
-              <div class="flex flex-wrap gap-4 justify-between items-baseline">
-                <div>
-                  <a href="/places/${share.farmSlug}" class="text-[16px] font-semibold transition-opacity duration-500 hover:opacity-70">${escapeHtml(share.farmName)}</a>
-                  <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">
-                    ${escapeHtml(share.planName)} · $${(share.priceCents / 100).toFixed(2)} ${CADENCE[share.cadence] || ''}
-                  </p>
-                </div>
-                <span class="px-2.5 py-1 text-[11px] rounded-full" style="${paused ? 'border: 1px solid var(--line); color: var(--ink-soft)' : 'background: var(--accent-soft); color: var(--accent)'}">
-                  ${paused ? `Paused until ${escapeHtml(share.pausedUntil)}` : `Next box ${escapeHtml(share.nextBoxAt)}`}
-                </span>
-              </div>
+        if (!response.ok) {
+          erroredOn.set(id)
+          error.set((await response.json()).message)
+          return
+        }
 
-              <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">
-                ${share.fulfilment === 'delivery' ? 'Delivered' : 'Collected from the farm'}
-                ${share.boxesDelivered > 0 ? ` · ${share.boxesDelivered} boxes so far` : ''}
-              </p>
-
-              <div class="flex flex-wrap gap-2 items-center mt-5">
-                ${paused
-                  ? `<button data-act="resume" data-id="${share.id}" class="px-4 py-2 text-[13px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Start it again</button>`
-                  : `<label class="flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
-                       Pause until
-                       <input type="date" data-until="${share.id}" class="px-3 py-1.5 text-[13px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
-                     </label>
-                     <button data-act="pause" data-id="${share.id}" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Pause</button>`}
-                <button data-act="cancel" data-id="${share.id}" class="ml-auto text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">Leave the share</button>
-              </div>
-
-              <p data-error="${share.id}" hidden class="mt-3 text-[13px]" style="color: var(--accent)"></p>
-            </div>
-          </div>`
-      }
-
-      function wire() {
-        root.querySelectorAll('[data-act]').forEach((button) => {
-          button.addEventListener('click', async () => {
-            const id = button.dataset.id
-            const action = button.dataset.act
-            const until = root.querySelector(`[data-until="${id}"]`)?.value || ''
-            const error = root.querySelector(`[data-error="${id}"]`)
-
-            const response = await send(`/api/csa/${id}/${action}`, { until })
-
-            if (!response.ok) {
-              error.textContent = (await response.json()).message
-              error.hidden = false
-              return
-            }
-
-            load()
-          })
-        })
+        error.set('')
+        load()
       }
 
       load()

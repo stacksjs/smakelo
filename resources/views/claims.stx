@@ -25,88 +25,83 @@ const canonicalPath = '/claims'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-3xl">
-      <div id="claims-root" class="pt-12 pb-24 sm:pb-40">
-        <p class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+    <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
+      <div class="pt-12 pb-24 sm:pb-40">
+        <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Claims</h1>
+
+        <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+          The listings come from open data, so most people writing in are asking
+          to come off it. That is a reasonable thing to want, and it is the
+          first option here.
+        </p>
+
+        <section class="mt-10">
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Waiting</h2>
+
+          <p :if="!loading() && pending().length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing waiting.</p>
+
+          <div class="mt-4 space-y-3">
+            <div :for="claim in pending()" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+              <div class="p-6 rounded-[calc(1.5rem-0.375rem)]">
+                <div class="flex flex-wrap gap-4 justify-between items-baseline">
+                  <a :href="'/places/' + claim.businessSlug" class="text-[16px] font-semibold transition-opacity duration-500 hover:opacity-70">{{ claim.businessName }}</a>
+                  <p class="text-[13px]" style="color: var(--ink-soft)">{{ claim.claimantName }} · {{ claim.claimantEmail }}</p>
+                </div>
+
+                <p class="mt-4 text-[15px] leading-relaxed" style="color: var(--ink-soft)">{{ claim.message || 'They said nothing else.' }}</p>
+
+                <div class="flex gap-2 mt-6">
+                  <button @click="decide(claim.id, 'approved')" class="px-4 py-2 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Approve</button>
+                  <button @click="decide(claim.id, 'rejected')" class="px-4 py-2 text-[14px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Reject</button>
+                </div>
+
+                <p :if="error() && erroredOn() === claim.id" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section :if="decided().length > 0" class="mt-12">
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Decided</h2>
+          <ul class="mt-4 space-y-2 text-[14px]">
+            <li :for="claim in decided()" class="flex gap-4 justify-between">
+              <span>{{ claim.businessName }} <span style="color: var(--ink-soft)">{{ claim.claimantName }}</span></span>
+              <span style="color: var(--ink-soft)">{{ claim.status }}</span>
+            </li>
+          </ul>
+        </section>
       </div>
     </main>
 
     <script client>
-      const root = document.getElementById('claims-root')
+      import { send } from '../functions/session'
 
-      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-      }[ch]))
+      const claims = state([])
+      const loading = state(true)
+      const error = state('')
+      const erroredOn = state(0)
 
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
-      }
+      const pending = derived(() => claims().filter(claim => claim.status === 'pending'))
+      const decided = derived(() => claims().filter(claim => claim.status !== 'pending'))
 
       async function load() {
         const { data } = await (await fetch('/api/claims')).json()
 
-        const pending = data.filter(claim => claim.status === 'pending')
-        const decided = data.filter(claim => claim.status !== 'pending')
-
-        root.innerHTML = `
-          <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Claims</h1>
-          <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-            The listings come from open data, so most people writing in are asking
-            to come off it. That is a reasonable thing to want, and it is the
-            first option here.
-          </p>
-
-          <section class="mt-10">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Waiting</h2>
-            ${pending.length === 0
-              ? '<p class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing waiting.</p>'
-              : `<div class="mt-4 space-y-3">${pending.map(card).join('')}</div>`}
-          </section>
-
-          ${decided.length === 0 ? '' : `
-            <section class="mt-12">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Decided</h2>
-              <ul class="mt-4 space-y-2 text-[14px]">
-                ${decided.map(claim => `
-                  <li class="flex gap-4 justify-between">
-                    <span>${escapeHtml(claim.businessName)} <span style="color: var(--ink-soft)">${escapeHtml(claim.claimantName)}</span></span>
-                    <span style="color: var(--ink-soft)">${escapeHtml(claim.status)}</span>
-                  </li>`).join('')}
-              </ul>
-            </section>`}`
-
-        root.querySelectorAll('[data-decide]').forEach((button) => {
-          button.addEventListener('click', async () => {
-            await fetch(`/api/claims/${button.dataset.decide}/${button.dataset.decision}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-              credentials: 'same-origin',
-              body: '{}',
-            })
-
-            load()
-          })
-        })
+        claims.set(data)
+        loading.set(false)
       }
 
-      function card(claim) {
-        return `
-          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-            <div class="p-6 rounded-[calc(1.5rem-0.375rem)]">
-              <div class="flex flex-wrap gap-4 justify-between items-baseline">
-                <a href="/places/${claim.businessSlug}" class="text-[16px] font-semibold transition-opacity duration-500 hover:opacity-70">${escapeHtml(claim.businessName)}</a>
-                <p class="text-[13px]" style="color: var(--ink-soft)">${escapeHtml(claim.claimantName)} &middot; ${escapeHtml(claim.claimantEmail)}</p>
-              </div>
+      async function decide(id, decision) {
+        const response = await send(`/api/claims/${id}/${decision}`)
 
-              <p class="mt-4 text-[15px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(claim.message) || 'They said nothing else.'}</p>
+        if (!response.ok) {
+          erroredOn.set(id)
+          error.set((await response.json()).message)
+          return
+        }
 
-              <div class="flex gap-2 mt-6">
-                <button data-decide="${claim.id}" data-decision="approved" class="px-4 py-2 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Approve</button>
-                <button data-decide="${claim.id}" data-decision="rejected" class="px-4 py-2 text-[14px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Reject</button>
-              </div>
-            </div>
-          </div>`
+        error.set('')
+        load()
       }
 
       load()
