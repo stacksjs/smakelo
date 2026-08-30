@@ -65,7 +65,14 @@ const total = everything.length
  */
 const results = everything.slice(0, 60)
 
-const partners = results.filter(business => business.isPartner)
+/*
+ * The three headline numbers describe everything listed, not the sixty this
+ * page happens to render. Counting the slice said "4 take orders" when twelve
+ * do, and `openNow` was lost entirely in an edit, leaving a stat card with a
+ * label and no number above it.
+ */
+const partners = everything.filter(business => business.isPartner)
+const openNow = everything.filter(business => business.openState === 'open')
 
 /*
  * The type filter is built from what is actually here rather than a hand-kept
