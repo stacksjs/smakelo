@@ -6,6 +6,7 @@ import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
+import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
 import { favoritesFor, toggleFavorite } from '../app/Actions/Favorite/favorites'
 import { respondToReview, reviewsFor, statsFor, submitReview, voteOnReview } from '../app/Actions/Review/write'
 import type { PartyType } from '../app/Actions/Money/statements'
@@ -476,4 +477,30 @@ route.post('/claims/{id}/{decision}', async (request: any) => {
 /** `GET /api/orders/mine` - what this browser has ordered. */
 route.get('/orders/mine', async (request: any) => {
   return response.json({ data: await ordersForVisitor(visitorOf(request)) })
+})
+
+/**
+ * Payment.
+ *
+ * Sandbox only. `preparePayment` refuses a live Stripe key outright, so these
+ * endpoints cannot be pointed at a real account by configuration alone.
+ */
+route.get('/payment/notice', async () => {
+  return response.json({ data: paymentNotice() })
+})
+
+route.post('/payment/{orderId}/intent', async (request: any) => {
+  const setup = await preparePayment(Number(request?.getParam?.('orderId') ?? 0))
+
+  return response.json({ data: setup })
+})
+
+route.post('/payment/confirm', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const result = await confirmPayment(String(body?.transactionId ?? ''))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
 })
