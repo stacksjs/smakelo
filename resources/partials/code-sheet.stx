@@ -1,0 +1,60 @@
+{{-- Printable table codes.
+
+  Included by every generated view under resources/views/codes/, each of which
+  supplies `codes` (see app/Actions/Dine/tables.ts). The codes are SVG rendered
+  on the server by ts-qr-codes, so this page prints at any size without going
+  soft, and a phone camera has a real vector to read rather than a scaled
+  bitmap. --}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+    <style>
+      /* The sheet is for printing. Everything that is not a code gets out of
+         the way, and each card is kept whole across a page break. */
+      @media print {
+        .no-print { display: none !important; }
+        body { background: #fff; }
+        .code-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="no-print">
+      @include('chrome')
+    </div>
+
+    <main class="mx-auto px-4 sm:px-8 max-w-5xl">
+      <section class="pt-10 pb-8 no-print">
+        <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Table codes</h1>
+        <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+          One per table. Print, cut, and stand them up. Scanning opens the menu and
+          starts a tab for that table; a second person scanning the same code joins
+          the same bill rather than starting a rival one.
+        </p>
+        <button onclick="window.print()" class="inline-flex gap-2 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
+          Print
+        </button>
+      </section>
+
+      <section class="grid grid-cols-1 gap-5 pb-24 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach (codes as code)
+          <div class="code-card p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+            <div class="p-6 text-center rounded-[calc(1.5rem-0.375rem)]">
+              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Table</p>
+              <p class="text-[38px] font-semibold leading-none tracking-[-0.03em]">{{ code.label }}</p>
+
+              <div class="flex justify-center mt-5">
+                {!! code.svg !!}
+              </div>
+
+              <p class="mt-4 text-[13px] font-medium">Scan to order</p>
+              <p class="mt-1 text-[11px] break-all" style="color: var(--ink-soft)">{{ code.url }}</p>
+            </div>
+          </div>
+        @endforeach
+      </section>
+    </main>
+  </body>
+</html>

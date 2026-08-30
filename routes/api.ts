@@ -2,6 +2,7 @@ import { response, route } from '@stacksjs/router'
 import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
 import { menuFor } from '../app/Actions/Order/menu'
 import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
+import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 
 /**
  * Smakelo's JSON API, mounted under `/api` and answered by the API process.
@@ -122,4 +123,45 @@ route.get('/orders/track/{token}', async (request: any) => {
     return response.json({ message: 'No order with that tracking code.' }, 404)
 
   return response.json({ data: tracked })
+})
+
+/**
+ * Resolve a scanned table code.
+ *
+ * `GET /api/table-sessions/{token}`
+ *
+ * Not `/api/tables/{token}`: the Table model's own `useApi` CRUD already owns
+ * that shape behind auth, and it wins, so a scan answered 401. A session is a
+ * different thing from the table resource anyway.
+ *
+ * Opens a tab if the table has none. Scanning is what opens a tab: asking
+ * someone to press "start a tab" after they have already scanned the code is a
+ * step that exists only in the data model.
+ */
+route.get('/table-sessions/{token}', async (request: any) => {
+  const token = String(request?.getParam?.('token') ?? request?.params?.token ?? '')
+  const session = await sessionForToken(token)
+
+  if (!session)
+    return response.json({ message: 'That code does not match a table.' }, 404)
+
+  return response.json({ data: session })
+})
+
+/**
+ * Close a tab and divide the bill.
+ *
+ * `POST /api/tabs/{id}/close`
+ */
+route.post('/tabs/{id}/close', async (request: any) => {
+  const tabId = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const mode = String(body?.splitMode ?? 'by_item')
+
+  if (!['even', 'by_item', 'single_payer'].includes(mode))
+    return response.json({ message: 'Split mode must be even, by_item or single_payer.' }, 422)
+
+  const result = await closeTab(tabId, mode as 'even' | 'by_item' | 'single_payer', Number(body?.ways ?? 1))
+
+  return response.json({ data: result })
 })
