@@ -24,142 +24,157 @@ const canonicalPath = '/t'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-3xl">
-      <div id="table-root" class="pt-10 pb-24 sm:pb-40">
-        <p class="text-[15px]" style="color: var(--ink-soft)">Finding your table…</p>
-      </div>
-    </main>
+    <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
+      <div class="pt-10 pb-24 sm:pb-40">
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Finding your table…</p>
 
-    <script client>
-      const root = document.getElementById('table-root')
+        <p :if="!loading() && !token()" class="text-[15px]">Scan the code on your table to start.</p>
 
-      // Accept both shapes: `/t/<token>` from the printed code, and
-      // `/t?code=<token>` for anything that cannot rewrite.
-      const fromPath = location.pathname.replace(/^\/t\/?/, '').trim()
-      const token = fromPath || new URLSearchParams(location.search).get('code') || ''
+        <p :if="!loading() && token() && !session()" class="text-[15px]">That code does not match a table.</p>
 
-      const money = (cents, currency = 'usd') =>
-        `${currency === 'eur' ? '€' : '$'}${(Math.abs(cents) / 100).toFixed(2)}`
-
-      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-      }[ch]))
-
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
-      }
-
-      let session = null
-
-      async function load() {
-        if (!token) {
-          root.innerHTML = '<p class="text-[15px]">Scan the code on your table to start.</p>'
-          return
-        }
-
-        const response = await fetch(`/api/table-sessions/${encodeURIComponent(token)}`)
-
-        if (!response.ok) {
-          root.innerHTML = '<p class="text-[15px]">That code does not match a table.</p>'
-          return
-        }
-
-        session = (await response.json()).data
-        render()
-      }
-
-      async function close(splitMode) {
-        const response = await fetch(`/api/tabs/${session.tab.id}/close`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-          credentials: 'same-origin',
-          body: JSON.stringify({ splitMode, ways: session.table.seats }),
-        })
-
-        if (!response.ok) return
-
-        const { data } = await response.json()
-        const currency = session.business.currency
-
-        root.innerHTML = `
-          <div class="mx-auto max-w-lg p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
-            <div class="p-8 rounded-[calc(2rem-0.375rem)]">
-              <h1 class="text-[24px] font-semibold tracking-[-0.02em]">The bill</h1>
-              <p class="mt-2 text-[14px]" style="color: var(--ink-soft)">
-                ${splitMode === 'even' ? `Split ${data.shares.length} ways` : 'Each round billed to whoever ordered it'}
-              </p>
-              <ul class="mt-6 space-y-2 text-[15px]">
-                ${data.shares.map((share, index) => `
-                  <li class="flex justify-between"><span style="color: var(--ink-soft)">${splitMode === 'even' ? `Person ${index + 1}` : `Round ${index + 1}`}</span><span class="tabular-nums">${money(share, currency)}</span></li>`).join('')}
-              </ul>
-              <div class="flex justify-between pt-4 mt-4 text-[17px] font-semibold border-t" style="border-color: var(--line)">
-                <span>Total</span><span class="tabular-nums">${money(data.totalCents, currency)}</span>
-              </div>
-              <p class="mt-6 text-[12px]" style="color: var(--ink-soft)">
-                Test mode. Nothing was charged.
-              </p>
-            </div>
-          </div>`
-      }
-
-      function render() {
-        const currency = session.business.currency
-        const rounds = session.rounds
-
-        root.innerHTML = `
-          <p class="text-[13px]" style="color: var(--ink-soft)">${escapeHtml(session.business.name)}</p>
-          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Table ${escapeHtml(session.table.label)}</h1>
+        {{-- The tab, while it is open. --}}
+        <div :if="session() && !bill()">
+          <p class="text-[13px]" style="color: var(--ink-soft)">{{ session().business.name }}</p>
+          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Table {{ session().table.label }}</h1>
           <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
             Your tab is open. Order a round, then order another when you are ready.
           </p>
 
-          <a href="/order?business=${encodeURIComponent(session.business.slug)}"
-             class="inline-flex gap-3 items-center px-5 py-3 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
-             style="background: var(--accent); color: #fff">
-            <span>${rounds.length ? 'Order more' : 'See the menu'}</span>
+          <a
+            :href="'/order?business=' + session().business.slug"
+            class="inline-flex gap-3 items-center px-5 py-3 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
+            style="background: var(--accent); color: #fff"
+          >
+            <span>{{ session().rounds.length > 0 ? 'Order more' : 'See the menu' }}</span>
             <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.2)">
               <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
             </span>
           </a>
 
-          ${rounds.length === 0
-            ? ''
-            : `<section class="mt-12">
-                <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your tab</h2>
-                <div class="mt-4 space-y-3">
-                  ${rounds.map((round, index) => `
-                    <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-                      <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-                        <div class="flex justify-between items-baseline">
-                          <p class="text-[14px] font-medium">Round ${index + 1}</p>
-                          <p class="text-[14px] tabular-nums">${money(round.totalCents, currency)}</p>
-                        </div>
-                        <ul class="mt-3 space-y-1 text-[14px]" style="color: var(--ink-soft)">
-                          ${round.items.map(item => `<li>${item.quantity} × ${escapeHtml(item.name)}${item.modifiers.length ? ` <span style="opacity:.75">(${item.modifiers.map(escapeHtml).join(', ')})</span>` : ''}</li>`).join('')}
-                        </ul>
-                      </div>
-                    </div>`).join('')}
-                </div>
+          <section :if="session().rounds.length > 0" class="mt-12">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your tab</h2>
 
-                <div class="p-1.5 mt-6 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 16px 32px -22px rgba(20,17,15,0.12)">
-                  <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
-                    <div class="flex justify-between text-[17px] font-semibold">
-                      <span>Tab total</span>
-                      <span class="tabular-nums">${money(rounds.reduce((sum, r) => sum + r.totalCents, 0), currency)}</span>
-                    </div>
-                    <p class="mt-4 text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">Ask for the bill</p>
-                    <div class="flex flex-wrap gap-2 mt-3">
-                      <button data-split="even" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">Split evenly</button>
-                      <button data-split="by_item" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">Pay for what I had</button>
-                    </div>
+            <div class="mt-4 space-y-3">
+              <div :for="round in numberedRounds()" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+                <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+                  <div class="flex justify-between items-baseline">
+                    <p class="text-[14px] font-medium">Round {{ round.number }}</p>
+                    <p class="text-[14px] tabular-nums">{{ money(round.totalCents, currency()) }}</p>
                   </div>
-                </div>
-              </section>`}`
 
-        root.querySelectorAll('[data-split]').forEach((el) => {
-          el.addEventListener('click', () => close(el.dataset.split))
+                  <ul class="mt-3 space-y-1 text-[14px]" style="color: var(--ink-soft)">
+                    <li :for="item in round.items">
+                      {{ item.quantity }} × {{ item.name }}<span :if="item.modifiers.length > 0" style="opacity:.75"> ({{ item.modifiers.join(', ') }})</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-1.5 mt-6 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 16px 32px -22px rgba(20,17,15,0.12)">
+              <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
+                <div class="flex justify-between text-[17px] font-semibold">
+                  <span>Tab total</span>
+                  <span class="tabular-nums">{{ money(tabTotal(), currency()) }}</span>
+                </div>
+
+                <p class="mt-4 text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">Ask for the bill</p>
+
+                <div class="flex flex-wrap gap-2 mt-3">
+                  <button @click="close('even')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">Split evenly</button>
+                  <button @click="close('by_item')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">Pay for what I had</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {{-- The bill, once somebody has asked for it. --}}
+        <div :if="bill()" class="mx-auto max-w-lg p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+          <div class="p-8 rounded-[calc(2rem-0.375rem)]">
+            <h1 class="text-[24px] font-semibold tracking-[-0.02em]">The bill</h1>
+            <p class="mt-2 text-[14px]" style="color: var(--ink-soft)">
+              {{ splitMode() === 'even' ? 'Split ' + bill().shares.length + ' ways' : 'Each round billed to whoever ordered it' }}
+            </p>
+
+            <ul class="mt-6 space-y-2 text-[15px]">
+              <li :for="share in numberedShares()" class="flex justify-between">
+                <span style="color: var(--ink-soft)">{{ splitMode() === 'even' ? 'Person ' + share.number : 'Round ' + share.number }}</span>
+                <span class="tabular-nums">{{ money(share.cents, currency()) }}</span>
+              </li>
+            </ul>
+
+            <div class="flex justify-between pt-4 mt-4 text-[17px] font-semibold border-t" style="border-color: var(--line)">
+              <span>Total</span>
+              <span class="tabular-nums">{{ money(bill().totalCents, currency()) }}</span>
+            </div>
+
+            <p class="mt-6 text-[12px]" style="color: var(--ink-soft)">Test mode. Nothing was charged.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script client>
+      import { money, send } from '../functions/session'
+
+      const session = state(null)
+      const bill = state(null)
+      const splitMode = state('')
+      const loading = state(true)
+      const token = state('')
+
+      const currency = derived(() => session() ? session().business.currency : 'usd')
+
+      const tabTotal = derived(() => session()
+        ? session().rounds.reduce((sum, round) => sum + round.totalCents, 0)
+        : 0)
+
+      /*
+       * Rounds and shares carry their own number.
+       *
+       * `:for` gives the item, not its index, and "Round 3" is part of what the
+       * row says rather than decoration, so the number is attached to the data
+       * instead of being counted in the template.
+       */
+      const numberedRounds = derived(() => session()
+        ? session().rounds.map((round, index) => ({ ...round, number: index + 1 }))
+        : [])
+
+      const numberedShares = derived(() => bill()
+        ? bill().shares.map((cents, index) => ({ cents, number: index + 1 }))
+        : [])
+
+      async function load() {
+        // Accept both shapes: `/t/<token>` from the printed code, and
+        // `/t?code=<token>` for anything that cannot rewrite.
+        const fromPath = location.pathname.replace(/^\/t\/?/, '').trim()
+        const found = fromPath || new URLSearchParams(location.search).get('code') || ''
+
+        token.set(found)
+
+        if (!found) {
+          loading.set(false)
+          return
+        }
+
+        const response = await fetch(`/api/table-sessions/${encodeURIComponent(found)}`)
+
+        session.set(response.ok ? (await response.json()).data : null)
+        loading.set(false)
+      }
+
+      async function close(mode) {
+        const response = await send(`/api/tabs/${session().tab.id}/close`, {
+          splitMode: mode,
+          ways: session().table.seats,
         })
+
+        if (!response.ok)
+          return
+
+        splitMode.set(mode)
+        bill.set((await response.json()).data)
       }
 
       load()
