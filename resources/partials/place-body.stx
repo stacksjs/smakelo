@@ -528,6 +528,7 @@
          */
         const claimOpen = document.createElement('button')
         claimOpen.type = 'button'
+        claimOpen.id = claimLink.id
         claimOpen.className = claimLink.className
         claimOpen.innerHTML = claimLink.innerHTML
         claimOpen.setAttribute('style', claimLink.getAttribute('style') || '')
