@@ -52,8 +52,12 @@ export default defineModel({
       required: true,
       fillable: true,
       validation: {
-        rule: schema.enum(['business', 'courier', 'platform']),
-        message: { enum: 'Party must be one of: business, courier, platform' },
+        // `tax` is a party in the accounting sense: the money is collected from
+        // the customer, held by the platform, and owed to the state. Folding it
+        // into `platform` would make the platform's own balance a mix of what it
+        // earned and what it merely holds.
+        rule: schema.enum(['business', 'courier', 'platform', 'tax']),
+        message: { enum: 'Party must be one of: business, courier, platform, tax' },
       },
       factory: () => 'business',
     },
@@ -72,8 +76,8 @@ export default defineModel({
       required: true,
       fillable: true,
       validation: {
-        rule: schema.enum(['order_revenue', 'service_fee', 'delivery_fee', 'tip', 'refund', 'payout', 'adjustment']),
-        message: { enum: 'Kind must be one of: order_revenue, service_fee, delivery_fee, tip, refund, payout, adjustment' },
+        rule: schema.enum(['order_revenue', 'service_fee', 'delivery_fee', 'tip', 'tax_collected', 'tax_withheld', 'refund', 'payout', 'adjustment']),
+        message: { enum: 'Kind must be one of: order_revenue, service_fee, delivery_fee, tip, tax_collected, tax_withheld, refund, payout, adjustment' },
       },
       factory: () => 'order_revenue',
     },

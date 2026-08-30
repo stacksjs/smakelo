@@ -6980,7 +6980,8 @@
             "enumValues": [
               "business",
               "courier",
-              "platform"
+              "platform",
+              "tax"
             ],
             "enumTypeName": "ledger_entries_party_type_type"
           },
@@ -7004,6 +7005,8 @@
               "service_fee",
               "delivery_fee",
               "tip",
+              "tax_collected",
+              "tax_withheld",
               "refund",
               "payout",
               "adjustment"
@@ -15062,7 +15065,7 @@
       }
     ]
   },
-  "hash": "37ffa158cd325caab9306b57d38a73c65ac5cad6792ff8fa996d8abf4482bd40",
+  "hash": "27c7e6e89067604d11d8bbe7887344827f2d0c106b43238d1f4b6228c6343fbd",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-30T00:00:11.428Z"
+  "updatedAt": "2026-08-30T00:53:15.254Z"
 }

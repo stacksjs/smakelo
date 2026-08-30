@@ -29,7 +29,9 @@ export interface Statement {
   lines: StatementLine[]
 }
 
-export async function statementFor(partyType: 'business' | 'courier' | 'platform', partyId: number): Promise<Statement | null> {
+export type PartyType = 'business' | 'courier' | 'platform' | 'tax'
+
+export async function statementFor(partyType: PartyType, partyId: number): Promise<Statement | null> {
   const name = await partyName(partyType, partyId)
 
   if (name === null)
@@ -145,7 +147,7 @@ export async function outstandingBalances(): Promise<Array<{
   for (const [key, balanceCents] of totals) {
     const [partyType = '', rawId] = key.split(':')
     const partyId = Number(rawId)
-    const name = await partyName(partyType as 'business' | 'courier' | 'platform', partyId)
+    const name = await partyName(partyType as PartyType, partyId)
 
     balances.push({ partyType, partyId, name: name ?? `#${partyId}`, balanceCents })
   }
@@ -156,6 +158,20 @@ export async function outstandingBalances(): Promise<Array<{
 async function partyName(partyType: string, partyId: number): Promise<string | null> {
   if (partyType === 'platform')
     return 'Smakelo'
+
+  // Tax is held, not earned. It gets a statement because "what is sitting here
+  // that belongs to the state" is a question somebody eventually asks.
+  if (partyType === 'tax')
+    return 'Sales tax held for remittance'
+
+  /*
+   * An order's delivery money is owed from the moment it is placed, which is
+   * before anybody has been assigned to carry it. Those rows sit against
+   * courier zero until dispatch reassigns them, and the balance sheet should
+   * say what that pile is rather than print a bare `#0` and let a reader guess.
+   */
+  if (partyType === 'courier' && partyId === 0)
+    return 'Awaiting a courier'
 
   const table = partyType === 'business' ? 'businesses' : 'couriers'
 

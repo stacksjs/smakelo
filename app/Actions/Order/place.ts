@@ -307,6 +307,23 @@ async function writeLedger(
   if (pricing.tipCents > 0)
     rows.push({ partyType: 'courier', partyId: 0, kind: 'tip', amountCents: pricing.tipCents, description: 'Tip' })
 
+  /*
+   * Tax is collected from the customer and belongs to nobody here: California
+   * makes the marketplace the facilitator, so the platform holds it and remits
+   * it. Leaving it off the ledger meant every order's rows summed to less than
+   * the customer was charged, and the difference had no owner - which is the
+   * exact shape of an accounting error nobody notices until an audit.
+   *
+   * On an inclusive market the tax is already inside the menu price, so it is
+   * carved out of the merchant's share rather than added on top.
+   */
+  if (pricing.taxCents > 0) {
+    rows.push({ partyType: 'tax', partyId: 0, kind: 'tax_collected', amountCents: pricing.taxCents, description: 'Sales tax held for remittance' })
+
+    if (pricing.taxMode === 'inclusive')
+      rows.push({ partyType: 'business', partyId: businessId, kind: 'tax_withheld', amountCents: -pricing.taxCents, description: 'Tax inside the menu price' })
+  }
+
   for (const row of rows) {
     if (row.amountCents === 0)
       continue

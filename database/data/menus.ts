@@ -401,4 +401,444 @@ export const MENUS: Record<string, SeedMenuSection[]> = {
       ],
     },
   ],
+
+  'the-salted-anchor': [
+    {
+      name: 'Raw Bar',
+      items: [
+        {
+          name: 'Oysters',
+          description: 'Whatever came in this morning, shucked to order.',
+          priceCents: 1800,
+          prepMinutes: 6,
+          allergens: ['shellfish'],
+          modifierGroups: [
+            {
+              name: 'How many',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Half dozen', isDefault: true },
+                { name: 'Dozen', priceDeltaCents: 1600 },
+              ],
+            },
+            {
+              name: 'Alongside',
+              min: 0,
+              max: 2,
+              options: [
+                { name: 'Mignonette', isDefault: true },
+                { name: 'Horseradish' },
+                { name: 'Lemon only' },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Shrimp Cocktail',
+          description: 'Poached in the shell, cooled on ice, sauce with a bite.',
+          priceCents: 1900,
+          allergens: ['shellfish'],
+        },
+      ],
+    },
+    {
+      name: 'From the Boat',
+      items: [
+        {
+          name: 'Whole Fish',
+          description: 'Day boat, grilled over wood, dressed with oil and lemon.',
+          priceCents: 3800,
+          prepMinutes: 24,
+          allergens: ['fish'],
+          modifierGroups: [
+            {
+              name: 'Cooked',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Grilled', isDefault: true },
+                { name: 'Salt baked', priceDeltaCents: 400 },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Fish and Chips',
+          description: 'Beer batter, fried in beef fat, malt vinegar on the table.',
+          priceCents: 2400,
+          prepMinutes: 16,
+          allergens: ['fish', 'gluten'],
+        },
+        {
+          name: 'Clam Chowder',
+          description: 'Thin, not thick. Bacon, cream, a lot of clams.',
+          priceCents: 1400,
+          allergens: ['shellfish', 'dairy'],
+        },
+      ],
+    },
+    {
+      name: 'Sides',
+      items: [
+        { name: 'Chips', description: 'Fried twice in beef fat.', priceCents: 700 },
+        { name: 'Green Salad', description: 'Shallot vinaigrette.', priceCents: 800 },
+      ],
+    },
+  ],
+
+  'nonna-pia': [
+    {
+      name: 'Pasta',
+      items: [
+        {
+          name: 'Cacio e Pepe',
+          description: 'Tonnarelli, pecorino, pepper toasted in the pan.',
+          priceCents: 1900,
+          prepMinutes: 14,
+          allergens: ['gluten', 'dairy', 'egg'],
+          modifierGroups: [
+            {
+              name: 'Portion',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Regular', isDefault: true },
+                { name: 'Large', priceDeltaCents: 500 },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Ragu Bolognese',
+          description: 'Tagliatelle. Six hours, mostly pork.',
+          priceCents: 2300,
+          prepMinutes: 14,
+          allergens: ['gluten', 'dairy', 'egg'],
+        },
+        {
+          name: 'Cacio Ravioli',
+          description: 'Ricotta and lemon, brown butter, sage.',
+          priceCents: 2200,
+          prepMinutes: 15,
+          allergens: ['gluten', 'dairy', 'egg'],
+        },
+        {
+          name: 'Vongole',
+          description: 'Spaghetti, clams, white wine, no cheese and do not ask.',
+          priceCents: 2500,
+          prepMinutes: 16,
+          allergens: ['gluten', 'shellfish', 'egg'],
+        },
+      ],
+    },
+    {
+      name: 'Before',
+      items: [
+        { name: 'Bread and Oil', description: 'From the bakery two doors down.', priceCents: 600, allergens: ['gluten'] },
+        { name: 'Marinated Olives', description: 'Orange peel and fennel seed.', priceCents: 700 },
+      ],
+    },
+    {
+      name: 'After',
+      items: [
+        { name: 'Tiramisu', description: 'Made at four, eaten by nine.', priceCents: 1100, allergens: ['dairy', 'egg', 'gluten'] },
+        { name: 'Affogato', description: 'One scoop, one shot.', priceCents: 900, allergens: ['dairy'] },
+      ],
+    },
+  ],
+
+  'golden-hour-diner': [
+    {
+      name: 'Breakfast, All Day',
+      items: [
+        {
+          name: 'Pancakes',
+          description: 'Three, the size of the plate. Butter and warm syrup.',
+          priceCents: 1400,
+          prepMinutes: 12,
+          allergens: ['gluten', 'dairy', 'egg'],
+          modifierGroups: [
+            {
+              name: 'In the batter',
+              min: 0,
+              max: 2,
+              options: [
+                { name: 'Blueberry', priceDeltaCents: 200 },
+                { name: 'Banana', priceDeltaCents: 150 },
+                { name: 'Chocolate chip', priceDeltaCents: 200 },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Two Eggs Any Way',
+          description: 'Potatoes, toast, and the good jam.',
+          priceCents: 1200,
+          prepMinutes: 10,
+          allergens: ['egg', 'gluten'],
+          modifierGroups: [
+            {
+              name: 'Eggs',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Over easy', isDefault: true },
+                { name: 'Scrambled' },
+                { name: 'Poached' },
+                { name: 'Fried hard' },
+              ],
+            },
+            {
+              name: 'Add',
+              min: 0,
+              max: 3,
+              options: [
+                { name: 'Bacon', priceDeltaCents: 400 },
+                { name: 'Sausage', priceDeltaCents: 400 },
+                { name: 'Avocado', priceDeltaCents: 350 },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Chilaquiles',
+          description: 'Salsa verde, crema, two eggs on top.',
+          priceCents: 1500,
+          prepMinutes: 14,
+          allergens: ['dairy', 'egg'],
+        },
+      ],
+    },
+    {
+      name: 'The Griddle',
+      items: [
+        {
+          name: 'Patty Melt',
+          description: 'Rye, onions cooked down slow, American cheese.',
+          priceCents: 1600,
+          prepMinutes: 14,
+          allergens: ['gluten', 'dairy'],
+        },
+        { name: 'Grilled Cheese', description: 'Three cheeses. Tomato soup for two more.', priceCents: 1100, allergens: ['gluten', 'dairy'] },
+      ],
+    },
+    {
+      name: 'Drinks',
+      items: [
+        { name: 'Diner Coffee', description: 'Bottomless if you sit down.', priceCents: 350, modifierGroups: [sizeGroup('Mug', 60)] },
+        { name: 'Orange Juice', description: 'Squeezed at opening.', priceCents: 500 },
+      ],
+    },
+  ],
+
+  'saffron-and-sumac': [
+    {
+      name: 'Mezze',
+      items: [
+        {
+          name: 'Hummus',
+          description: 'Warm, with olive oil pooled in the middle.',
+          priceCents: 1000,
+          allergens: ['sesame'],
+          modifierGroups: [
+            {
+              name: 'On top',
+              min: 0,
+              max: 1,
+              options: [
+                { name: 'Plain', isDefault: true },
+                { name: 'Lamb and pine nut', priceDeltaCents: 600 },
+                { name: 'Whole chickpeas', priceDeltaCents: 200 },
+              ],
+            },
+          ],
+        },
+        { name: 'Muhammara', description: 'Red pepper, walnut, pomegranate molasses.', priceCents: 1100, allergens: ['nuts'] },
+        { name: 'Labneh', description: 'Strained two days, za\'atar, good oil.', priceCents: 950, allergens: ['dairy'] },
+        { name: 'Bread', description: 'Out of the oven still puffed. Order more than you think.', priceCents: 400, allergens: ['gluten'] },
+      ],
+    },
+    {
+      name: 'Charcoal',
+      items: [
+        {
+          name: 'Lamb Skewer',
+          description: 'Shoulder, cumin, charred onion.',
+          priceCents: 2200,
+          prepMinutes: 18,
+          modifierGroups: [
+            {
+              name: 'How many',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Two skewers', isDefault: true },
+                { name: 'Four skewers', priceDeltaCents: 1800 },
+              ],
+            },
+          ],
+        },
+        { name: 'Chicken Musakhan', description: 'Sumac, onion, on flatbread.', priceCents: 2000, prepMinutes: 20, allergens: ['gluten'] },
+        { name: 'Cauliflower', description: 'Whole, charred, tahini and herbs.', priceCents: 1600, prepMinutes: 20, allergens: ['sesame'] },
+      ],
+    },
+  ],
+
+  'ember-coffee-roasters': [
+    {
+      name: 'Espresso',
+      items: [
+        { name: 'Cortado', description: 'House blend, two ounces of milk.', priceCents: 480, prepMinutes: 3, allergens: ['dairy'], modifierGroups: [MILK_GROUP] },
+        {
+          name: 'Flat White',
+          description: 'Ristretto base, no foam to speak of.',
+          priceCents: 540,
+          prepMinutes: 3,
+          allergens: ['dairy'],
+          modifierGroups: [MILK_GROUP, sizeGroup('6 oz', 80)],
+        },
+        {
+          name: 'Espresso',
+          description: 'Single origin on the second grinder, changes weekly.',
+          priceCents: 400,
+          prepMinutes: 2,
+          modifierGroups: [
+            {
+              name: 'Beans',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'House blend', isDefault: true },
+                { name: 'This week\'s single origin', priceDeltaCents: 100 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'Beans',
+      items: [
+        {
+          name: 'Twelve Ounce Bag',
+          description: 'Roasted at the back on Tuesdays and Fridays.',
+          priceCents: 2200,
+          modifierGroups: [
+            {
+              name: 'Roast',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'House blend', isDefault: true },
+                { name: 'Ethiopia, washed', priceDeltaCents: 400 },
+                { name: 'Colombia, honey', priceDeltaCents: 300 },
+              ],
+            },
+            {
+              name: 'Grind',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Whole bean', isDefault: true },
+                { name: 'Filter' },
+                { name: 'Espresso' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+
+  'the-slow-pour': [
+    {
+      name: 'Coffee',
+      items: [
+        { name: 'Batch Brew', description: 'Made every twenty minutes whether anyone wants it.', priceCents: 380, prepMinutes: 2, modifierGroups: [sizeGroup('12 oz', 80)] },
+        {
+          name: 'Pour Over',
+          description: 'Four minutes. Sit down.',
+          priceCents: 600,
+          prepMinutes: 6,
+          modifierGroups: [
+            {
+              name: 'Beans',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Whatever is open', isDefault: true },
+                { name: 'The expensive one', priceDeltaCents: 250 },
+              ],
+            },
+          ],
+        },
+        { name: 'Cappuccino', description: 'Wet, in a proper cup.', priceCents: 520, prepMinutes: 3, allergens: ['dairy'], modifierGroups: [MILK_GROUP] },
+      ],
+    },
+    {
+      name: 'Toast',
+      items: [
+        {
+          name: 'Sourdough Toast',
+          description: 'Thick cut, from the bakery on Rose.',
+          priceCents: 750,
+          prepMinutes: 6,
+          allergens: ['gluten'],
+          modifierGroups: [
+            {
+              name: 'On it',
+              min: 1,
+              max: 2,
+              options: [
+                { name: 'Butter and jam', isDefault: true },
+                { name: 'Avocado', priceDeltaCents: 350 },
+                { name: 'Ricotta and honey', priceDeltaCents: 300 },
+                { name: 'Soft egg', priceDeltaCents: 250 },
+              ],
+            },
+          ],
+        },
+        { name: 'Banana Bread', description: 'Toasted, with butter, always.', priceCents: 550, allergens: ['gluten', 'dairy', 'egg'] },
+      ],
+    },
+  ],
+
+  'two-crows-orchard': [
+    {
+      name: 'Boxes',
+      items: [
+        {
+          name: 'Stone Fruit Box',
+          description: 'Ten pounds of whatever is ripe this week. Picked the morning it goes out.',
+          priceCents: 3400,
+          modifierGroups: [
+            {
+              name: 'Lean toward',
+              min: 0,
+              max: 1,
+              options: [
+                { name: 'A mix', isDefault: true },
+                { name: 'Mostly peaches' },
+                { name: 'Mostly plums' },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Citrus Box',
+          description: 'Winter only. Navels, blood oranges, and a bag of kumquats.',
+          priceCents: 3000,
+        },
+      ],
+    },
+    {
+      name: 'By the Pound',
+      items: [
+        { name: 'Peaches', description: 'Two pounds. Eat them over the sink.', priceCents: 900 },
+        { name: 'Pluots', description: 'Two pounds, dappled ones are the good ones.', priceCents: 950 },
+        { name: 'Meyer Lemons', description: 'A dozen, off the old tree.', priceCents: 700 },
+      ],
+    },
+  ],
 }

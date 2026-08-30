@@ -118,6 +118,58 @@ describe('the split', () => {
     // Tax is collected on behalf of the state and belongs to nobody here.
     expect(shares).toBe(pricing.totalCents - pricing.taxCents)
   })
+
+  test('every cent has an owner once tax is counted as one', () => {
+    /*
+     * The stronger form of the test above, and the one that matters to the
+     * ledger: the four parties together account for the whole charge with
+     * nothing left over. The first version of the ledger wrote no tax row, so
+     * every order's rows summed to less than the customer paid and the
+     * difference belonged to nobody. That is invisible on a receipt and
+     * obvious on a balance sheet.
+     */
+    for (const fulfilment of ['delivery', 'pickup'] as const) {
+      const pricing = priceOrder({
+        lines: [line(1850, 3), line(640)],
+        fulfilment,
+        distanceMeters: 2400,
+        tipCents: fulfilment === 'delivery' ? 350 : 0,
+        ...LA,
+      })
+
+      const owned = pricing.split.businessCents
+        + pricing.split.courierCents
+        + pricing.split.platformCents
+        + pricing.taxCents
+
+      expect(owned).toBe(pricing.totalCents)
+    }
+  })
+
+  test('an inclusive market takes tax out of the price rather than adding it', () => {
+    // Berlin prices include VAT, so the merchant's share is not the whole menu
+    // price: the tax inside it is held for the state. The ledger models that
+    // with a negative row against the business, and the arithmetic has to
+    // still land on the total.
+    const pricing = priceOrder({ lines: [line(2000, 2)], fulfilment: 'pickup', ...BERLIN })
+
+    // The rows the ledger actually writes for an inclusive market: the merchant
+    // credited the gross menu price, the tax collected into the state's pile,
+    // and that same tax withheld back off the merchant, since it was never
+    // theirs to begin with.
+    const taxCollected = pricing.taxCents
+    const taxWithheld = -pricing.taxCents
+
+    const ledger = pricing.split.businessCents
+      + pricing.split.courierCents
+      + pricing.split.platformCents
+      + taxCollected
+      + taxWithheld
+
+    expect(ledger).toBe(pricing.totalCents)
+    expect(pricing.taxCents).toBeGreaterThan(0)
+    expect(pricing.taxMode).toBe('inclusive')
+  })
 })
 
 describe('deliveryFee', () => {

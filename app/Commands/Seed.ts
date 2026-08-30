@@ -1,5 +1,8 @@
 import { defineCommand, log } from '@stacksjs/cli'
 import { db } from '@stacksjs/database'
+import { dispatchOrder } from '../Actions/Delivery/dispatch'
+import { advanceOrder } from '../Actions/Merchant/board'
+import { placeOrder } from '../Actions/Order/place'
 import { ALL_BUSINESSES } from '../../database/data/businesses'
 import { MENUS } from '../../database/data/menus'
 import { REVIEWS } from '../../database/data/reviews'
@@ -23,7 +26,7 @@ export default defineCommand((cli) => {
     .action(async (options: { fresh?: boolean }) => {
       if (options.fresh) {
         // Children first: nothing here relies on cascade being configured.
-        for (const table of ['order_item_modifiers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'tabs', 'tables', 'businesses', 'markets'])
+        for (const table of ['ledger_entries', 'delivery_stops', 'delivery_routes', 'courier_pings', 'order_item_modifiers', 'order_items', 'orders', 'couriers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'tabs', 'tables', 'businesses', 'markets'])
           await db.deleteFrom(table as never).execute().catch(() => undefined)
 
         log.info('Cleared existing demo rows')
@@ -35,8 +38,9 @@ export default defineCommand((cli) => {
       const reviewCount = await seedReviews(businessIds)
       const tableCount = await seedTables(businessIds)
       const courierCount = await seedCouriers()
+      const history = await seedOrders()
 
-      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers`)
+      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${history.orders} orders (${history.dispatched} dispatched)`)
     })
 })
 
@@ -379,4 +383,171 @@ async function seedCouriers(): Promise<number> {
   }
 
   return count
+}
+
+/**
+ * Order history, placed rather than fabricated.
+ *
+ * Every order here goes through `placeOrder()`, the same function the checkout
+ * calls, so the prices, the modifier rules, the fee split and the ledger rows
+ * are produced by the code that will be blamed if they are wrong. Writing rows
+ * into `orders` directly would be faster and would demonstrate nothing: a
+ * seeded ledger that the real path could never produce is worse than no ledger,
+ * because it looks like evidence.
+ *
+ * The result is a kitchen with tickets on it, couriers carrying something, and
+ * statements with figures in them, on any fresh database.
+ */
+async function seedOrders(): Promise<{ orders: number, dispatched: number }> {
+  const existing = await db.selectFrom('orders').select(['id']).executeTakeFirst() as { id: number } | undefined
+
+  // Idempotent like the rest of the seeder: a deploy re-runs this, and doubling
+  // the history every time would make the money screens quietly wrong.
+  if (existing)
+    return { orders: 0, dispatched: 0 }
+
+  const customers = [
+    { name: 'Dana Whitlock', email: 'dana@example.test', address: '1453 4th St, Santa Monica, CA 90401', latitude: 34.0163, longitude: -118.4938 },
+    { name: 'Marcus Bell', email: 'marcus@example.test', address: '820 Pico Blvd, Santa Monica, CA 90405', latitude: 34.0119, longitude: -118.4835 },
+    { name: 'Yuki Tanaka', email: 'yuki@example.test', address: '2301 Wilshire Blvd, Santa Monica, CA 90403', latitude: 34.0288, longitude: -118.4791 },
+    { name: 'Aisha Rahman', email: 'aisha@example.test', address: '11640 San Vicente Blvd, Los Angeles, CA 90049', latitude: 34.0533, longitude: -118.4695 },
+    { name: 'Peter Lindqvist', email: 'peter@example.test', address: '601 Montana Ave, Santa Monica, CA 90403', latitude: 34.0294, longitude: -118.4990 },
+  ]
+
+  const slugs = ['marisol-cocina', 'little-bird-ramen', 'the-salted-anchor', 'fog-and-filter', 'nonna-pia', 'golden-hour-diner', 'ember-coffee-roasters', 'saffron-and-sumac']
+
+  /*
+   * A tiny LCG rather than Math.random, so two people running the seeder see
+   * the same demo and a screenshot keeps matching the database.
+   */
+  let seed = 20260829
+  const next = (bound: number): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return seed % bound
+  }
+
+  let orders = 0
+  let dispatched = 0
+
+  for (let index = 0; index < 24; index++) {
+    const slug = slugs[index % slugs.length] as string
+    const business = await db.selectFrom('businesses').where('slug', '=', slug).select(['id']).executeTakeFirst() as { id: number } | undefined
+
+    if (!business)
+      continue
+
+    const products = await db.selectFrom('products')
+      .where('business_id', '=', Number(business.id))
+      .orderBy('id', 'asc')
+      .select(['id'])
+      .execute() as Array<{ id: number }>
+
+    if (products.length === 0)
+      continue
+
+    const customer = customers[index % customers.length] as typeof customers[number]
+    const lineCount = 1 + next(3)
+    const lines = []
+
+    for (let line = 0; line < lineCount; line++) {
+      const product = products[next(products.length)]
+
+      if (product)
+        lines.push({ productId: Number(product.id), quantity: 1 + next(2), modifierIds: await requiredChoices(Number(product.id), next), notes: '' })
+    }
+
+    // Two thirds delivery, the rest pickup: enough of each that both halves of
+    // the merchant's day are visible on the board.
+    const fulfilment = index % 3 === 2 ? 'pickup' : 'delivery'
+
+    const placed = await placeOrder({
+      businessSlug: slug,
+      lines,
+      fulfilment,
+      customerName: customer.name,
+      customerEmail: customer.email,
+      deliveryAddress: fulfilment === 'delivery' ? customer.address : undefined,
+      deliveryLatitude: fulfilment === 'delivery' ? customer.latitude : undefined,
+      deliveryLongitude: fulfilment === 'delivery' ? customer.longitude : undefined,
+      tipCents: fulfilment === 'delivery' ? [0, 200, 300, 500][next(4)] : 0,
+    })
+
+    if (!placed.ok)
+      continue
+
+    orders += 1
+
+    /*
+     * Walk most of the history forward so the board is not 24 tickets of
+     * "just arrived". The last few stay early on purpose: a kitchen screen
+     * with nothing waiting teaches a reviewer nothing about the kitchen screen.
+     */
+    const stage = index < 18 ? 'done' : index < 21 ? 'cooking' : 'new'
+
+    if (stage === 'new')
+      continue
+
+    await advanceOrder(placed.orderId, 'PROCESSING')
+
+    if (stage !== 'done')
+      continue
+
+    await advanceOrder(placed.orderId, 'SHIPPED')
+
+    if (fulfilment === 'delivery') {
+      const result = await dispatchOrder(placed.orderId)
+
+      if (result.ok)
+        dispatched += 1
+    }
+  }
+
+  return { orders, dispatched }
+}
+
+/**
+ * Answer the questions a product insists on being asked.
+ *
+ * A group with `min_selections` of one is a question the kitchen needs answered
+ * before it can cook: which size, how the eggs. `placeOrder` rejects an order
+ * that skips one, correctly, which meant a seeder passing no modifiers quietly
+ * dropped three quarters of its history on the floor and reported success.
+ *
+ * Picking the marked default keeps the seeded orders looking like orders a
+ * person placed rather than every line taking the most expensive upgrade.
+ */
+async function requiredChoices(productId: number, next: (bound: number) => number): Promise<number[]> {
+  const groups = await db.selectFrom('modifier_groups')
+    .where('product_id', '=', productId)
+    .where('min_selections', '>=', 1)
+    .orderBy('position', 'asc')
+    .select(['id', 'min_selections'])
+    .execute() as Array<{ id: number, min_selections: number }>
+
+  const chosen: number[] = []
+
+  for (const group of groups) {
+    const options = await db.selectFrom('modifiers')
+      .where('modifier_group_id', '=', Number(group.id))
+      .orderBy('position', 'asc')
+      .select(['id', 'is_default'])
+      .execute() as Array<{ id: number, is_default: number }>
+
+    if (options.length === 0)
+      continue
+
+    // Mostly the default, occasionally something else, so the tickets on the
+    // kitchen board are not twenty identical lines.
+    const preferred = options.find(option => Number(option.is_default) === 1) ?? options[0]
+    const pick = next(4) === 0 ? options[next(options.length)] ?? preferred : preferred
+
+    for (let taken = 0; taken < Math.max(1, Number(group.min_selections)); taken++) {
+      const option = taken === 0 ? pick : options[taken]
+
+      if (option && !chosen.includes(Number(option.id)))
+        chosen.push(Number(option.id))
+    }
+  }
+
+  return chosen
 }

@@ -5,6 +5,7 @@ import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
+import type { PartyType } from '../app/Actions/Money/statements'
 import { outstandingBalances, recordPayout, statementFor } from '../app/Actions/Money/statements'
 
 /**
@@ -308,10 +309,10 @@ route.get('/money/{partyType}/{id}', async (request: any) => {
   const partyType = String(request?.getParam?.('partyType') ?? '')
   const partyId = Number(request?.getParam?.('id') ?? 0)
 
-  if (!['business', 'courier', 'platform'].includes(partyType))
-    return response.json({ message: 'Party must be business, courier or platform.' }, 422)
+  if (!['business', 'courier', 'platform', 'tax'].includes(partyType))
+    return response.json({ message: 'Party must be business, courier, platform or tax.' }, 422)
 
-  const statement = await statementFor(partyType as 'business' | 'courier' | 'platform', partyId)
+  const statement = await statementFor(partyType as PartyType, partyId)
 
   if (!statement)
     return response.json({ message: 'No such party.' }, 404)

@@ -35,6 +35,8 @@ export interface PricingInput {
 export interface Pricing {
   subtotalCents: number
   taxCents: number
+  /** Carried through so the ledger knows whether tax sat inside the menu price. */
+  taxMode: 'inclusive' | 'exclusive'
   deliveryFeeCents: number
   serviceFeeCents: number
   tipCents: number
@@ -87,6 +89,7 @@ export function priceOrder(input: PricingInput): Pricing {
   return {
     subtotalCents,
     taxCents,
+    taxMode: input.taxMode,
     deliveryFeeCents,
     serviceFeeCents,
     tipCents,
