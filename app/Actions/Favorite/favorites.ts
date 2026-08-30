@@ -1,4 +1,5 @@
 import { db } from '@stacksjs/database'
+import { visualFor } from '../Business/identity'
 import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
 
 /**
@@ -57,6 +58,11 @@ export interface SavedPlace {
   isPartner: boolean
   note: string
   savedAt: unknown
+  /** Generated cover art, so a saved list looks like the grid it came from. */
+  hue: number
+  hueEnd: number
+  iconClass: string
+  monogram: string
 }
 
 /** The list somebody opens when deciding where to eat, newest first. */
@@ -94,6 +100,12 @@ export async function favoritesFor(visitorToken: unknown): Promise<SavedPlace[]>
       isPartner: Number(business.is_partner) === 1,
       note: String(row.note ?? ''),
       savedAt: row.created_at ?? null,
+      ...withIconClass(visualFor({
+        name: business.name,
+        slug: business.slug,
+        type: business.type,
+        cuisine: business.cuisine,
+      })),
     })
   }
 
@@ -103,4 +115,9 @@ export async function favoritesFor(visitorToken: unknown): Promise<SavedPlace[]>
 /** Which of these slugs this browser has saved, for marking a list of cards. */
 export async function savedSlugs(visitorToken: unknown): Promise<string[]> {
   return (await favoritesFor(visitorToken)).map(place => place.slug)
+}
+
+/** The full class, since a class assembled in a template is never generated. */
+function withIconClass(visual: { icon: string, hue: number, hueEnd: number, monogram: string }) {
+  return { ...visual, iconClass: `i-hugeicons-${visual.icon}` }
 }

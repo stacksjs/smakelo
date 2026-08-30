@@ -3,6 +3,7 @@ import { db } from '@stacksjs/database'
 import { distanceInMeters } from '../Business/geo'
 import { placeOrder } from './place'
 import { priceOrder } from './pricing'
+import { visualFor } from '../Business/identity'
 import { existingCustomerFor } from '../Visitor/identity'
 
 /**
@@ -268,8 +269,8 @@ export async function ordersForVisitor(visitorToken: unknown): Promise<Array<Rec
   for (const row of rows) {
     const business = await db.selectFrom('businesses')
       .where('id', '=', Number(row.business_id))
-      .select(['name', 'slug'])
-      .executeTakeFirst() as { name?: string, slug?: string } | undefined
+      .select(['name', 'slug', 'type', 'cuisine'])
+      .executeTakeFirst() as Record<string, unknown> | undefined
 
     const items = await db.selectFrom('order_items')
       .where('order_id', '=', Number(row.id))
@@ -298,6 +299,16 @@ export async function ordersForVisitor(visitorToken: unknown): Promise<Array<Rec
       trackingToken: String(row.tracking_token ?? ''),
       items: names,
       placedAt: row.created_at ?? null,
+      ...(() => {
+        const visual = visualFor({
+          name: business?.name,
+          slug: business?.slug,
+          type: business?.type,
+          cuisine: business?.cuisine,
+        })
+
+        return { ...visual, iconClass: `i-hugeicons-${visual.icon}` }
+      })(),
     })
   }
 
