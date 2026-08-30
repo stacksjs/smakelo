@@ -1,11 +1,12 @@
 <script server>
 /*
- * The merchant side, stated rather than built.
+ * The merchant side.
  *
- * The partner portal is real work that is not finished, and the listing pages
- * link here from "Claim this business". A page that says what it will be beats
- * a link into a 404, and beats a fake sign-up form that collects a real
- * business's details for a demo that will never call them back.
+ * Each row links into the screen it describes, as one of the invented partners
+ * would see it, and says plainly where something is not finished. The listing
+ * pages link here from "Claim this business", so this is also what a real
+ * business owner would land on - which is why there is no sign-up form
+ * collecting their details for a demo that will never call them back.
  */
 const pageTitle = 'For businesses - Smakelo'
 const pageDescription = 'What a business gets from Smakelo, and what is still being built.'
@@ -16,26 +17,30 @@ const surfaces = [
     name: 'Menu',
     detail: 'Sections, items, and modifier groups that ask the questions an order actually needs answered. Available in the data model and on the customer side today.',
     state: 'Built',
+    href: '/order?business=marisol-cocina',
   },
   {
     name: 'Orders board',
-    detail: 'Incoming orders as they arrive, with kitchen tickets printed to a receipt printer.',
-    state: 'Next',
+    detail: 'Incoming orders as they arrive, oldest first, with the modifiers spelled out for the cook and a note when one has been waiting.',
+    state: 'Built',
+    href: '/kitchen?business=marisol-cocina',
   },
   {
     name: 'Tables and codes',
-    detail: 'A code per table that opens the menu, opens a tab, and takes rounds until someone asks for the bill.',
-    state: 'Next',
+    detail: 'A code per table that opens the menu, opens a tab, and takes rounds until someone asks for the bill. Printable.',
+    state: 'Built',
+    href: '/codes/marisol-cocina',
   },
   {
     name: 'Couriers',
     detail: 'Platform couriers, or your own staff. Live position, arrival, and the handover.',
-    state: 'In progress',
+    state: 'Built',
+    href: '/track',
   },
   {
     name: 'Payouts',
-    detail: 'Stripe Connect: the customer pays once, the platform keeps its fee, the rest settles to you.',
-    state: 'Built',
+    detail: 'Every order already records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. Connecting that to Stripe Connect, which the framework now supports, is the next piece.',
+    state: 'Ledger built',
   },
 ]
 </script>
@@ -63,7 +68,8 @@ const surfaces = [
           Smakelo is a demonstration, so there is nothing to sign up for and nobody
           to call you back. If your business is listed here, it was taken from open
           data and it cannot take an order through this site. Here is what the
-          merchant side does and does not do yet.
+          merchant side does, with a link into each screen as one of the invented
+          partners would see it.
         </p>
       </section>
 
@@ -76,9 +82,14 @@ const surfaces = [
                   <p class="text-[16px] font-semibold">{{ surface.name }}</p>
                   <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ surface.detail }}</p>
                 </div>
-                <span class="px-2.5 py-1 text-[11px] rounded-full shrink-0" style="border: 1px solid var(--line); color: var(--ink-soft)">
-                  {{ surface.state }}
-                </span>
+                <div class="flex gap-2 items-center shrink-0">
+                  @if (surface.href)
+                    <a href="{{ surface.href }}" class="px-3 py-1 text-[11px] rounded-full transition-opacity duration-500 hover:opacity-70" style="background: var(--accent-soft); color: var(--accent)">See it</a>
+                  @endif
+                  <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">
+                    {{ surface.state }}
+                  </span>
+                </div>
               </div>
             </div>
           @endforeach

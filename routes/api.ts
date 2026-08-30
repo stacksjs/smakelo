@@ -3,6 +3,7 @@ import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search
 import { menuFor } from '../app/Actions/Order/menu'
 import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
+import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 
 /**
  * Smakelo's JSON API, mounted under `/api` and answered by the API process.
@@ -164,4 +165,40 @@ route.post('/tabs/{id}/close', async (request: any) => {
   const result = await closeTab(tabId, mode as 'even' | 'by_item' | 'single_payer', Number(body?.ways ?? 1))
 
   return response.json({ data: result })
+})
+
+/**
+ * The merchant's orders board.
+ *
+ * `GET /api/merchant/{slug}/board`
+ *
+ * Unauthenticated, and that is a demo decision rather than a design one: there
+ * are no merchant accounts here, and gating it would mean inventing a login for
+ * a business that does not exist. A real deployment puts this behind the team
+ * that owns the business.
+ */
+route.get('/merchant/{slug}/board', async (request: any) => {
+  const slug = String(request?.getParam?.('slug') ?? request?.params?.slug ?? '')
+  const board = await boardFor(slug)
+
+  if (!board)
+    return response.json({ message: `No business with slug "${slug}".` }, 404)
+
+  return response.json({ data: board })
+})
+
+/**
+ * Move an order along the kitchen's part of the lifecycle.
+ *
+ * `POST /api/merchant/orders/{id}/status`
+ */
+route.post('/merchant/orders/{id}/status', async (request: any) => {
+  const orderId = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const result = await advanceOrder(orderId, String(body?.status ?? ''))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { orderId, status: result.status } })
 })
