@@ -10,17 +10,21 @@ import { schedule } from '@stacksjs/scheduler'
  * @see https://docs.stacksjs.com/scheduling
  */
 export default function (): void {
-  // Run the Inspire job every hour
+  /*
+   * Move CSA shares past their packing day, and wake the ones whose pause has
+   * run out. Daily, early, in the market's own timezone: a farm packs by the
+   * local calendar, and a job that runs at UTC midnight would roll a Wednesday
+   * box on Tuesday afternoon in Los Angeles.
+   *
+   * The scaffold scheduled a job called 'Inspire' that this app does not have.
+   * It typechecked locally, where the generated job types still listed it, and
+   * failed in CI, where they did not.
+   */
   schedule
-    .job('Inspire')
-    .hourly()
+    .job('RollCsaBoxes')
+    .daily()
+    .at('05:00')
     .setTimeZone('America/Los_Angeles')
-
-  // Run a custom action every five minutes
-  // schedule.action('CleanupTempFiles').everyFiveMinutes()
-
-  // Run a shell command daily at midnight
-  // schedule.command('echo "Daily maintenance complete"').daily()
 }
 
 process.on('SIGINT', () => {

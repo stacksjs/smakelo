@@ -158,6 +158,89 @@ declare module '@stacksjs/database' {
       position: number
       archived: number
     }
+    business_hours: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      day_of_week: number
+      opens_at: number
+      closes_at: number
+      is_closed: number
+      business_id: number
+    }
+    business_photos: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      url: string
+      caption: string
+      credit: string
+      position: number
+      alt: string
+      business_id: number
+    }
+    business_reviews: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      deleted_at: string | null
+      rating: number
+      title: string
+      body: string
+      dishes: string
+      owner_response: string
+      owner_responded_at: string
+      helpful_count: number
+      is_published: number
+      visited_at: string
+      business_id: number
+      customer_id: number
+      order_id: number
+    }
+    businesses: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      deleted_at: string | null
+      name: string
+      slug: string
+      type: "restaurant" | "cafe" | "farm" | "bakery" | "bar" | "grocery"
+      description: string
+      cuisine: string
+      price_tier: number
+      address: string
+      city: string
+      postal_code: string
+      latitude: number
+      longitude: number
+      phone: string
+      website: string
+      hero_image: string
+      is_partner: number
+      is_claimed: number
+      offers_delivery: number
+      offers_pickup: number
+      offers_dine_in: number
+      offers_shop: number
+      self_delivery: number
+      delivery_radius_meters: number
+      minimum_order_cents: number
+      prep_time_minutes: number
+      rating_average: number
+      rating_count: number
+      source: "fsq" | "osm" | "curated" | "partner"
+      source_id: string
+      market_id: number
+      team_id: number
+    }
     campaign_sends: {
       // columns
       id: number
@@ -327,6 +410,19 @@ declare module '@stacksjs/database' {
       created_at: string
       updated_at: string | null
     }
+    claims: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      status: "pending" | "approved" | "rejected"
+      claimant_name: string
+      claimant_email: string
+      message: string
+      decided_at: string
+      business_id: number
+    }
     comments: {
       // columns
       id: number
@@ -399,6 +495,71 @@ declare module '@stacksjs/database' {
       end_date: string
       product_id: number
     }
+    courier_pings: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      latitude: number
+      longitude: number
+      heading: number
+      speed: number
+      accuracy: number
+      recorded_at: string
+      courier_id: number
+      delivery_route_id: number
+    }
+    couriers: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      name: string
+      phone: string
+      vehicle_number: string
+      license: string
+      status: "active" | "on_delivery" | "on_break" | "offline"
+      latitude: number
+      longitude: number
+      heading: number
+      speed: number
+      last_ping_at: string
+      user_id: number
+    }
+    csa_plans: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      name: string
+      description: string
+      price_cents: number
+      cadence: "weekly" | "biweekly" | "monthly"
+      feeds: string
+      day_of_week: number
+      offers_delivery: number
+      is_active: number
+      business_id: number
+    }
+    csa_subscriptions: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      status: "active" | "paused" | "cancelled"
+      fulfilment: "pickup" | "delivery"
+      delivery_address: string
+      next_box_at: string
+      paused_until: string
+      boxes_delivered: number
+      note: string
+      csa_plan_id: number
+      customer_id: number
+    }
     customers: {
       // columns
       id: number
@@ -420,7 +581,7 @@ declare module '@stacksjs/database' {
       uuid: string
       created_at: string
       updated_at: string | null
-      driver: string
+      courier: string
       vehicle: string
       stops: number
       delivery_time: number
@@ -429,7 +590,7 @@ declare module '@stacksjs/database' {
       status: "planned" | "active" | "completed" | "cancelled"
       started_at: string
       completed_at: string
-      driver_id: number
+      courier_id: number
     }
     delivery_stops: {
       // columns
@@ -449,6 +610,7 @@ declare module '@stacksjs/database' {
       arrived_at: string
       completed_at: string
       notes: string
+      type: "pickup" | "dropoff"
       delivery_route_id: number
       order_id: number
     }
@@ -601,6 +763,16 @@ declare module '@stacksjs/database' {
       duration_ms: number
       failed_at: string
     }
+    favorites: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      note: string
+      business_id: number
+      customer_id: number
+    }
     form_fields: {
       // columns
       id: number
@@ -688,6 +860,21 @@ declare module '@stacksjs/database' {
       board_id: number
       name: string
       color: string
+    }
+    ledger_entries: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      party_type: "business" | "courier" | "platform" | "tax"
+      party_id: number
+      kind: "order_revenue" | "service_fee" | "delivery_fee" | "tip" | "tax_collected" | "tax_withheld" | "refund" | "payout" | "adjustment"
+      amount_cents: number
+      currency: string
+      description: string
+      external_reference: string
+      order_id: number
     }
     license_keys: {
       // columns
@@ -799,6 +986,25 @@ declare module '@stacksjs/database' {
       country: string
       featured: number
     }
+    markets: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      name: string
+      slug: string
+      city: string
+      country_code: string
+      currency: string
+      tax_mode: "inclusive" | "exclusive"
+      default_tax_rate: number
+      timezone: string
+      locale: "en" | "de" | "nl"
+      center_latitude: number
+      center_longitude: number
+      is_active: number
+    }
     menu_items: {
       // columns
       id: number
@@ -821,6 +1027,33 @@ declare module '@stacksjs/database' {
       handle: string
       name: string
       site_id: number
+    }
+    modifier_groups: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      name: string
+      description: string
+      min_selections: number
+      max_selections: number
+      allows_quantity: number
+      position: number
+      product_id: number
+    }
+    modifiers: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      name: string
+      price_delta_cents: number
+      is_default: number
+      is_available: number
+      position: number
+      modifier_group_id: number
     }
     notification_deliveries: {
       // columns
@@ -856,6 +1089,19 @@ declare module '@stacksjs/database' {
       idempotency_key: string
       order_id: number
     }
+    order_item_modifiers: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      group_name: string
+      name: string
+      price_delta_cents: number
+      quantity: number
+      order_item_id: number
+      modifier_id: number
+    }
     order_items: {
       // columns
       id: number
@@ -888,8 +1134,14 @@ declare module '@stacksjs/database' {
       delivery_latitude: number
       delivery_longitude: number
       applied_coupon_id: string
+      service_fee_cents: number
+      subtotal_cents: number
+      scheduled_for: string
+      business_id: number
       customer_id: number
       coupon_id: number
+      table_id: number
+      tab_id: number
     }
     page_revisions: {
       // columns
@@ -1078,6 +1330,7 @@ declare module '@stacksjs/database' {
       preparation_time: number
       allergens: string
       nutritional_info: string
+      business_id: number
       category_id: number
       manufacturer_id: number
     }
@@ -1163,6 +1416,27 @@ declare module '@stacksjs/database' {
       memory_usage: number
       user_agent: string
       error_message: string
+    }
+    review_photos: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      url: string
+      position: number
+      alt: string
+      business_review_id: number
+    }
+    review_votes: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      helpful: number
+      business_review_id: number
+      customer_id: number
     }
     reviews: {
       // columns
@@ -1336,6 +1610,34 @@ declare module '@stacksjs/database' {
       ends_at: string
       last_used_at: string
       user_id: number
+    }
+    tables: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      label: string
+      qr_token: string
+      seats: number
+      is_active: number
+      business_id: number
+    }
+    tabs: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      status: "open" | "awaiting_payment" | "closed" | "abandoned"
+      split_mode: "by_item" | "even" | "single_payer"
+      party_size: number
+      opened_at: string
+      closed_at: string
+      total_cents: number
+      paid_cents: number
+      business_id: number
+      table_id: number
     }
     taggable_models: {
       // columns
