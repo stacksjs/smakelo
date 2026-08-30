@@ -115,6 +115,37 @@ const pins = JSON.stringify(results.map(business => ({
 
 const mapCentre = JSON.stringify(CENTRE)
 
+/*
+ * The cards, serialised for the client.
+ *
+ * The grid is rendered from a signal rather than by `@foreach`, so that
+ * filtering, sorting and server-backed search all describe the same list
+ * instead of one of them reaching into markup the others rendered. The payload
+ * is embedded rather than fetched, so the cards appear with the page and not a
+ * round trip later.
+ *
+ * This does trade away a listing that reads with JavaScript off. On a site that
+ * carries `noindex` on every page and whose ordering, tracking and merchant
+ * screens all need scripting, that baseline was protecting nobody.
+ */
+const cardsJson = JSON.stringify(results.map(business => ({
+  slug: business.slug,
+  name: business.name,
+  type: business.type,
+  cuisine: business.cuisine,
+  description: business.description,
+  city: business.city,
+  price: priceLabel(business.priceTier),
+  rating: business.ratingAverage,
+  ratingCount: business.ratingCount,
+  distance: business.distanceMeters === null ? '' : formatDistance(business.distanceMeters),
+  distanceMeters: business.distanceMeters,
+  openLabel: openLabel(business),
+  openState: business.openState,
+  isPartner: business.isPartner,
+  haystack: `${business.name} ${business.cuisine} ${business.city} ${business.description}`.toLowerCase(),
+})))
+
 function priceLabel(tier) {
   return '$'.repeat(Math.max(1, Math.min(4, Number(tier) || 2)))
 }
@@ -146,7 +177,7 @@ function openLabel(business) {
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-7xl">
+    <main class="mx-auto px-4 sm:px-8 max-w-7xl" data-stx-content>
       {{-- Editorial split: the sentence on the left, live counts on the right.
         The numbers come from the same query that fills the list below, so the
         headline cannot claim something the page contradicts. --}}
@@ -200,35 +231,66 @@ function openLabel(business) {
       <section class="pb-24 sm:pb-40">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-6">
           <h2 data-i18n="search.nearby" class="text-[28px] font-semibold tracking-[-0.03em]">Nearby</h2>
-          <p id="result-count" class="text-[13px]" style="color: var(--ink-soft)">Sorted by distance from Santa Monica</p>
+          <p class="text-[13px]" style="color: var(--ink-soft)">{{ countLine() }}</p>
         </div>
 
-        {{-- The whole list is already on the page, so filtering it is a matter
-          of hiding cards rather than asking the server again. That keeps the
-          controls instant, and it keeps the page honest with JavaScript off:
-          no filter bar appears, and all of the results are there. --}}
-        <div id="filters" data-total="{{ total }}" hidden class="p-1.5 mb-8 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+        {{-- Controls and grid both read the same signal, so filtering,
+          sorting and server-backed search cannot disagree about what the list
+          is. The payload is embedded in `data-cards` rather than fetched, so
+          the cards arrive with the page. --}}
+        <div
+          id="page-data"
+          data-cards="{{ cardsJson }}"
+          data-total="{{ total }}"
+          data-centre="{{ mapCentre }}"
+          hidden
+        ></div>
+
+        <div class="p-1.5 mb-8 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
           <div class="flex flex-wrap gap-3 items-center p-4 rounded-[calc(1.5rem-0.375rem)]">
             <label class="relative flex-1 min-w-[220px]">
               <i class="absolute left-4 top-1/2 w-4 h-4 -translate-y-1/2 i-hugeicons-search-01" style="color: var(--ink-soft)"></i>
-              <input id="filter-q" type="search" data-i18n-placeholder="search.placeholder" placeholder="Name, cuisine, neighbourhood"
-                class="py-3 pr-4 pl-11 w-full text-[15px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
+              <input
+                type="search"
+                data-i18n-placeholder="search.placeholder"
+                placeholder="Name, cuisine, neighbourhood"
+                :value="query()"
+                @input="onQuery($event.target.value)"
+                class="py-3 pr-4 pl-11 w-full text-[15px] rounded-full"
+                style="background: var(--paper); border: 1px solid var(--line)"
+              >
             </label>
 
             {{-- Scrolls sideways rather than wrapping: a rounded pill group that
               wraps onto three rows on a phone reads as a blob, and the row is
               short enough that a nudge reaches the end of it. --}}
-            <div class="flex overflow-x-auto gap-1 p-1 rounded-full" style="background: var(--paper); scrollbar-width: none" id="filter-type">
-              <button type="button" data-type="" data-i18n="search.all_types" class="px-4 py-2 text-[13px] font-medium rounded-full shrink-0 transition-all duration-500">All</button>
-              @foreach (types as entry)
-                <button type="button" data-type="{{ entry.type }}" class="px-4 py-2 text-[13px] rounded-full shrink-0 transition-all duration-500">{{ entry.label }}</button>
-              @endforeach
+            <div class="flex overflow-x-auto gap-1 p-1 rounded-full" style="background: var(--paper); scrollbar-width: none">
+              <button
+                :for="entry in typeFilters()"
+                type="button"
+                @click="type.set(entry.type)"
+                class="px-4 py-2 text-[13px] rounded-full shrink-0 transition-all duration-500"
+                :style="type() === entry.type ? 'background: var(--ink); color: var(--paper); font-weight: 500' : 'color: var(--ink-soft)'"
+              >{{ entry.label }}</button>
             </div>
 
-            <button type="button" id="filter-open" data-i18n="search.open_now" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Open now</button>
-            <button type="button" id="filter-orders" data-i18n="search.takes_orders" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Takes orders</button>
+            <button
+              type="button"
+              data-i18n="search.open_now"
+              @click="openOnly.set(!openOnly())"
+              class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
+              :style="openOnly() ? 'background: var(--accent-soft); color: var(--accent); border: 1px solid transparent' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+            >Open now</button>
 
-            <select id="filter-sort" class="px-4 py-2.5 text-[13px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
+            <button
+              type="button"
+              data-i18n="search.takes_orders"
+              @click="ordersOnly.set(!ordersOnly())"
+              class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
+              :style="ordersOnly() ? 'background: var(--accent-soft); color: var(--accent); border: 1px solid transparent' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+            >Takes orders</button>
+
+            <select @change="sort.set($event.target.value)" class="px-4 py-2.5 text-[13px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
               <option value="distance" data-i18n="search.sort_distance">Nearest</option>
               <option value="rating" data-i18n="search.sort_rating">Best rated</option>
               <option value="name" data-i18n="search.sort_name">A to Z</option>
@@ -236,65 +298,37 @@ function openLabel(business) {
           </div>
         </div>
 
-        <p id="no-results" data-i18n="search.no_results" hidden class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
+        <p :if="shown().length === 0" data-i18n="search.no_results" class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
           Nothing matches that. Try fewer words.
         </p>
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          @foreach (results as business)
-            <a
-              href="/places/{{ business.slug }}"
-              data-card
-              data-slug="{{ business.slug }}"
-              data-haystack="{{ business.name }} {{ business.cuisine }} {{ business.city }} {{ business.description }}"
-              data-type="{{ business.type }}"
-              data-open="{{ business.openState }}"
-              data-partner="{{ business.isPartner ? '1' : '0' }}"
-              data-rating="{{ business.ratingAverage }}"
-              data-distance="{{ business.distanceMeters }}"
-              data-name="{{ business.name }}"
-              class="reveal group block p-1.5 rounded-[1.75rem] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
-              style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)"
-            >
-              <div class="flex flex-col p-6 h-full rounded-[calc(1.75rem-0.375rem)]">
-                <div class="flex gap-3 justify-between items-start">
-                  <h3 class="text-[17px] font-semibold leading-snug tracking-[-0.01em]">{{ business.name }}</h3>
-                  @if (business.ratingCount > 0)
-                    <span class="inline-flex gap-1 items-center shrink-0 text-[13px] font-medium">
-                      <i class="w-3.5 h-3.5 i-hugeicons-star" style="color: var(--accent)"></i>
-                      {{ business.ratingAverage }}
-                    </span>
-                  @endif
-                </div>
-
-                <p class="mt-2 text-[13px]" style="color: var(--ink-soft)">
-                  {{ business.cuisine }} · {{ priceLabel(business.priceTier) }}
-                </p>
-
-                <p class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-                  {{ business.description }}
-                </p>
-
-                <div class="flex flex-wrap gap-2 items-center pt-5 mt-auto">
-                  @if (business.distanceMeters !== null)
-                    <span class="px-2.5 py-1 text-[11px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-                      {{ formatDistance(business.distanceMeters) }}
-                    </span>
-                  @endif
-
-                  <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">
-                    {{ openLabel(business) }}
-                  </span>
-
-                  @if (business.isPartner)
-                    <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">
-                      Orders
-                    </span>
-                  @endif
-                </div>
+          <a
+            :for="card in shown()"
+            :href="'/places/' + card.slug"
+            class="reveal group block p-1.5 rounded-[1.75rem] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
+            style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)"
+          >
+            <div class="flex flex-col p-6 h-full rounded-[calc(1.75rem-0.375rem)]">
+              <div class="flex gap-3 justify-between items-start">
+                <h3 class="text-[17px] font-semibold leading-snug tracking-[-0.01em]">{{ card.name }}</h3>
+                <span :if="card.ratingCount > 0" class="inline-flex gap-1 items-center shrink-0 text-[13px] font-medium">
+                  <i class="w-3.5 h-3.5 i-hugeicons-star" style="color: var(--accent)"></i>
+                  {{ card.rating }}
+                </span>
               </div>
-            </a>
-          @endforeach
+
+              <p class="mt-2 text-[13px]" style="color: var(--ink-soft)">{{ card.cuisine }} · {{ card.price }}</p>
+
+              <p :if="card.description" class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ card.description }}</p>
+
+              <div class="flex flex-wrap gap-2 items-center pt-5 mt-auto">
+                <span :if="card.distance" class="px-2.5 py-1 text-[11px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">{{ card.distance }}</span>
+                <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ card.openLabel }}</span>
+                <span :if="card.isPartner" class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">Orders</span>
+              </div>
+            </div>
+          </a>
         </div>
       </section>
     </main>
@@ -312,34 +346,188 @@ function openLabel(business) {
       import { Marker, tileLayer, TsMap } from 'ts-maps'
       import 'ts-maps/styles.css'
 
-      // Card entrance animation lives in CSS (`.reveal`, a scroll-driven
-      // animation). Nothing about whether the page is readable depends on this
-      // script, which leaves it with exactly one job: the map.
-      // Read off the element rather than interpolated into this script: a raw
-      // echo inside <script client> is not processed by the views build, so the
-      // page compiles in the dev server and fails the build.
-      const el = document.getElementById('discover-map')
+      /*
+       * One list, four controls, and a search that reaches past the page.
+       *
+       * The cards come embedded in `data-cards` rather than from a fetch, so
+       * they render with the page. The controls, the grid and the map pins all
+       * read the same derived list, which is the point: when filtering lived in
+       * the DOM, the map had to be told separately what the grid had hidden.
+       */
+      const source = document.getElementById('page-data')
+      const cards = state(source ? JSON.parse(source.dataset.cards || '[]') : [])
+      const total = Number(source ? source.dataset.total : 0)
+      const centre = source ? JSON.parse(source.dataset.centre || '{}') : { latitude: 34.0195, longitude: -118.4912 }
 
-      // Kept so the filter below can hide the pins for cards it has hidden.
-      const markers = new Map()
+      const query = state('')
+      const type = state('')
+      const openOnly = state(false)
+      const ordersOnly = state(false)
+      const sort = state('distance')
+      const remote = state([])
 
       /*
-       * Read outside the map block: the search below needs the centre too, and
-       * having it scoped to the map meant every server-side search threw a
-       * ReferenceError into a promise nobody was awaiting. The page kept
-       * working and simply found nothing beyond the sixty already on it.
+       * Built from what is actually here rather than a hand-kept list. The seed
+       * has bakeries, bars and grocers alongside the restaurants, cafes and
+       * farms, and a hardcoded row of three would strand them: visible under
+       * "All" and reachable by no filter.
        */
-      const centre = el ? JSON.parse(el.dataset.centre || '{}') : { latitude: 34.0195, longitude: -118.4912 }
+      const typeFilters = derived(() => {
+        const counts = []
 
-      if (el) {
-        const pins = JSON.parse(el.dataset.pins || '[]')
+        for (const card of cards()) {
+          const seen = counts.find(entry => entry.type === card.type)
 
-        const map = new TsMap(el, { center: [centre.latitude, centre.longitude], zoom: 12 })
+          if (seen)
+            seen.count += 1
+          else
+            counts.push({ type: card.type, count: 1, label: label(card.type) })
+        }
+
+        counts.sort((a, b) => b.count - a.count)
+
+        return [{ type: '', label: say('search.all_types', 'All'), count: cards().length }, ...counts]
+      })
+
+      const shown = derived(() => {
+        const words = query().trim().toLowerCase().split(/\s+/).filter(Boolean)
+
+        const matching = [...cards(), ...remote()].filter((card) => {
+          if (type() && card.type !== type())
+            return false
+
+          if (openOnly() && card.openState !== 'open')
+            return false
+
+          if (ordersOnly() && !card.isPartner)
+            return false
+
+          // Every word has to appear somewhere, so "venice coffee" narrows
+          // rather than widening the way an any-word match would.
+          return words.every(word => card.haystack.includes(word))
+        })
+
+        return matching.sort((a, b) => {
+          if (sort() === 'rating')
+            return Number(b.rating) - Number(a.rating)
+
+          if (sort() === 'name')
+            return a.name.localeCompare(b.name)
+
+          // A card with no distance sorts last rather than first.
+          return (Number(a.distanceMeters) || Infinity) - (Number(b.distanceMeters) || Infinity)
+        })
+      })
+
+      const countLine = derived(() => {
+        const sortLabel = {
+          distance: say('search.sort_distance', 'Nearest'),
+          rating: say('search.sort_rating', 'Best rated'),
+          name: say('search.sort_name', 'A to Z'),
+        }[sort()]
+
+        if (query().trim().length >= 3)
+          return `${shown().length} found · ${sortLabel}`
+
+        return `${shown().length} / ${total} · ${sortLabel}`
+      })
+
+      function say(key, fallback) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, fallback) : fallback
+      }
+
+      function label(value) {
+        const named = {
+          restaurant: 'Restaurants',
+          cafe: 'Coffee',
+          farm: 'Farms',
+          bakery: 'Bakeries',
+          grocery: 'Grocers',
+          bar: 'Bars',
+        }
+
+        return named[value] || `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+      }
+
+      /*
+       * Typing searches everything, not just what is on the page.
+       *
+       * The page carries the sixty nearest; the rest are reachable because a
+       * query goes to the server, which searches the lot. Filtering only what
+       * was embedded would mean a search box that quietly cannot find most of
+       * the places the site lists.
+       *
+       * Short queries stay local: one or two letters match half the city, and a
+       * request per keystroke to learn that is waste.
+       */
+      let pending = null
+
+      function onQuery(value) {
+        query.set(value)
+
+        clearTimeout(pending)
+        pending = setTimeout(runSearch, 250)
+      }
+
+      async function runSearch() {
+        const term = query().trim()
+
+        if (term.length < 3) {
+          remote.set([])
+          return
+        }
+
+        const params = new URLSearchParams({
+          q: term,
+          limit: '60',
+          lat: String(centre.latitude),
+          lng: String(centre.longitude),
+          radius: '200000',
+        })
+
+        const response = await fetch(`/api/businesses?${params}`).catch(() => null)
+
+        if (!response || !response.ok)
+          return
+
+        const { data } = await response.json()
+        const have = new Set(cards().map(card => card.slug))
+
+        remote.set(data.filter(business => !have.has(business.slug)).map(business => ({
+          slug: business.slug,
+          name: business.name,
+          type: business.type,
+          cuisine: business.cuisine || business.type,
+          description: business.description || '',
+          city: business.city,
+          price: '$'.repeat(Math.max(1, Math.min(4, Number(business.priceTier) || 2))),
+          rating: business.ratingAverage,
+          ratingCount: business.ratingCount,
+          distance: '',
+          distanceMeters: business.distanceMeters,
+          openLabel: business.city,
+          openState: business.openState,
+          isPartner: business.isPartner,
+          haystack: `${business.name} ${business.cuisine} ${business.city}`.toLowerCase(),
+        })))
+      }
+
+      // The map is imperative by nature: it owns its own DOM. It is set up once
+      // and then only told which pins to show.
+      const mapEl = document.getElementById('discover-map')
+      const markers = new Map()
+
+      if (mapEl) {
+        const map = new TsMap(mapEl, { center: [centre.latitude, centre.longitude], zoom: 12 })
 
         tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors',
           maxZoom: 19,
         }).addTo(map)
+
+        // Pins are keyed by slug so the effect below can hide the ones the
+        // filter has excluded.
+        const pins = JSON.parse(mapEl.dataset.pins || '[]')
 
         for (const pin of pins) {
           const marker = new Marker([pin.lat, pin.lng]).addTo(map)
@@ -354,240 +542,23 @@ function openLabel(business) {
 
           markers.set(pin.slug, marker)
         }
+
+        // The map should agree with the list beneath it.
+        effect(() => {
+          const visible = new Set(shown().map(card => card.slug))
+
+          for (const [slug, marker] of markers) {
+            const element = marker.getElement?.()
+
+            if (element)
+              element.style.display = visible.has(slug) ? '' : 'none'
+          }
+        })
       }
 
-      /*
-       * Filtering.
-       *
-       * Every result is already in the page, so this hides cards rather than
-       * asking the server again: no round trip, no spinner, and no second
-       * definition of what "open now" means to drift from the server's. The
-       * controls are hidden until this runs, so a reader with no JavaScript
-       * sees the full list and no dead widgets.
-       */
-      const grid = document.querySelector('[data-card]')?.parentElement
-      const cards = Array.from(document.querySelectorAll('[data-card]'))
-      const panel = document.getElementById('filters')
-
-      if (panel && grid && cards.length > 0) {
-        panel.hidden = false
-
-        const query = document.getElementById('filter-q')
-        const sort = document.getElementById('filter-sort')
-        const openOnly = document.getElementById('filter-open')
-        const ordersOnly = document.getElementById('filter-orders')
-        const typeRow = document.getElementById('filter-type')
-        const count = document.getElementById('result-count')
-        const empty = document.getElementById('no-results')
-
-        const state = { q: '', type: '', open: false, orders: false, sort: 'distance' }
-
-        const paintToggle = (button, on) => {
-          button.style.background = on ? 'var(--accent-soft)' : 'transparent'
-          button.style.color = on ? 'var(--accent)' : 'var(--ink-soft)'
-          button.style.border = on ? '1px solid transparent' : '1px solid var(--line)'
-        }
-
-        const paintTypes = () => {
-          typeRow.querySelectorAll('[data-type]').forEach((button) => {
-            const on = button.dataset.type === state.type
-            button.style.background = on ? 'var(--ink)' : 'transparent'
-            button.style.color = on ? 'var(--paper)' : 'var(--ink-soft)'
-            button.style.fontWeight = on ? '500' : '400'
-          })
-        }
-
-        const matches = (card) => {
-          if (state.type && card.dataset.type !== state.type)
-            return false
-
-          if (state.open && card.dataset.open !== 'open')
-            return false
-
-          if (state.orders && card.dataset.partner !== '1')
-            return false
-
-          if (!state.q)
-            return true
-
-          // Every word has to appear somewhere, so "venice coffee" narrows
-          // rather than widening the way an any-word match would.
-          const haystack = card.dataset.haystack.toLowerCase()
-
-          return state.q.toLowerCase().split(/\s+/).filter(Boolean).every(word => haystack.includes(word))
-        }
-
-        const apply = () => {
-          const showing = []
-
-          for (const card of cards) {
-            const on = matches(card)
-            card.hidden = !on
-
-            if (on)
-              showing.push(card)
-          }
-
-          showing.sort((a, b) => {
-            if (state.sort === 'rating')
-              return Number(b.dataset.rating) - Number(a.dataset.rating)
-
-            if (state.sort === 'name')
-              return a.dataset.name.localeCompare(b.dataset.name)
-
-            // A card with no distance sorts last rather than first, which is
-            // what Number('') would do.
-            return (Number(a.dataset.distance) || Infinity) - (Number(b.dataset.distance) || Infinity)
-          })
-
-          // Re-appending in order is enough to reorder a grid, and it keeps the
-          // cards themselves untouched.
-          showing.forEach(card => grid.append(card))
-
-          // Cards built here rather than server-side, because these places were
-          // not on the page when it was built. The markup is kept close to the
-          // rendered card so the two do not visibly diverge.
-          for (const stale of grid.querySelectorAll('[data-remote]'))
-            stale.remove()
-
-          for (const business of remote)
-            grid.insertAdjacentHTML('beforeend', remoteCard(business))
-
-          empty.hidden = showing.length + remote.length > 0
-
-          // Written by script, so it asks the dictionary directly rather than
-          // carrying a data-i18n key that nothing would re-apply.
-          const say = (key, fallback) => (window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, fallback) : fallback)
-
-          const found = showing.length + remote.length
-
-          const sortLabel = {
-            distance: say('search.sort_distance', 'Nearest'),
-            rating: say('search.sort_rating', 'Best rated'),
-            name: say('search.sort_name', 'A to Z'),
-          }[state.sort]
-
-          count.textContent = state.q.trim().length >= 3
-            ? `${found} found · ${sortLabel}`
-            : `${showing.length} / ${panel.dataset.total} · ${sortLabel}`
-
-          // The map should agree with the list it sits above.
-          if (markers.size > 0) {
-            const visible = new Set(showing.map(card => card.dataset.slug))
-
-            for (const [slug, marker] of markers) {
-              const element = marker.getElement?.()
-
-              if (element)
-                element.style.display = visible.has(slug) ? '' : 'none'
-            }
-          }
-        }
-
-        /*
-         * Typing searches everything, not just what is on the page.
-         *
-         * The page ships the sixty nearest; the other two hundred are reachable
-         * because a query goes to the server, which searches the lot. Filtering
-         * only what happened to be rendered would mean a search box that
-         * quietly cannot find most of the places it claims to list.
-         *
-         * Short queries stay local: one or two letters match half the city, and
-         * a request per keystroke to learn that is waste.
-         */
-        let pending = null
-        let remote = []
-
-        const runSearch = async () => {
-          const term = state.q.trim()
-
-          if (term.length < 3) {
-            remote = []
-            apply()
-            return
-          }
-
-          const params = new URLSearchParams({ q: term, limit: '60', lat: String(centre.latitude), lng: String(centre.longitude), radius: '200000' })
-          const response = await fetch(`/api/businesses?${params}`).catch(() => null)
-
-          if (!response || !response.ok)
-            return
-
-          const { data } = await response.json()
-
-          // Only the ones this page does not already have. The rendered cards
-          // carry live state (saved, distance) that a freshly built card would
-          // not, so they win where both exist.
-          const have = new Set(cards.map(card => card.dataset.slug))
-          remote = data.filter(business => !have.has(business.slug))
-
-          apply()
-        }
-
-        query.addEventListener('input', () => {
-          state.q = query.value
-          apply()
-
-          clearTimeout(pending)
-          pending = setTimeout(runSearch, 250)
-        })
-
-        typeRow.addEventListener('click', (event) => {
-          const button = event.target.closest('[data-type]')
-
-          if (!button)
-            return
-
-          state.type = button.dataset.type
-          paintTypes()
-          apply()
-        })
-
-        openOnly.addEventListener('click', () => {
-          state.open = !state.open
-          paintToggle(openOnly, state.open)
-          apply()
-        })
-
-        ordersOnly.addEventListener('click', () => {
-          state.orders = !state.orders
-          paintToggle(ordersOnly, state.orders)
-          apply()
-        })
-
-        sort.addEventListener('change', () => {
-          state.sort = sort.value
-          apply()
-        })
-
-        function remoteCard(business) {
-          const escape = value => String(value).replace(/[&<>"']/g, ch => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-          }[ch]))
-
-          return `
-            <a href="/places/${business.slug}" data-remote
-               class="block p-1.5 rounded-[1.75rem] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
-               style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)">
-              <div class="flex flex-col p-6 h-full rounded-[calc(1.75rem-0.375rem)]">
-                <h3 class="text-[17px] font-semibold leading-snug tracking-[-0.01em]">${escape(business.name)}</h3>
-                <p class="mt-2 text-[13px]" style="color: var(--ink-soft)">${escape(business.cuisine || business.type)}</p>
-                ${business.description ? `<p class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escape(business.description)}</p>` : ''}
-                <div class="flex flex-wrap gap-2 items-center pt-5 mt-auto">
-                  <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">${escape(business.city)}</span>
-                  ${business.isPartner ? '<span class="px-2.5 py-1 text-[11px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">Orders</span>' : ''}
-                </div>
-              </div>
-            </a>`
-        }
-
-        paintTypes()
-        apply()
-
-        // The dictionary arrives after this runs, so redo the parts that write
-        // their own text.
-        document.addEventListener('smakelo:locale', apply)
-      }
+      // The count line writes itself from the dictionary, which arrives after
+      // this runs.
+      document.addEventListener('smakelo:locale', () => sort.set(sort()))
     </script>
   </body>
 </html>
