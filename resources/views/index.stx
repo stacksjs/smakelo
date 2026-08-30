@@ -316,9 +316,16 @@ function openLabel(business) {
       // Kept so the filter below can hide the pins for cards it has hidden.
       const markers = new Map()
 
+      /*
+       * Read outside the map block: the search below needs the centre too, and
+       * having it scoped to the map meant every server-side search threw a
+       * ReferenceError into a promise nobody was awaiting. The page kept
+       * working and simply found nothing beyond the sixty already on it.
+       */
+      const centre = el ? JSON.parse(el.dataset.centre || '{}') : { latitude: 34.0195, longitude: -118.4912 }
+
       if (el) {
         const pins = JSON.parse(el.dataset.pins || '[]')
-        const centre = JSON.parse(el.dataset.centre || '{}')
 
         const map = new TsMap(el, { center: [centre.latitude, centre.longitude], zoom: 12 })
 
@@ -494,9 +501,9 @@ function openLabel(business) {
           }
 
           const params = new URLSearchParams({ q: term, limit: '60', lat: String(centre.latitude), lng: String(centre.longitude), radius: '200000' })
-          const response = await fetch(`/api/businesses?${params}`)
+          const response = await fetch(`/api/businesses?${params}`).catch(() => null)
 
-          if (!response.ok)
+          if (!response || !response.ok)
             return
 
           const { data } = await response.json()
