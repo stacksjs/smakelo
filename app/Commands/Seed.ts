@@ -26,7 +26,7 @@ export default defineCommand((cli) => {
     .action(async (options: { fresh?: boolean }) => {
       if (options.fresh) {
         // Children first: nothing here relies on cascade being configured.
-        for (const table of ['ledger_entries', 'delivery_stops', 'delivery_routes', 'courier_pings', 'order_item_modifiers', 'order_items', 'orders', 'couriers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'tabs', 'tables', 'businesses', 'markets'])
+        for (const table of ['csa_subscriptions', 'csa_plans', 'ledger_entries', 'delivery_stops', 'delivery_routes', 'courier_pings', 'order_item_modifiers', 'order_items', 'orders', 'couriers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'tabs', 'tables', 'businesses', 'markets'])
           await db.deleteFrom(table as never).execute().catch(() => undefined)
 
         log.info('Cleared existing demo rows')
@@ -38,9 +38,10 @@ export default defineCommand((cli) => {
       const reviewCount = await seedReviews(businessIds)
       const tableCount = await seedTables(businessIds)
       const courierCount = await seedCouriers()
+      const planCount = await seedCsaPlans(businessIds)
       const history = await seedOrders()
 
-      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${history.orders} orders (${history.dispatched} dispatched)`)
+      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares, ${history.orders} orders (${history.dispatched} dispatched)`)
     })
 })
 
@@ -550,4 +551,102 @@ async function requiredChoices(productId: number, next: (bound: number) => numbe
   }
 
   return chosen
+}
+
+/**
+ * The farms' shares.
+ *
+ * A CSA promises a size and a cadence and deliberately does not promise
+ * contents: in March the grower does not know what will be ready in July. The
+ * descriptions say so, because a member who expects a fixed list is a member
+ * who complains in a bad year, which is the season a farm most needs them.
+ */
+async function seedCsaPlans(businessIds: Record<string, number>): Promise<number> {
+  const plans = [
+    {
+      slug: 'cardoon-farm',
+      name: 'Small Share',
+      description: 'Six or seven kinds of vegetable, whatever is ready. Some weeks that means three kinds of squash.',
+      priceCents: 2800,
+      cadence: 'weekly',
+      feeds: 'One or two people',
+      dayOfWeek: 3,
+      offersDelivery: true,
+    },
+    {
+      slug: 'cardoon-farm',
+      name: 'Family Share',
+      description: 'Ten to twelve kinds. Feeds four, or two who cook a lot and waste nothing.',
+      priceCents: 4600,
+      cadence: 'weekly',
+      feeds: 'Four people',
+      dayOfWeek: 3,
+      offersDelivery: true,
+    },
+    {
+      slug: 'cardoon-farm',
+      name: 'Every Other Week',
+      description: 'The family share, fortnightly. For people who travel, or who still have chard.',
+      priceCents: 4600,
+      cadence: 'biweekly',
+      feeds: 'Four people',
+      dayOfWeek: 3,
+      offersDelivery: false,
+    },
+    {
+      slug: 'two-crows-orchard',
+      name: 'Fruit Share',
+      description: 'Ten pounds of stone fruit in summer, citrus in winter, and a fortnight in spring when there is neither.',
+      priceCents: 3400,
+      cadence: 'weekly',
+      feeds: 'A household that eats fruit',
+      dayOfWeek: 6,
+      offersDelivery: false,
+    },
+    {
+      slug: 'two-crows-orchard',
+      name: 'Monthly Box',
+      description: 'One large box a month, picked the morning it goes out. Ojai is an hour away and it shows.',
+      priceCents: 5200,
+      cadence: 'monthly',
+      feeds: 'Two people, or one who preserves',
+      dayOfWeek: 6,
+      offersDelivery: true,
+    },
+  ]
+
+  let count = 0
+
+  for (const plan of plans) {
+    const businessId = businessIds[plan.slug]
+
+    if (!businessId)
+      continue
+
+    const existing = await db.selectFrom('csa_plans')
+      .where('business_id', '=', businessId)
+      .where('name', '=', plan.name)
+      .select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
+
+    if (existing)
+      continue
+
+    await db.insertInto('csa_plans').values({
+      uuid: crypto.randomUUID(),
+      business_id: businessId,
+      name: plan.name,
+      description: plan.description,
+      price_cents: plan.priceCents,
+      cadence: plan.cadence,
+      feeds: plan.feeds,
+      day_of_week: plan.dayOfWeek,
+      offers_delivery: plan.offersDelivery ? 1 : 0,
+      is_active: 1,
+    } as never).executeTakeFirst()
+
+    count += 1
+  }
+
+  return count
 }

@@ -131,6 +131,11 @@
             </section>
           @endif
 
+          {{-- Farms only, and only when the farm actually runs shares. The
+            section is added by script because a farm that stops offering them
+            should not leave an empty heading on a generated page. --}}
+          <div id="csa-shares" data-place="{{ vm.slug }}"></div>
+
           {{-- The reviews below are rendered on the server so the page says
             something with no JavaScript at all. When the client layer loads it
             replaces them with the live list, which knows about reviews written
@@ -511,6 +516,140 @@
       }
 
       loadReviews()
+
+      // --- CSA shares ---------------------------------------------------
+
+      /*
+       * A share is not a subscription to a product. The grower does not know in
+       * March what will be ready in July, so the card promises a size, a
+       * cadence and a day, and says plainly that the contents are the season's
+       * business.
+       */
+      const sharesRoot = document.getElementById('csa-shares')
+
+      async function loadShares() {
+        if (!sharesRoot)
+          return
+
+        const farm = sharesRoot.dataset.place
+        const response = await fetch(`/api/csa/${encodeURIComponent(farm)}/plans`)
+
+        if (!response.ok)
+          return
+
+        const { data } = await response.json()
+
+        if (data.length === 0)
+          return
+
+        sharesRoot.innerHTML = `
+          <section class="mt-16">
+            <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Take a share</h2>
+            <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+              You are buying a share of the season, not a list of vegetables. What
+              is in the box is whatever came ready that week, which in a good year
+              is more than you expected and in a bad one is three kinds of squash.
+            </p>
+
+            <div class="grid grid-cols-1 gap-4 mt-8 sm:grid-cols-2">
+              ${data.map(shareCard).join('')}
+            </div>
+
+            <div id="join-panel" class="mt-4"></div>
+          </section>`
+
+        sharesRoot.querySelectorAll('[data-join]').forEach((button) => {
+          button.addEventListener('click', () => openJoin(data.find(plan => String(plan.id) === button.dataset.join)))
+        })
+      }
+
+      function shareCard(plan) {
+        const cadence = { weekly: 'Every week', biweekly: 'Every other week', monthly: 'Once a month' }[plan.cadence] || plan.cadence
+
+        return `
+          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+            <div class="flex flex-col p-6 h-full rounded-[calc(1.5rem-0.375rem)]">
+              <div class="flex gap-4 justify-between items-baseline">
+                <p class="text-[16px] font-semibold">${escapeHtml(plan.name)}</p>
+                <p class="text-[15px] tabular-nums shrink-0">$${(plan.priceCents / 100).toFixed(2)}</p>
+              </div>
+
+              <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(plan.description)}</p>
+
+              <div class="flex flex-wrap gap-2 items-center pt-5 mt-auto">
+                <span class="px-2.5 py-1 text-[11px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">${cadence}</span>
+                <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">${escapeHtml(plan.dayName)}s</span>
+                ${plan.feeds ? `<span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">${escapeHtml(plan.feeds)}</span>` : ''}
+                <button data-join="${plan.id}" class="px-4 py-2 ml-auto text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Join</button>
+              </div>
+            </div>
+          </div>`
+      }
+
+      function openJoin(plan) {
+        const panel = document.getElementById('join-panel')
+
+        panel.innerHTML = `
+          <form id="join-form" class="p-6 rounded-[1.5rem]" style="background: var(--paper); border: 1px solid var(--line)">
+            <p class="text-[15px] font-semibold">${escapeHtml(plan.name)}</p>
+            <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">
+              $${(plan.priceCents / 100).toFixed(2)} a box, ready on ${escapeHtml(plan.dayName)}s.
+              Pause it whenever you are away.
+            </p>
+
+            <input name="name" placeholder="Your name" maxlength="60"
+              class="px-4 py-3 mt-4 w-full text-[15px] rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+
+            <div class="flex gap-2 mt-3">
+              <label class="flex gap-2 items-center text-[14px]">
+                <input type="radio" name="fulfilment" value="pickup" checked> Collect from the farm
+              </label>
+              ${plan.offersDelivery
+                ? `<label class="flex gap-2 items-center text-[14px]"><input type="radio" name="fulfilment" value="delivery"> Delivered</label>`
+                : ''}
+            </div>
+
+            ${plan.offersDelivery
+              ? `<input name="deliveryAddress" placeholder="Delivery address" maxlength="255" class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)">`
+              : ''}
+
+            <p id="join-error" hidden class="mt-3 text-[13px]" style="color: var(--accent)"></p>
+
+            <button type="submit" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+              style="background: var(--accent); color: #fff">Take the share</button>
+          </form>`
+
+        document.getElementById('join-form').addEventListener('submit', async (event) => {
+          event.preventDefault()
+
+          const fields = new FormData(event.target)
+          const error = document.getElementById('join-error')
+
+          const response = await send('/api/csa/join', {
+            planId: plan.id,
+            name: fields.get('name') || 'Guest',
+            fulfilment: fields.get('fulfilment') || 'pickup',
+            deliveryAddress: fields.get('deliveryAddress') || '',
+          })
+
+          if (!response.ok) {
+            error.textContent = (await response.json()).message
+            error.hidden = false
+            return
+          }
+
+          const { data } = await response.json()
+
+          panel.innerHTML = `
+            <p class="p-6 text-[14px] leading-relaxed rounded-[1.5rem]" style="background: var(--accent-soft); color: var(--ink)">
+              You are in. First box on ${escapeHtml(data.nextBoxAt)}.
+              Manage it at <a href="/shares" class="underline underline-offset-4">your shares</a>.
+              Nothing was charged: this is a demonstration.
+            </p>`
+        })
+      }
+
+      loadShares()
 
       // --- Claims -------------------------------------------------------
 

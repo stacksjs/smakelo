@@ -7,6 +7,7 @@ import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
+import { join, membershipsFor, plansFor, setMembershipState } from '../app/Actions/Csa/membership'
 import { favoritesFor, toggleFavorite } from '../app/Actions/Favorite/favorites'
 import { respondToReview, reviewsFor, statsFor, submitReview, voteOnReview } from '../app/Actions/Review/write'
 import type { PartyType } from '../app/Actions/Money/statements'
@@ -503,4 +504,52 @@ route.post('/payment/confirm', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { ok: true } })
+})
+
+/**
+ * CSA shares.
+ *
+ * A farm's plans are public; a membership belongs to the browser that took it
+ * out, which is checked in the action rather than here.
+ */
+route.get('/csa/{slug}/plans', async (request: any) => {
+  return response.json({ data: await plansFor(String(request?.getParam?.('slug') ?? '')) })
+})
+
+route.get('/csa/mine', async (request: any) => {
+  return response.json({ data: await membershipsFor(visitorOf(request)) })
+})
+
+route.post('/csa/join', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await join({
+    planId: Number(body?.planId ?? 0),
+    visitorToken: visitorOf(request),
+    name: String(body?.name ?? 'Guest'),
+    fulfilment: body?.fulfilment === 'delivery' ? 'delivery' : 'pickup',
+    deliveryAddress: String(body?.deliveryAddress ?? ''),
+    note: String(body?.note ?? ''),
+  })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { subscriptionId: result.subscriptionId, nextBoxAt: result.nextBoxAt } }, 201)
+})
+
+route.post('/csa/{id}/{action}', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await setMembershipState(
+    Number(request?.getParam?.('id') ?? 0),
+    visitorOf(request),
+    String(request?.getParam?.('action') ?? '') as 'pause' | 'resume' | 'cancel',
+    String(body?.until ?? ''),
+  )
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { status: result.status, nextBoxAt: result.nextBoxAt } })
 })
