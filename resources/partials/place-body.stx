@@ -514,13 +514,29 @@
 
       // --- Claims -------------------------------------------------------
 
-      const claimOpen = document.getElementById('claim-open')
+      const claimLink = document.getElementById('claim-open')
 
-      if (claimOpen) {
+      if (claimLink) {
         const panel = document.getElementById('claim-form')
 
-        claimOpen.addEventListener('click', (event) => {
-          event.preventDefault()
+        /*
+         * The trigger is an anchor in the markup so it still goes somewhere
+         * useful with no JavaScript, but stx's client router follows link
+         * clicks whatever a handler does about it, so with JavaScript the
+         * anchor is swapped for a button. A button has nowhere to be followed
+         * to, and opening a form is what a button is for.
+         */
+        const claimOpen = document.createElement('button')
+        claimOpen.type = 'button'
+        claimOpen.className = claimLink.className
+        claimOpen.innerHTML = claimLink.innerHTML
+        claimOpen.setAttribute('style', claimLink.getAttribute('style') || '')
+        claimOpen.dataset.place = claimLink.dataset.place
+        claimOpen.dataset.name = claimLink.dataset.name
+
+        claimLink.replaceWith(claimOpen)
+
+        claimOpen.addEventListener('click', () => {
           claimOpen.hidden = true
           panel.hidden = false
 
