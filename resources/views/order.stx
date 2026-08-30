@@ -14,7 +14,7 @@
  * what they are charged cannot drift apart.
  */
 const pageTitle = 'Order - Smakelo'
-const pageDescription = 'Choose what you want and how you want it.'
+const pageDescription = 'Order from a Smakelo partner.'
 const canonicalPath = '/order'
 </script>
 
@@ -27,226 +27,417 @@ const canonicalPath = '/order'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-7xl">
-      <div id="order-root" class="pt-10 pb-24 sm:pb-40">
-        <p class="text-[15px]" style="color: var(--ink-soft)">Loading the menu…</p>
+    <main class="mx-auto px-4 sm:px-8 max-w-6xl" data-stx-content>
+      <div class="pt-10 pb-24 sm:pb-40">
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading the menu…</p>
+
+        <p :if="!loading() && !slug()" class="text-[15px]">
+          Pick a place from <a class="underline underline-offset-4" href="/">discover</a> first.
+        </p>
+
+        <p :if="!loading() && slug() && !menu()" class="text-[15px]">That menu is not available.</p>
+
+        {{-- After the order is placed. --}}
+        <div :if="placed()" class="mx-auto max-w-xl p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+          <div class="p-8 text-center rounded-[calc(2rem-0.375rem)]">
+            <h1 class="text-[26px] font-semibold tracking-[-0.02em]">Order placed</h1>
+            <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
+              {{ menu().business.name }} has it. Nothing was charged and nobody is cooking: this is a demonstration.
+            </p>
+
+            <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">Total</p>
+            <p class="text-[32px] font-semibold tracking-[-0.03em]">{{ money(placed().pricing.totalCents, currency()) }}</p>
+
+            <p :if="!payment()" class="mt-6 text-[13px]" style="color: var(--ink-soft)">Setting up payment…</p>
+
+            {{-- No provider configured: say so rather than show a card form
+              that could not work. --}}
+            <div :if="payment() && !payment().configured" class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
+              <p class="text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">Payment</p>
+              <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ payment().reason }}</p>
+            </div>
+
+            <div :if="payment() && payment().configured" class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
+              <p class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
+                Stripe test mode
+              </p>
+              <p class="mt-3 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
+                Card 4242 4242 4242 4242, any future expiry, any CVC. No money moves.
+              </p>
+
+              <div id="card-element" class="p-4 mt-4 rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)"></div>
+
+              <button @click="pay()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--accent); color: #fff">
+                Pay in test mode
+              </button>
+
+              <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">{{ payStatus() }}</p>
+            </div>
+
+            <a
+              :href="'/track?code=' + placed().trackingToken"
+              class="inline-flex gap-3 items-center px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
+              style="background: var(--ink); color: var(--paper)"
+            >
+              <span>Track it</span>
+              <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.14)">
+                <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        {{-- The menu and the cart. --}}
+        <div :if="menu() && !placed()">
+          <div class="flex flex-wrap gap-4 justify-between items-baseline">
+            <div>
+              <a :href="'/places/' + menu().business.slug" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">{{ menu().business.name }}</a>
+              <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Order</h1>
+            </div>
+
+            <div class="flex gap-1 p-1 rounded-full" style="background: var(--paper-raised); border: 1px solid var(--line)">
+              <button
+                :for="mode in fulfilments()"
+                @click="setFulfilment(mode.value)"
+                class="px-4 py-1.5 text-[13px] rounded-full transition-all duration-500"
+                :style="fulfilment() === mode.value ? 'background: var(--ink); color: var(--paper)' : 'color: var(--ink-soft)'"
+              >{{ mode.label }}</button>
+            </div>
+          </div>
+
+          <p :if="error()" class="px-4 py-3 mt-6 text-[14px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ error() }}</p>
+
+          <div class="grid grid-cols-1 gap-10 mt-10 lg:grid-cols-12">
+            <div class="space-y-10 lg:col-span-7">
+              <section :for="section in menu().sections">
+                <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ section.name }}</h2>
+
+                <div class="mt-4 space-y-3">
+                  <div :for="item in section.items" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+                    <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+                      <div class="flex gap-6 justify-between items-start">
+                        <div class="min-w-0">
+                          <p class="text-[15px] font-medium">{{ item.name }}</p>
+                          <p class="mt-1.5 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ item.description }}</p>
+                          <p :if="item.allergens.length > 0" class="mt-2 text-[12px]" style="color: var(--ink-soft)">Contains {{ item.allergens.join(', ') }}</p>
+                        </div>
+                        <p class="text-[15px] font-medium tabular-nums shrink-0">{{ money(item.priceCents, currency()) }}</p>
+                      </div>
+
+                      <div :for="group in item.groups" class="mt-4">
+                        <p class="text-[12px] font-medium" style="color: var(--ink-soft)">
+                          {{ group.name }}
+                          <span style="opacity:.7">{{ group.min > 0 ? 'required' : 'optional' }}{{ group.max > 1 ? ', up to ' + group.max : '' }}</span>
+                        </p>
+
+                        <div class="flex flex-wrap gap-2 mt-2">
+                          <button
+                            :for="option in group.options"
+                            @click="toggleOption(item, group, option.id)"
+                            class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
+                            :style="isChosen(item.id, group.id, option.id) ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+                          >{{ option.name }}{{ option.priceDeltaCents ? (option.priceDeltaCents > 0 ? ' +' : ' ') + money(option.priceDeltaCents, currency()) : '' }}</button>
+                        </div>
+                      </div>
+
+                      <button @click="addToCart(item)" class="inline-flex gap-2 items-center px-4 py-2 mt-5 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="lg:col-span-5">
+              <div class="p-1.5 rounded-[2rem] lg:sticky lg:top-24" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+                <div class="p-7 rounded-[calc(2rem-0.375rem)]">
+                  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your order</h2>
+
+                  <p :if="cart().length === 0" class="mt-4 text-[14px]" style="color: var(--ink-soft)">Nothing yet.</p>
+
+                  <ul :if="cart().length > 0" class="mt-4 space-y-3">
+                    <li :for="line in numberedCart()" class="flex gap-4 justify-between items-start text-[14px]">
+                      <div class="min-w-0">
+                        <p>{{ line.quantity }} × {{ line.name }}</p>
+                        <p :if="line.labels.length > 0" class="text-[12px]" style="color: var(--ink-soft)">{{ line.labels.join(', ') }}</p>
+                      </div>
+                      <button @click="removeLine(line.index)" class="text-[12px] shrink-0 transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">Remove</button>
+                    </li>
+                  </ul>
+
+                  <div :if="cart().length > 0" class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+                    <p class="text-[12px] font-medium" style="color: var(--ink-soft)">Tip</p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      <button
+                        :for="option in tipOptions()"
+                        @click="setTip(option.cents)"
+                        class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
+                        :style="tipCents() === option.cents ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+                      >{{ option.label }}</button>
+                    </div>
+                  </div>
+
+                  <dl :if="quote()" class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
+                    <div class="flex justify-between">
+                      <dt style="color: var(--ink-soft)">Subtotal</dt>
+                      <dd class="tabular-nums">{{ money(quote().subtotalCents, currency()) }}</dd>
+                    </div>
+                    <div :if="quote().deliveryFeeCents" class="flex justify-between">
+                      <dt style="color: var(--ink-soft)">Delivery</dt>
+                      <dd class="tabular-nums">{{ money(quote().deliveryFeeCents, currency()) }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                      <dt style="color: var(--ink-soft)">Service</dt>
+                      <dd class="tabular-nums">{{ money(quote().serviceFeeCents, currency()) }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                      <dt style="color: var(--ink-soft)">Tax</dt>
+                      <dd class="tabular-nums">{{ money(quote().taxCents, currency()) }}</dd>
+                    </div>
+                    <div :if="quote().tipCents" class="flex justify-between">
+                      <dt style="color: var(--ink-soft)">Tip</dt>
+                      <dd class="tabular-nums">{{ money(quote().tipCents, currency()) }}</dd>
+                    </div>
+                    <div class="flex justify-between pt-2 text-[16px] font-semibold border-t" style="border-color: var(--line)">
+                      <dt>Total</dt>
+                      <dd class="tabular-nums">{{ money(quote().totalCents, currency()) }}</dd>
+                    </div>
+                  </dl>
+
+                  <button
+                    :if="quote()"
+                    @click="submit()"
+                    class="flex gap-3 justify-center items-center px-5 py-3 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                    style="background: var(--accent); color: #fff"
+                  >Place order</button>
+
+                  <p :if="quote()" class="mt-3 text-[11px] text-center" style="color: var(--ink-soft)">Test mode. No card is charged.</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
     </main>
 
-    <footer class="border-t" style="border-color: var(--line)">
-      <div class="mx-auto px-4 sm:px-8 py-12 max-w-7xl text-[13px]" style="color: var(--ink-soft)">
-        <p>
-          Test mode. No card is charged and no order reaches anybody.
-        </p>
-      </div>
-    </footer>
-
     <script client>
-      const root = document.getElementById('order-root')
-      const slug = new URLSearchParams(location.search).get('business') || ''
+      import { money, send } from '../functions/session'
 
-      // Cents in, money out. The one formatting rule in the app, so a total and
-      // a line item can never be written differently. The sign sits outside the
-      // symbol, and it is kept: a smaller portion that takes a dollar off has
-      // to read as -$1.00, not as $1.00.
-      const money = (cents, currency = 'usd') =>
-        `${cents < 0 ? '-' : ''}${currency === 'eur' ? '€' : '$'}${(Math.abs(cents) / 100).toFixed(2)}`
-
-      /**
-       * The CSRF token the server seeded on this page's GET.
-       *
-       * Double-submit: the cookie is deliberately not HttpOnly so the page can
-       * read it back and echo it as a header, which is what proves the request
-       * came from a page the server served rather than from another origin.
-       */
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
-      }
+      const slug = state('')
+      const menu = state(null)
+      const loading = state(true)
+      const cart = state([])
+      const fulfilment = state('pickup')
+      const tipCents = state(0)
+      const quote = state(null)
+      const error = state('')
+      const placed = state(null)
+      const payment = state(null)
+      const payStatus = state('')
 
       /*
-       * A token for this browser, standing in for the account this demo does
-       * not have. It is what lets /orders show you what you ordered instead of
-       * making you keep the tracking link.
+       * Chosen options, as plain data rather than a Map of Sets.
+       *
+       * A signal notices a new value, not a mutated one, so every change here
+       * builds a new object. Mutating a Set in place would leave the buttons
+       * showing the previous selection.
        */
-      function visitorToken() {
-        let token = localStorage.getItem('smakelo.visitor')
+      const choices = state({})
 
-        if (!token) {
-          token = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
-          localStorage.setItem('smakelo.visitor', token)
-        }
+      const currency = derived(() => menu() ? menu().business.currency : 'usd')
 
-        return token
-      }
+      const fulfilments = derived(() => {
+        const business = menu() ? menu().business : null
 
-      function postJson(url, body) {
-        return fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken(),
-            'x-visitor': visitorToken(),
-          },
-          credentials: 'same-origin',
-          body: JSON.stringify(body),
-        })
-      }
+        if (!business)
+          return []
 
-      const state = {
-        menu: null,
-        payment: null,
-        // Chosen options per item, keyed by item id: { [groupId]: Set<optionId> }
-        choices: new Map(),
-        cart: [],
-        fulfilment: 'pickup',
-        tipCents: 0,
-        quote: null,
-        error: '',
-        placed: null,
-      }
+        return [
+          business.offersDelivery ? { value: 'delivery', label: 'Delivery' } : null,
+          business.offersPickup ? { value: 'pickup', label: 'Pickup' } : null,
+          business.offersDineIn ? { value: 'dine_in', label: 'Dine in' } : null,
+        ].filter(Boolean)
+      })
 
-      function escapeHtml(value) {
-        return String(value).replace(/[&<>"']/g, ch => ({
-          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-        }[ch]))
+      const tipOptions = derived(() => [0, 200, 400, 600].map(cents => ({
+        cents,
+        label: cents === 0 ? 'None' : money(cents, currency()),
+      })))
+
+      // `:for` yields the item, not its index, and removing a line needs the
+      // index, so it travels with the line.
+      const numberedCart = derived(() => cart().map((line, index) => ({ ...line, index })))
+
+      function isChosen(itemId, groupId, optionId) {
+        const perItem = choices()[itemId] || {}
+
+        return (perItem[groupId] || []).includes(optionId)
       }
 
       async function load() {
-        if (!slug) {
-          root.innerHTML = '<p class="text-[15px]">Pick a place from <a class="underline underline-offset-4" href="/">discover</a> first.</p>'
+        const asked = new URLSearchParams(location.search).get('business') || ''
+
+        slug.set(asked)
+
+        if (!asked) {
+          loading.set(false)
           return
         }
 
-        const response = await fetch(`/api/businesses/${encodeURIComponent(slug)}/menu`)
+        const response = await fetch(`/api/businesses/${encodeURIComponent(asked)}/menu`)
 
         if (!response.ok) {
-          root.innerHTML = '<p class="text-[15px]">That menu is not available.</p>'
+          loading.set(false)
           return
         }
 
         const { data } = await response.json()
-        state.menu = data
 
         // Preselect whatever the menu marks as default, so a required group is
         // usually already satisfied and the common order is two taps.
+        const initial = {}
+
         for (const section of data.sections) {
           for (const item of section.items) {
             const perGroup = {}
-            for (const group of item.groups) {
-              perGroup[group.id] = new Set(group.options.filter(o => o.isDefault).map(o => o.id))
-            }
-            state.choices.set(item.id, perGroup)
+
+            for (const group of item.groups)
+              perGroup[group.id] = group.options.filter(option => option.isDefault).map(option => option.id)
+
+            initial[item.id] = perGroup
           }
         }
 
-        state.fulfilment = data.business.offersPickup
-          ? 'pickup'
-          : data.business.offersDelivery ? 'delivery' : 'dine_in'
+        choices.set(initial)
+        menu.set(data)
 
-        render()
+        fulfilment.set(data.business.offersPickup
+          ? 'pickup'
+          : data.business.offersDelivery ? 'delivery' : 'dine_in')
+
+        loading.set(false)
       }
 
-      function toggleOption(itemId, group, optionId) {
-        const groups = state.choices.get(itemId)
-        const chosen = groups[group.id]
+      function toggleOption(item, group, optionId) {
+        const perItem = choices()[item.id] || {}
+        const chosen = perItem[group.id] || []
 
-        if (chosen.has(optionId)) {
+        let next
+
+        if (chosen.includes(optionId)) {
           // A required group keeps at least its minimum; unticking the last
           // choice would leave an order the server will refuse.
-          if (chosen.size <= group.min) return
-          chosen.delete(optionId)
+          if (chosen.length <= group.min)
+            return
+
+          next = chosen.filter(id => id !== optionId)
+        }
+        else if (group.max === 1) {
+          next = [optionId]
+        }
+        else if (chosen.length >= group.max) {
+          return
         }
         else {
-          if (group.max === 1) chosen.clear()
-          else if (chosen.size >= group.max) return
-          chosen.add(optionId)
+          next = [...chosen, optionId]
         }
 
-        render()
+        choices.set({ ...choices(), [item.id]: { ...perItem, [group.id]: next } })
       }
 
       function addToCart(item) {
-        const groups = state.choices.get(item.id)
+        const perItem = choices()[item.id] || {}
         const modifierIds = []
         const labels = []
 
         for (const group of item.groups) {
-          const chosen = [...(groups[group.id] || [])]
+          const chosen = perItem[group.id] || []
+
           if (chosen.length < group.min) {
-            state.error = `${item.name} needs a choice for "${group.name}".`
-            render()
+            error.set(`${item.name} needs a choice for "${group.name}".`)
             return
           }
+
           for (const id of chosen) {
             modifierIds.push(id)
-            const option = group.options.find(o => o.id === id)
-            if (option) labels.push(option.name)
+
+            const option = group.options.find(candidate => candidate.id === id)
+
+            if (option)
+              labels.push(option.name)
           }
         }
 
-        state.error = ''
-        state.cart.push({ productId: item.id, name: item.name, quantity: 1, modifierIds, labels })
-        quote()
+        error.set('')
+        cart.set([...cart(), { productId: item.id, name: item.name, quantity: 1, modifierIds, labels }])
+        refreshQuote()
       }
 
       function removeLine(index) {
-        state.cart.splice(index, 1)
-        quote()
+        cart.set(cart().filter((_, position) => position !== index))
+        refreshQuote()
       }
 
-      async function quote() {
-        if (state.cart.length === 0) {
-          state.quote = null
-          render()
+      function setFulfilment(value) {
+        fulfilment.set(value)
+        refreshQuote()
+      }
+
+      function setTip(cents) {
+        tipCents.set(cents)
+        refreshQuote()
+      }
+
+      function lines() {
+        return cart().map(line => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          modifierIds: line.modifierIds,
+        }))
+      }
+
+      async function refreshQuote() {
+        if (cart().length === 0) {
+          quote.set(null)
           return
         }
 
-        const response = await postJson('/api/orders/quote', {
-          businessSlug: slug,
-          fulfilment: state.fulfilment,
-          tipCents: state.tipCents,
-          lines: state.cart.map(line => ({
-            productId: line.productId,
-            quantity: line.quantity,
-            modifierIds: line.modifierIds,
-          })),
+        const response = await send('/api/orders/quote', {
+          businessSlug: slug(),
+          fulfilment: fulfilment(),
+          tipCents: tipCents(),
+          lines: lines(),
         })
 
         const payload = await response.json()
-        state.quote = response.ok ? payload.data : null
-        state.error = response.ok ? '' : payload.message || ''
-        render()
+
+        quote.set(response.ok ? payload.data : null)
+        error.set(response.ok ? '' : payload.message || '')
       }
 
       async function submit() {
-        const response = await postJson('/api/orders', {
-          businessSlug: slug,
-          fulfilment: state.fulfilment,
-          tipCents: state.tipCents,
-          lines: state.cart.map(line => ({
-            productId: line.productId,
-            quantity: line.quantity,
-            modifierIds: line.modifierIds,
-          })),
+        const response = await send('/api/orders', {
+          businessSlug: slug(),
+          fulfilment: fulfilment(),
+          tipCents: tipCents(),
+          lines: lines(),
         })
 
         const payload = await response.json()
 
         if (!response.ok) {
-          state.error = payload.message || 'That order could not be placed.'
-          render()
+          error.set(payload.message || 'That order could not be placed.')
           return
         }
 
-        state.placed = payload.data
-        render()
+        placed.set(payload.data)
 
         // The order exists and is priced; now offer to pay for it. Placing and
         // paying are separate steps on purpose: the kitchen board shows the
         // order either way, which is what happens in a restaurant when a card
         // is declined.
-        await startPayment(payload.data.orderId)
+        startPayment(payload.data.orderId)
       }
 
       /*
@@ -254,21 +445,33 @@ const canonicalPath = '/order'
        *
        * Sandbox only. The server refuses live Stripe keys outright, so the
        * worst a misconfiguration can do here is fail to take a test payment.
-       * When no keys are set at all this says so rather than showing a card
-       * form that could not work.
        */
       async function startPayment(orderId) {
-        const response = await postJson(`/api/payment/${orderId}/intent`, {})
+        const response = await send(`/api/payment/${orderId}/intent`)
         const { data } = await response.json()
 
-        state.payment = data
-        render()
+        payment.set(data)
 
         if (!data.configured || !data.clientSecret)
           return
 
-        await mountStripe(data)
+        // Stripe mounts a real element into the DOM, so it waits for the branch
+        // that holds it rather than assuming it is already there.
+        whenPresent('card-element', () => mountStripe(data))
       }
+
+      function whenPresent(id, done, attempts = 20) {
+        if (document.getElementById(id)) {
+          done()
+          return
+        }
+
+        if (attempts > 0)
+          setTimeout(() => whenPresent(id, done, attempts - 1), 50)
+      }
+
+      let elements = null
+      let stripe = null
 
       async function mountStripe(setup) {
         if (!window.Stripe) {
@@ -286,272 +489,29 @@ const canonicalPath = '/order'
         if (!window.Stripe || !mount)
           return
 
-        const stripe = window.Stripe(setup.publishableKey)
-        const elements = stripe.elements({ clientSecret: setup.clientSecret })
-
+        stripe = window.Stripe(setup.publishableKey)
+        elements = stripe.elements({ clientSecret: setup.clientSecret })
         elements.create('payment').mount(mount)
-
-        document.getElementById('pay').addEventListener('click', async () => {
-          const status = document.getElementById('pay-status')
-          status.textContent = 'Talking to Stripe…'
-
-          const result = await stripe.confirmPayment({
-            elements,
-            redirect: 'if_required',
-          })
-
-          if (result.error) {
-            status.textContent = result.error.message
-            return
-          }
-
-          // Tell the server which intent to look at. It asks Stripe whether the
-          // money arrived rather than believing this page about it.
-          const confirmed = await postJson('/api/payment/confirm', {
-            transactionId: result.paymentIntent.id,
-          })
-
-          status.textContent = confirmed.ok
-            ? 'Paid, in test mode. No money moved.'
-            : (await confirmed.json()).message
-        })
       }
 
-      function paymentPanel() {
-        if (!state.payment)
-          return '<p class="mt-6 text-[13px]" style="color: var(--ink-soft)">Setting up payment…</p>'
+      async function pay() {
+        if (!stripe || !elements)
+          return
 
-        if (!state.payment.configured) {
-          return `
-            <div class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
-              <p class="text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">Payment</p>
-              <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(state.payment.reason || '')}</p>
-            </div>`
-        }
+        payStatus.set('Talking to Stripe…')
 
-        return `
-          <div class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
-            <p class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-              Stripe test mode
-            </p>
-            <p class="mt-3 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-              Card 4242 4242 4242 4242, any future expiry, any CVC. No money moves.
-            </p>
+        const result = await stripe.confirmPayment({ elements, redirect: 'if_required' })
 
-            <div id="card-element" class="p-4 mt-4 rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)"></div>
-
-            <button id="pay" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-              style="background: var(--accent); color: #fff">Pay in test mode</button>
-
-            <p id="pay-status" class="mt-3 text-[13px]" style="color: var(--ink-soft)"></p>
-          </div>`
-      }
-
-      function render() {
-        if (state.placed) {
-          root.innerHTML = `
-            <div class="mx-auto max-w-xl p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
-              <div class="p-8 rounded-[calc(2rem-0.375rem)] text-center">
-                <h1 class="text-[26px] font-semibold tracking-[-0.02em]">Order placed</h1>
-                <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-                  ${escapeHtml(state.menu.business.name)} has it. Nothing was charged and nobody is cooking:
-                  this is a demonstration.
-                </p>
-                <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">Total</p>
-                <p class="text-[32px] font-semibold tracking-[-0.03em]">${money(state.placed.pricing.totalCents, state.menu.business.currency)}</p>
-
-                ${paymentPanel()}
-                <a href="/track?code=${encodeURIComponent(state.placed.trackingToken)}"
-                   class="inline-flex gap-3 items-center px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
-                   style="background: var(--ink); color: var(--paper)">
-                  <span>Track it</span>
-                  <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.14)">
-                    <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
-                  </span>
-                </a>
-              </div>
-            </div>`
+        if (result.error) {
+          payStatus.set(result.error.message)
           return
         }
 
-        const business = state.menu.business
-        const currency = business.currency
+        // Tell the server which intent to look at. It asks Stripe whether the
+        // money arrived rather than believing this page about it.
+        const confirmed = await send('/api/payment/confirm', { transactionId: result.paymentIntent.id })
 
-        const fulfilments = [
-          business.offersDelivery ? ['delivery', 'Delivery'] : null,
-          business.offersPickup ? ['pickup', 'Pickup'] : null,
-          business.offersDineIn ? ['dine_in', 'Dine in'] : null,
-        ].filter(Boolean)
-
-        root.innerHTML = `
-          <div class="flex flex-wrap gap-4 justify-between items-baseline">
-            <div>
-              <a href="/places/${escapeHtml(business.slug)}" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">${escapeHtml(business.name)}</a>
-              <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Order</h1>
-            </div>
-            <div class="flex gap-1 p-1 rounded-full" style="background: var(--paper-raised); border: 1px solid var(--line)">
-              ${fulfilments.map(([value, label]) => `
-                <button data-fulfilment="${value}" class="px-4 py-1.5 text-[13px] rounded-full transition-all duration-500"
-                  style="${state.fulfilment === value ? 'background: var(--ink); color: var(--paper)' : 'color: var(--ink-soft)'}">${label}</button>
-              `).join('')}
-            </div>
-          </div>
-
-          ${state.error ? `<p class="mt-6 px-4 py-3 text-[14px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">${escapeHtml(state.error)}</p>` : ''}
-
-          <div class="grid grid-cols-1 gap-10 mt-10 lg:grid-cols-12">
-            <div class="space-y-10 lg:col-span-7">
-              ${state.menu.sections.map(section => `
-                <section>
-                  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">${escapeHtml(section.name)}</h2>
-                  <div class="mt-4 space-y-3">
-                    ${section.items.map(item => renderItem(item, currency)).join('')}
-                  </div>
-                </section>
-              `).join('')}
-            </div>
-
-            <aside class="lg:col-span-5">
-              ${renderCart(currency)}
-            </aside>
-          </div>`
-
-        bind()
-      }
-
-      function renderItem(item, currency) {
-        const groups = state.choices.get(item.id) || {}
-
-        return `
-          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-            <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-              <div class="flex gap-6 justify-between items-start">
-                <div class="min-w-0">
-                  <p class="text-[15px] font-medium">${escapeHtml(item.name)}</p>
-                  <p class="mt-1.5 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(item.description)}</p>
-                  ${item.allergens.length ? `<p class="mt-2 text-[12px]" style="color: var(--ink-soft)">Contains ${item.allergens.map(escapeHtml).join(', ')}</p>` : ''}
-                </div>
-                <p class="text-[15px] font-medium tabular-nums shrink-0">${money(item.priceCents, currency)}</p>
-              </div>
-
-              ${item.groups.map(group => `
-                <div class="mt-4">
-                  <p class="text-[12px] font-medium" style="color: var(--ink-soft)">
-                    ${escapeHtml(group.name)}
-                    <span style="opacity:.7">${group.min > 0 ? 'required' : 'optional'}${group.max > 1 ? `, up to ${group.max}` : ''}</span>
-                  </p>
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    ${group.options.map(option => {
-                      const on = (groups[group.id] || new Set()).has(option.id)
-                      return `<button data-item="${item.id}" data-group="${group.id}" data-option="${option.id}"
-                        class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
-                        style="${on ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'}">
-                        ${escapeHtml(option.name)}${option.priceDeltaCents ? ` ${option.priceDeltaCents > 0 ? '+' : ''}${money(option.priceDeltaCents, currency)}` : ''}
-                      </button>`
-                    }).join('')}
-                  </div>
-                </div>
-              `).join('')}
-
-              <button data-add="${item.id}" class="inline-flex gap-2 items-center px-4 py-2 mt-5 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-                style="background: var(--ink); color: var(--paper)">
-                Add
-              </button>
-            </div>
-          </div>`
-      }
-
-      function renderCart(currency) {
-        const q = state.quote
-
-        return `
-          <div class="p-1.5 rounded-[2rem] lg:sticky lg:top-24" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
-            <div class="p-7 rounded-[calc(2rem-0.375rem)]">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your order</h2>
-
-              ${state.cart.length === 0
-                ? '<p class="mt-4 text-[14px]" style="color: var(--ink-soft)">Nothing yet.</p>'
-                : `<ul class="mt-4 space-y-3">${state.cart.map((line, index) => `
-                    <li class="flex gap-4 justify-between items-start text-[14px]">
-                      <div class="min-w-0">
-                        <p>${line.quantity} × ${escapeHtml(line.name)}</p>
-                        ${line.labels.length ? `<p class="text-[12px]" style="color: var(--ink-soft)">${line.labels.map(escapeHtml).join(', ')}</p>` : ''}
-                      </div>
-                      <button data-remove="${index}" class="text-[12px] shrink-0 transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">Remove</button>
-                    </li>`).join('')}</ul>`}
-
-              ${state.cart.length > 0 ? `
-                <div class="pt-5 mt-5 border-t" style="border-color: var(--line)">
-                  <p class="text-[12px] font-medium" style="color: var(--ink-soft)">Tip</p>
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    ${[0, 200, 400, 600].map(cents => `
-                      <button data-tip="${cents}" class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
-                        style="${state.tipCents === cents ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'}">
-                        ${cents === 0 ? 'None' : money(cents, currency)}
-                      </button>`).join('')}
-                  </div>
-                </div>` : ''}
-
-              ${q ? `
-                <dl class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
-                  <div class="flex justify-between"><dt style="color: var(--ink-soft)">Subtotal</dt><dd class="tabular-nums">${money(q.subtotalCents, currency)}</dd></div>
-                  ${q.deliveryFeeCents ? `<div class="flex justify-between"><dt style="color: var(--ink-soft)">Delivery</dt><dd class="tabular-nums">${money(q.deliveryFeeCents, currency)}</dd></div>` : ''}
-                  <div class="flex justify-between"><dt style="color: var(--ink-soft)">Service</dt><dd class="tabular-nums">${money(q.serviceFeeCents, currency)}</dd></div>
-                  <div class="flex justify-between"><dt style="color: var(--ink-soft)">Tax</dt><dd class="tabular-nums">${money(q.taxCents, currency)}</dd></div>
-                  ${q.tipCents ? `<div class="flex justify-between"><dt style="color: var(--ink-soft)">Tip</dt><dd class="tabular-nums">${money(q.tipCents, currency)}</dd></div>` : ''}
-                  <div class="flex justify-between pt-2 text-[16px] font-semibold border-t" style="border-color: var(--line)"><dt>Total</dt><dd class="tabular-nums">${money(q.totalCents, currency)}</dd></div>
-                </dl>
-
-                <button id="place" class="flex gap-3 justify-center items-center px-5 py-3 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-                  style="background: var(--accent); color: #fff">
-                  Place order
-                </button>
-
-                <p class="mt-3 text-[11px] text-center" style="color: var(--ink-soft)">
-                  Test mode. No card is charged.
-                </p>` : ''}
-            </div>
-          </div>`
-      }
-
-      function bind() {
-        root.querySelectorAll('[data-option]').forEach((el) => {
-          el.addEventListener('click', () => {
-            const itemId = Number(el.dataset.item)
-            const groupId = Number(el.dataset.group)
-            const item = state.menu.sections.flatMap(s => s.items).find(i => i.id === itemId)
-            const group = item.groups.find(g => g.id === groupId)
-            toggleOption(itemId, group, Number(el.dataset.option))
-          })
-        })
-
-        root.querySelectorAll('[data-add]').forEach((el) => {
-          el.addEventListener('click', () => {
-            const item = state.menu.sections.flatMap(s => s.items).find(i => i.id === Number(el.dataset.add))
-            addToCart(item)
-          })
-        })
-
-        root.querySelectorAll('[data-remove]').forEach((el) => {
-          el.addEventListener('click', () => removeLine(Number(el.dataset.remove)))
-        })
-
-        root.querySelectorAll('[data-fulfilment]').forEach((el) => {
-          el.addEventListener('click', () => {
-            state.fulfilment = el.dataset.fulfilment
-            quote()
-          })
-        })
-
-        root.querySelectorAll('[data-tip]').forEach((el) => {
-          el.addEventListener('click', () => {
-            state.tipCents = Number(el.dataset.tip)
-            quote()
-          })
-        })
-
-        const place = root.querySelector('#place')
-        if (place) place.addEventListener('click', submit)
+        payStatus.set(confirmed.ok ? 'Paid, in test mode. No money moved.' : (await confirmed.json()).message)
       }
 
       load()
