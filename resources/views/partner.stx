@@ -15,54 +15,63 @@ const canonicalPath = '/partner'
 const surfaces = [
   {
     name: 'Menu',
+    icon: 'i-hugeicons-menu-restaurant',
     detail: 'Sections, items, and modifier groups that ask the questions an order actually needs answered. Available in the data model and on the customer side today.',
     state: 'Built',
     href: '/order?business=marisol-cocina',
   },
   {
     name: 'Menu and hours',
+    icon: 'i-hugeicons-clock-01',
     detail: 'Take a dish off when it runs out and it stops being orderable, not just hidden. Change today\'s hours from the same screen. These are the two edits that matter during service, so they are one tap from the top.',
     state: 'Built',
     href: '/manage?business=nonna-pia',
   },
   {
     name: 'Orders board',
+    icon: 'i-hugeicons-chef-hat',
     detail: 'Incoming orders as they arrive, oldest first, with the modifiers spelled out for the cook and a note when one has been waiting.',
     state: 'Built',
     href: '/kitchen?business=marisol-cocina',
   },
   {
     name: 'Tables and codes',
+    icon: 'i-hugeicons-bar-code-01',
     detail: 'A code per table that opens the menu, opens a tab, and takes rounds until someone asks for the bill. Printable.',
     state: 'Built',
     href: '/codes/marisol-cocina',
   },
   {
     name: 'Couriers',
+    icon: 'i-hugeicons-delivery-truck-01',
     detail: 'Platform couriers, or your own staff. Live position, arrival, and the handover.',
     state: 'Built',
     href: '/track',
   },
   {
     name: 'Reviews',
+    icon: 'i-hugeicons-star',
     detail: 'Ratings, a distribution rather than one average, and one reply per review. Only the invented partners can be reviewed: the real places listed here agreed to nothing, so nobody gets to publish opinions under their name.',
     state: 'Built',
     href: '/places/nonna-pia',
   },
   {
     name: 'Operations',
+    icon: 'i-hugeicons-checkmark-circle-02',
     detail: 'Whether this site is still keeping its own promises, checked against the database rather than against the code that is supposed to enforce them: sandbox payments, no reviews on real businesses, no orders at them, no contact details stored, noindex, robots.txt. Plus taking a listing down, which removes it from search, the map, its page and ordering.',
     state: 'Built',
     href: '/admin',
   },
   {
     name: 'Claims',
+    icon: 'i-hugeicons-mail-01',
     detail: 'If you run one of the listed places and would rather not be here, the form says so first. Nothing is emailed to the business, and a claim is read by a person.',
     state: 'Built',
     href: '/claims',
   },
   {
     name: 'Payouts',
+    icon: 'i-hugeicons-money-bag-02',
     detail: 'Every order records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. The statement sums those rows, and paying out writes a row of its own rather than clearing a number.',
     state: 'Built',
     href: '/earnings',
@@ -103,9 +112,15 @@ const surfaces = [
           @foreach (surfaces as surface)
             <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
               <div class="flex gap-6 justify-between items-start p-6 rounded-[calc(1.5rem-0.375rem)]">
-                <div class="min-w-0">
+                <div class="flex gap-4 items-start min-w-0">
+                  <span class="flex justify-center items-center w-10 h-10 rounded-[0.85rem] shrink-0" style="background: var(--accent-soft); color: var(--accent)">
+                    <i class="w-5 h-5 {{ surface.icon }}"></i>
+                  </span>
+
+                  <div class="min-w-0">
                   <p class="text-[16px] font-semibold">{{ surface.name }}</p>
                   <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ surface.detail }}</p>
+                  </div>
                 </div>
                 <div class="flex gap-2 items-center shrink-0">
                   @if (surface.href)
