@@ -43,9 +43,9 @@
       {{-- Three languages, named in their own. A flag would be wrong: German is
         not Germany, and Dutch is not only the Netherlands. --}}
       <div class="flex gap-1 items-center pl-1 text-[12px]" id="lang-switch">
-        <a href="?lang=en" data-lang="en" class="px-2 py-1 rounded-full transition-all duration-500">EN</a>
-        <a href="?lang=de" data-lang="de" class="px-2 py-1 rounded-full transition-all duration-500">DE</a>
-        <a href="?lang=nl" data-lang="nl" class="px-2 py-1 rounded-full transition-all duration-500">NL</a>
+        <a href="?lang=en" data-lang="en" class="px-3 py-2 rounded-full transition-all duration-500">EN</a>
+        <a href="?lang=de" data-lang="de" class="px-3 py-2 rounded-full transition-all duration-500">DE</a>
+        <a href="?lang=nl" data-lang="nl" class="px-3 py-2 rounded-full transition-all duration-500">NL</a>
       </div>
     </div>
   </nav>
