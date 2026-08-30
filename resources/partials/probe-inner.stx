@@ -1,5 +1,0 @@
-<main data-stx-content>
-  <p>{{ signal() }}</p>
-</main>
-
-<footer><p>after the content root</p></footer>
