@@ -22,223 +22,208 @@ const canonicalPath = '/kitchen'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-7xl">
-      <div id="board-root" class="pt-10 pb-24">
-        <p class="text-[15px]" style="color: var(--ink-soft)">Loading the board…</p>
-      </div>
-    </main>
+    <main class="mx-auto px-4 sm:px-8 max-w-7xl" data-stx-content>
+      <div class="pt-10 pb-24">
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading the board…</p>
 
-    <script client>
-      const root = document.getElementById('board-root')
-      const slug = new URLSearchParams(location.search).get('business') || ''
+        <p :if="!loading() && !slug()" class="text-[15px]">Add ?business=&lt;slug&gt; to see a board.</p>
 
-      const money = (cents, currency = 'usd') =>
-        `${currency === 'eur' ? '€' : '$'}${(Math.abs(cents) / 100).toFixed(2)}`
+        <p :if="!loading() && slug() && !board()" class="text-[15px]">No board for that business.</p>
 
-      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-      }[ch]))
-
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
-      }
-
-      const NEXT = {
-        PENDING: { to: 'PROCESSING', label: 'Start cooking' },
-        PROCESSING: { to: 'SHIPPED', label: 'Ready' },
-      }
-
-      async function load() {
-        if (!slug) {
-          root.innerHTML = '<p class="text-[15px]">Add ?business=&lt;slug&gt; to see a board.</p>'
-          return
-        }
-
-        const response = await fetch(`/api/merchant/${encodeURIComponent(slug)}/board`)
-
-        if (!response.ok) {
-          root.innerHTML = '<p class="text-[15px]">No board for that business.</p>'
-          return
-        }
-
-        render((await response.json()).data)
-
-        // A board left open all service should stay current on its own.
-        setTimeout(load, 8000)
-      }
-
-      async function advance(orderId, status) {
-        await fetch(`/api/merchant/orders/${orderId}/status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-          credentials: 'same-origin',
-          body: JSON.stringify({ status }),
-        })
-
-        load()
-      }
-
-      function ticket(order, currency) {
-        const next = NEXT[order.status]
-        const late = order.minutesAgo >= 20
-
-        return `
-          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-            <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-              <div class="flex gap-4 justify-between items-baseline">
-                <p class="text-[15px] font-semibold">
-                  #${order.id}
-                  <span class="ml-2 text-[12px] font-normal" style="color: var(--ink-soft)">
-                    ${order.tableLabel ? `Table ${escapeHtml(order.tableLabel)}` : escapeHtml(order.orderType.toLowerCase().replace('_', ' '))}
-                  </span>
-                </p>
-                <p class="text-[12px] tabular-nums" style="${late ? 'color: var(--accent); font-weight: 600' : 'color: var(--ink-soft)'}">
-                  ${order.minutesAgo} min
-                </p>
-              </div>
-
-              <ul class="mt-3 space-y-2">
-                ${order.items.map(item => `
-                  <li class="text-[15px]">
-                    <span class="font-medium">${item.quantity} × ${escapeHtml(item.name)}</span>
-                    ${item.modifiers.length ? `<span class="block text-[13px]" style="color: var(--ink-soft)">${item.modifiers.map(escapeHtml).join(' · ')}</span>` : ''}
-                    ${item.notes ? `<span class="block text-[13px]" style="color: var(--accent)">${escapeHtml(item.notes)}</span>` : ''}
-                  </li>`).join('')}
-              </ul>
-
-              <div class="flex flex-wrap gap-2 items-center pt-4 mt-4 border-t" style="border-color: var(--line)">
-                ${next
-                  ? `<button data-advance="${order.id}" data-status="${next.to}" class="px-4 py-2 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">${next.label}</button>`
-                  : `<span class="text-[13px]" style="color: var(--ink-soft)">Waiting for handover</span>`}
-                <button data-advance="${order.id}" data-status="CANCELLED" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Cancel</button>
-                <span class="ml-auto text-[13px] tabular-nums" style="color: var(--ink-soft)">${money(order.totalCents, currency)}</span>
-              </div>
-            </div>
-          </div>`
-      }
-
-      function render(board) {
-        const currency = board.business.currency
-
-        root.innerHTML = `
+        <div :if="board()">
           <div class="flex flex-wrap gap-4 justify-between items-baseline">
             <div>
-              <p class="text-[13px]" style="color: var(--ink-soft)">${escapeHtml(board.business.name)}</p>
+              <p class="text-[13px]" style="color: var(--ink-soft)">{{ board().business.name }}</p>
               <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Orders</h1>
             </div>
+
             <div class="flex gap-6 text-[13px]" style="color: var(--ink-soft)">
-              <span><strong style="color: var(--ink)">${board.today.orders}</strong> orders</span>
-              <span><strong style="color: var(--ink)">${money(board.today.grossCents, currency)}</strong> gross</span>
-              <a href="/earnings?party=business:${board.business.id}" class="transition-opacity duration-500 hover:opacity-70">
-                <strong style="color: var(--ink)">${money(board.today.netCents, currency)}</strong> yours
+              <span><strong style="color: var(--ink)">{{ board().today.orders }}</strong> orders</span>
+              <span><strong style="color: var(--ink)">{{ money(board().today.grossCents, board().business.currency) }}</strong> gross</span>
+              <a :href="'/earnings?party=business:' + board().business.id" class="transition-opacity duration-500 hover:opacity-70">
+                <strong style="color: var(--ink)">{{ money(board().today.netCents, board().business.currency) }}</strong> yours
               </a>
             </div>
           </div>
 
           <section class="mt-8">
             <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Cooking now</h2>
-            ${board.active.length === 0
-              ? '<p class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing waiting.</p>'
-              : `<div class="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2 xl:grid-cols-3">${board.active.map(order => ticket(order, currency)).join('')}</div>`}
+
+            <p :if="board().active.length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing waiting.</p>
+
+            <div class="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2 xl:grid-cols-3">
+              <div :for="order in board().active" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+                <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+                  <div class="flex gap-4 justify-between items-baseline">
+                    <p class="text-[15px] font-semibold">
+                      #{{ order.id }}
+                      <span class="ml-2 text-[12px] font-normal" style="color: var(--ink-soft)">
+                        {{ order.tableLabel ? 'Table ' + order.tableLabel : readable(order.orderType) }}
+                      </span>
+                    </p>
+                    <p class="text-[12px] tabular-nums" :style="order.minutesAgo >= 20 ? 'color: var(--accent); font-weight: 600' : 'color: var(--ink-soft)'">
+                      {{ order.minutesAgo }} min
+                    </p>
+                  </div>
+
+                  <ul class="mt-3 space-y-2">
+                    <li :for="item in order.items" class="text-[15px]">
+                      <span class="font-medium">{{ item.quantity }} × {{ item.name }}</span>
+                      <span :if="item.modifiers.length > 0" class="block text-[13px]" style="color: var(--ink-soft)">{{ item.modifiers.join(' · ') }}</span>
+                      <span :if="item.notes" class="block text-[13px]" style="color: var(--accent)">{{ item.notes }}</span>
+                    </li>
+                  </ul>
+
+                  <div class="flex flex-wrap gap-2 items-center pt-4 mt-4 border-t" style="border-color: var(--line)">
+                    <button
+                      :if="nextStep(order)"
+                      @click="advance(order.id, nextStep(order).to)"
+                      class="px-4 py-2 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
+                      style="background: var(--ink); color: var(--paper)"
+                    >{{ nextStep(order).label }}</button>
+
+                    <span :if="!nextStep(order)" class="text-[13px]" style="color: var(--ink-soft)">Waiting for handover</span>
+
+                    <button @click="advance(order.id, 'CANCELLED')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Cancel</button>
+
+                    <span class="ml-auto text-[13px] tabular-nums" style="color: var(--ink-soft)">{{ money(order.totalCents, board().business.currency) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
-          ${board.completed.length === 0
-            ? ''
-            : `<section class="mt-12">
-                <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Done</h2>
-                <ul class="mt-4 space-y-2 text-[14px]">
-                  ${board.completed.map(order => `
-                    <li class="flex gap-4 justify-between">
-                      <span>#${order.id} <span style="color: var(--ink-soft)">${escapeHtml(order.status.toLowerCase().replace('_', ' '))}</span></span>
-                      <span class="tabular-nums" style="color: var(--ink-soft)">${money(order.totalCents, currency)}</span>
-                    </li>`).join('')}
-                </ul>
-              </section>`}
+          <section :if="board().completed.length > 0" class="mt-12">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Done</h2>
+            <ul class="mt-4 space-y-2 text-[14px]">
+              <li :for="order in board().completed" class="flex gap-4 justify-between">
+                <span>#{{ order.id }} <span style="color: var(--ink-soft)">{{ readable(order.status) }}</span></span>
+                <span class="tabular-nums" style="color: var(--ink-soft)">{{ money(order.totalCents, board().business.currency) }}</span>
+              </li>
+            </ul>
+          </section>
 
-          <section id="review-replies" class="mt-12"></section>`
+          {{-- Reviews waiting for a reply, on the same screen as the orders,
+            because that is where the person who would answer them already is.
+            A separate portal they have to remember to open is a portal nobody
+            opens. --}}
+          <section class="mt-12">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">
+              {{ unanswered().length === 0 ? 'Reviews' : 'Reviews waiting for a reply (' + unanswered().length + ')' }}
+            </h2>
 
-        root.querySelectorAll('[data-advance]').forEach((el) => {
-          el.addEventListener('click', () => advance(Number(el.dataset.advance), el.dataset.status))
-        })
+            <p :if="unanswered().length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Everything has been answered.</p>
 
-        loadReviews()
-      }
+            <div class="grid grid-cols-1 gap-4 mt-4 lg:grid-cols-2">
+              <div :for="review in unanswered()" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+                <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+                  <div class="flex gap-4 justify-between items-baseline">
+                    <p class="text-[15px] font-semibold">{{ review.title || 'Untitled' }}</p>
+                    <span class="shrink-0 text-[13px] tracking-[0.1em]" style="color: var(--accent)">{{ stars(review.rating) }}</span>
+                  </div>
 
-      /*
-       * Reviews waiting for a reply.
-       *
-       * On the same screen as the orders because that is where the person who
-       * would answer them already is. A separate portal they have to remember
-       * to open is a portal nobody opens.
-       */
-      async function loadReviews() {
-        const panel = document.getElementById('review-replies')
+                  <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">{{ review.authorName }}</p>
+                  <p class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ review.body }}</p>
 
-        if (!panel)
-          return
+                  <textarea
+                    rows="2"
+                    maxlength="1500"
+                    placeholder="Reply as the owner"
+                    :value="replies()[review.id] || ''"
+                    @input="replies.set({ ...replies(), [review.id]: $event.target.value })"
+                    class="px-4 py-3 mt-4 w-full text-[14px] rounded-[1rem]"
+                    style="background: var(--paper); border: 1px solid var(--line)"
+                  ></textarea>
 
-        const response = await fetch(`/api/businesses/${encodeURIComponent(slug)}/reviews`)
+                  <p :if="replyError() && erroredReview() === review.id" class="mt-2 text-[13px]" style="color: var(--accent)">{{ replyError() }}</p>
 
-        if (!response.ok)
-          return
-
-        const { data } = await response.json()
-        const unanswered = data.reviews.filter(review => !review.ownerResponse)
-
-        panel.innerHTML = `
-          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">
-            ${unanswered.length === 0 ? 'Reviews' : `Reviews waiting for a reply (${unanswered.length})`}
-          </h2>
-
-          ${unanswered.length === 0
-            ? '<p class="mt-4 text-[15px]" style="color: var(--ink-soft)">Everything has been answered.</p>'
-            : `<div class="grid grid-cols-1 gap-4 mt-4 lg:grid-cols-2">${unanswered.slice(0, 6).map(replyCard).join('')}</div>`}`
-
-        panel.querySelectorAll('[data-reply]').forEach((form) => {
-          form.addEventListener('submit', async (event) => {
-            event.preventDefault()
-
-            const text = form.querySelector('textarea').value
-
-            const sent = await fetch(`/api/reviews/${form.dataset.reply}/respond`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-              credentials: 'same-origin',
-              body: JSON.stringify({ businessSlug: slug, text }),
-            })
-
-            if (!sent.ok) {
-              const { message } = await sent.json()
-              form.querySelector('[data-error]').textContent = message
-              form.querySelector('[data-error]').hidden = false
-              return
-            }
-
-            loadReviews()
-          })
-        })
-      }
-
-      function replyCard(review) {
-        return `
-          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-            <form data-reply="${review.id}" class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-              <div class="flex gap-4 justify-between items-baseline">
-                <p class="text-[15px] font-semibold">${escapeHtml(review.title || 'Untitled')}</p>
-                <span class="shrink-0 text-[13px] tracking-[0.1em]" style="color: var(--accent)">${'\u2605'.repeat(review.rating)}</span>
+                  <button @click="reply(review.id)" class="px-4 py-2 mt-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Reply</button>
+                </div>
               </div>
-              <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">${escapeHtml(review.authorName)}</p>
-              <p class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(review.body)}</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
 
-              <textarea rows="2" maxlength="1500" placeholder="Reply as the owner"
-                class="px-4 py-3 mt-4 w-full text-[14px] rounded-[1rem]" style="background: var(--paper); border: 1px solid var(--line)"></textarea>
+    <script client>
+      import { money, send } from '../functions/session'
 
-              <p data-error hidden class="mt-2 text-[13px]" style="color: var(--accent)"></p>
+      const slug = state('')
+      const board = state(null)
+      const reviews = state([])
+      const loading = state(true)
+      const replies = state({})
+      const replyError = state('')
+      const erroredReview = state(0)
 
-              <button type="submit" class="px-4 py-2 mt-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Reply</button>
-            </form>
-          </div>`
+      const unanswered = derived(() => reviews().filter(review => !review.ownerResponse))
+
+      const NEXT = {
+        PENDING: { to: 'PROCESSING', label: 'Start cooking' },
+        PROCESSING: { to: 'SHIPPED', label: 'Ready' },
+      }
+
+      function nextStep(order) {
+        return NEXT[order.status] || null
+      }
+
+      function readable(value) {
+        return String(value ?? '').toLowerCase().replace(/_/g, ' ')
+      }
+
+      function stars(rating) {
+        return '★'.repeat(Number(rating) || 0)
+      }
+
+      async function load() {
+        const asked = new URLSearchParams(location.search).get('business') || ''
+
+        slug.set(asked)
+
+        if (!asked) {
+          loading.set(false)
+          return
+        }
+
+        const response = await fetch(`/api/merchant/${encodeURIComponent(asked)}/board`)
+
+        board.set(response.ok ? (await response.json()).data : null)
+        loading.set(false)
+
+        if (response.ok)
+          loadReviews(asked)
+
+        // A board left open all service should stay current on its own.
+        setTimeout(load, 8000)
+      }
+
+      async function loadReviews(businessSlug) {
+        const response = await fetch(`/api/businesses/${encodeURIComponent(businessSlug)}/reviews`)
+
+        if (response.ok)
+          reviews.set((await response.json()).data.reviews)
+      }
+
+      async function advance(orderId, status) {
+        await send(`/api/merchant/orders/${orderId}/status`, { status })
+        load()
+      }
+
+      async function reply(reviewId) {
+        const response = await send(`/api/reviews/${reviewId}/respond`, {
+          businessSlug: slug(),
+          text: replies()[reviewId] || '',
+        })
+
+        if (!response.ok) {
+          erroredReview.set(reviewId)
+          replyError.set((await response.json()).message)
+          return
+        }
+
+        replyError.set('')
+        loadReviews(slug())
       }
 
       load()

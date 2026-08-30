@@ -25,166 +25,181 @@ const canonicalPath = '/courier'
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-2xl">
-      <div id="courier-root" class="pt-10 pb-24">
-        <p class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
-      </div>
-    </main>
+    <main class="mx-auto px-4 sm:px-8 max-w-2xl" data-stx-content>
+      <div class="pt-10 pb-24">
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
 
-    <script client>
-      const root = document.getElementById('courier-root')
-      const params = new URLSearchParams(location.search)
-      const courierId = Number(params.get('courier') || 0)
-
-      const money = cents => `$${(Math.abs(cents) / 100).toFixed(2)}`
-
-      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
-      }[ch]))
-
-      function csrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
-        return match ? decodeURIComponent(match[1]) : ''
-      }
-
-      function post(url, body) {
-        return fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-          credentials: 'same-origin',
-          body: JSON.stringify(body || {}),
-        })
-      }
-
-      async function pickCourier() {
-        const response = await fetch('/api/couriers-list')
-        const { data } = await response.json()
-
-        root.innerHTML = `
+        {{-- No courier chosen: pick one, since these people are invented. --}}
+        <div :if="!loading() && !courierId()">
           <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">Who are you?</h1>
           <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
             The couriers here are invented, so pick one. A real app would know.
           </p>
+
           <div class="mt-8 space-y-2">
-            ${data.map(courier => `
-              <a href="/courier?courier=${courier.id}" class="flex justify-between items-center p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
-                 style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-                <span class="text-[15px] font-medium">${escapeHtml(courier.name)}</span>
-                <span class="text-[12px]" style="color: var(--ink-soft)">${escapeHtml(courier.status.replace('_', ' '))}</span>
-              </a>`).join('')}
-          </div>`
+            <a
+              :for="person in roster()"
+              :href="'/courier?courier=' + person.id"
+              class="flex justify-between items-center p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
+              style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)"
+            >
+              <span class="text-[15px] font-medium">{{ person.name }}</span>
+              <span class="text-[12px]" style="color: var(--ink-soft)">{{ person.status.replace('_', ' ') }}</span>
+            </a>
+          </div>
+        </div>
+
+        <p :if="!loading() && courierId() && !view()" class="text-[15px]">No such courier.</p>
+
+        {{-- On shift. --}}
+        <div :if="view()">
+          <div class="flex flex-wrap gap-4 justify-between items-center">
+            <div>
+              <h1 class="text-[clamp(1.7rem,4vw,2.25rem)] font-semibold tracking-[-0.03em]">{{ view().courier.name }}</h1>
+              <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ view().courier.vehicle }}</p>
+            </div>
+
+            <button
+              @click="toggleShift()"
+              class="px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
+              :style="online() ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+            >{{ online() ? 'On shift' : 'Go online' }}</button>
+          </div>
+
+          <p :if="error()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>
+
+          <a :href="'/earnings?party=courier:' + courierId()" class="grid grid-cols-3 gap-3 mt-8 transition-transform duration-500 hover:-translate-y-0.5">
+            <div :for="tile in earningTiles()" class="p-5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+              <p class="text-[22px] font-semibold tracking-[-0.02em] tabular-nums">{{ tile.value }}</p>
+              <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
+            </div>
+          </a>
+
+          {{-- The job in hand. --}}
+          <div :if="view().current" class="p-1.5 mt-8 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+            <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
+              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--accent)">
+                {{ view().current.type === 'pickup' ? 'Collect the order' : 'Deliver the order' }}
+              </p>
+              <p class="mt-2 text-[20px] font-semibold tracking-[-0.02em]">
+                {{ view().current.type === 'pickup' ? view().current.businessName : view().current.recipientName }}
+              </p>
+              <p class="mt-1 text-[15px]" style="color: var(--ink-soft)">{{ view().current.address }}</p>
+              <p :if="view().current.distanceMeters !== null" class="mt-2 text-[13px]" style="color: var(--ink-soft)">
+                {{ km(view().current.distanceMeters) }} away
+              </p>
+
+              <div class="grid grid-cols-1 gap-2 mt-6 sm:grid-cols-2">
+                {{-- Navigation is handed to the map the courier already uses.
+                  Rebuilding turn-by-turn inside a demo would be worse at the
+                  one job it has. --}}
+                <a
+                  :if="view().current.latitude !== null"
+                  :href="'https://www.google.com/maps/dir/?api=1&destination=' + view().current.latitude + ',' + view().current.longitude"
+                  target="_blank"
+                  rel="noopener"
+                  class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500"
+                  style="border: 1px solid var(--line)"
+                >Navigate</a>
+
+                <button
+                  :if="view().current.status === 'pending'"
+                  @click="advance(view().current.stopId, 'start')"
+                  class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
+                  style="background: var(--ink); color: var(--paper)"
+                >On my way</button>
+
+                <button
+                  :if="view().current.status !== 'pending'"
+                  @click="advance(view().current.stopId, 'complete')"
+                  class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
+                  style="background: var(--accent); color: #fff"
+                >{{ view().current.type === 'pickup' ? 'Picked it up' : 'Handed it over' }}</button>
+              </div>
+            </div>
+          </div>
+
+          <div :if="!view().current" class="p-8 mt-8 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+            <p class="text-[15px]" style="color: var(--ink-soft)">
+              {{ online() ? 'Nothing assigned. Waiting for a job.' : 'You are offline.' }}
+            </p>
+          </div>
+
+          <section :if="view().remaining.length > 0" class="mt-8">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Then</h2>
+            <ul class="mt-3 space-y-2 text-[14px]">
+              <li :for="stop in view().remaining" class="flex gap-4 justify-between">
+                <span>{{ stop.type === 'pickup' ? 'Collect from' : 'Deliver to' }} {{ stop.address }}</span>
+                <span :if="stop.distanceMeters !== null" class="tabular-nums shrink-0" style="color: var(--ink-soft)">{{ km(stop.distanceMeters) }}</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script client>
+      import { money, send } from '../functions/session'
+
+      const courierId = state(0)
+      const roster = state([])
+      const view = state(null)
+      const loading = state(true)
+      const error = state('')
+
+      const online = derived(() => Boolean(view()) && view().courier.status !== 'offline')
+
+      const earningTiles = derived(() => {
+        const current = view()
+
+        if (!current)
+          return []
+
+        return [
+          { label: 'Deliveries', value: String(current.earnings.deliveries) },
+          { label: 'Fees', value: money(current.earnings.feeCents) },
+          { label: 'Tips', value: money(current.earnings.tipCents) },
+        ]
+      })
+
+      function km(meters) {
+        return `${(meters / 1000).toFixed(1)} km`
       }
 
       async function load() {
-        if (!courierId) {
-          pickCourier()
+        const asked = Number(new URLSearchParams(location.search).get('courier') || 0)
+
+        courierId.set(asked)
+
+        if (!asked) {
+          const { data } = await (await fetch('/api/couriers-list')).json()
+
+          roster.set(data)
+          loading.set(false)
           return
         }
 
-        const response = await fetch(`/api/courier/${courierId}/console`)
+        const response = await fetch(`/api/courier/${asked}/console`)
+
+        view.set(response.ok ? (await response.json()).data : null)
+        loading.set(false)
+      }
+
+      async function toggleShift() {
+        const response = await send(`/api/courier/${courierId()}/shift`, { online: !online() })
 
         if (!response.ok) {
-          root.innerHTML = '<p class="text-[15px]">No such courier.</p>'
+          error.set((await response.json()).message)
           return
         }
 
-        render((await response.json()).data)
+        error.set('')
+        load()
       }
 
-      function render(state) {
-        const online = state.courier.status !== 'offline'
-        const run = state.current
-
-        root.innerHTML = `
-          <div class="flex flex-wrap gap-4 justify-between items-center">
-            <div>
-              <h1 class="text-[clamp(1.7rem,4vw,2.25rem)] font-semibold tracking-[-0.03em]">${escapeHtml(state.courier.name)}</h1>
-              <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">${escapeHtml(state.courier.vehicle)}</p>
-            </div>
-            <button id="shift" class="px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
-              style="${online ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'}">
-              ${online ? 'On shift' : 'Go online'}
-            </button>
-          </div>
-
-          <a href="/earnings?party=courier:${courierId}" class="grid grid-cols-3 gap-3 mt-8 transition-transform duration-500 hover:-translate-y-0.5">
-            ${[['Deliveries', state.earnings.deliveries], ['Fees', money(state.earnings.feeCents)], ['Tips', money(state.earnings.tipCents)]]
-              .map(([label, value]) => `
-                <div class="p-5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-                  <p class="text-[22px] font-semibold tracking-[-0.02em] tabular-nums">${value}</p>
-                  <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">${label}</p>
-                </div>`).join('')}
-          </a>
-
-          ${run ? runCard(run) : `
-            <div class="p-8 mt-8 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-              <p class="text-[15px]" style="color: var(--ink-soft)">
-                ${online ? 'Nothing assigned. Waiting for a job.' : 'You are offline.'}
-              </p>
-            </div>`}
-
-          ${state.remaining.length === 0 ? '' : `
-            <section class="mt-8">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Then</h2>
-              <ul class="mt-3 space-y-2 text-[14px]">
-                ${state.remaining.map(stop => `
-                  <li class="flex gap-4 justify-between">
-                    <span>${stop.type === 'pickup' ? 'Collect from' : 'Deliver to'} ${escapeHtml(stop.address)}</span>
-                    ${stop.distanceMeters == null ? '' : `<span class="tabular-nums shrink-0" style="color: var(--ink-soft)">${(stop.distanceMeters / 1000).toFixed(1)} km</span>`}
-                  </li>`).join('')}
-              </ul>
-            </section>`}`
-
-        const shift = document.getElementById('shift')
-        if (shift) {
-          shift.addEventListener('click', async () => {
-            const response = await post(`/api/courier/${courierId}/shift`, { online: !online })
-            if (!response.ok) {
-              const { message } = await response.json()
-              alert(message)
-              return
-            }
-            load()
-          })
-        }
-
-        root.querySelectorAll('[data-stop]').forEach((el) => {
-          el.addEventListener('click', async () => {
-            await post(`/api/courier/stops/${el.dataset.stop}/${el.dataset.action}`, {})
-            load()
-          })
-        })
-      }
-
-      function runCard(run) {
-        const heading = run.type === 'pickup' ? 'Collect the order' : 'Deliver the order'
-        const where = run.type === 'pickup' ? run.businessName : run.recipientName
-        const started = run.status !== 'pending'
-
-        // Hand navigation to the map the courier already uses. Rebuilding
-        // turn-by-turn inside a demo would be worse at the one job it has.
-        const nav = run.latitude == null
-          ? ''
-          : `<a href="https://www.google.com/maps/dir/?api=1&destination=${run.latitude},${run.longitude}" target="_blank" rel="noopener"
-               class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500"
-               style="border: 1px solid var(--line)">Navigate</a>`
-
-        return `
-          <div class="p-1.5 mt-8 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
-            <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
-              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--accent)">${heading}</p>
-              <p class="mt-2 text-[20px] font-semibold tracking-[-0.02em]">${escapeHtml(where)}</p>
-              <p class="mt-1 text-[15px]" style="color: var(--ink-soft)">${escapeHtml(run.address)}</p>
-              ${run.distanceMeters == null ? '' : `<p class="mt-2 text-[13px]" style="color: var(--ink-soft)">${(run.distanceMeters / 1000).toFixed(1)} km away</p>`}
-
-              <div class="grid grid-cols-1 gap-2 mt-6 sm:grid-cols-2">
-                ${nav}
-                ${started
-                  ? `<button data-stop="${run.stopId}" data-action="complete" class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--accent); color: #fff">${run.type === 'pickup' ? 'Picked it up' : 'Handed it over'}</button>`
-                  : `<button data-stop="${run.stopId}" data-action="start" class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">On my way</button>`}
-              </div>
-            </div>
-          </div>`
+      async function advance(stopId, action) {
+        await send(`/api/courier/stops/${stopId}/${action}`)
+        load()
       }
 
       load()
