@@ -68,6 +68,23 @@ const canonicalPath = '/courier'
 
           <p :if="error()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>
 
+          {{-- Position sharing is its own switch, separate from being on shift.
+            A courier can be on shift while walking to their bike, and a phone
+            reporting a position nobody asked it for is a phone somebody
+            eventually turns off. --}}
+          <div class="flex flex-wrap gap-3 items-center p-4 mt-6 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+            <div class="flex-1 min-w-[200px]">
+              <p class="text-[14px] font-medium">{{ sharing() ? 'Sharing your position' : 'Position not shared' }}</p>
+              <p class="mt-1 text-[12px] leading-relaxed" style="color: var(--ink-soft)">{{ trackingNote() }}</p>
+            </div>
+
+            <button
+              @click="toggleTracking()"
+              class="px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
+              :style="sharing() ? 'background: var(--accent-soft); color: var(--accent)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+            >{{ sharing() ? 'Stop sharing' : 'Share position' }}</button>
+          </div>
+
           <a :href="'/earnings?party=courier:' + courierId()" class="grid grid-cols-3 gap-3 mt-8 transition-transform duration-500 hover:-translate-y-0.5">
             <div :for="tile in earningTiles()" class="p-5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
               <p class="text-[22px] font-semibold tracking-[-0.02em] tabular-nums">{{ tile.value }}</p>
@@ -139,6 +156,7 @@ const canonicalPath = '/courier'
     </main>
 
     <script client>
+      import { startTracking } from '../functions/courier-tracking'
       import { money, send } from '../functions/session'
 
       const courierId = state(0)
@@ -148,6 +166,39 @@ const canonicalPath = '/courier'
       const error = state('')
 
       const online = derived(() => Boolean(view()) && view().courier.status !== 'offline')
+
+      const sharing = state(false)
+      const nativeTracking = state(false)
+
+      const trackingNote = derived(() => {
+        if (!sharing())
+          return 'The customer sees an estimate, not a courier, until you turn this on.'
+
+        return nativeTracking()
+          ? 'Reporting, and it keeps reporting with the phone in your pocket.'
+          : 'Reporting while this screen is open. The app keeps going in your pocket; a browser does not.'
+      })
+
+      let tracker = null
+
+      /*
+       * The position stream is not tied to being on shift.
+       *
+       * A courier can be on shift while walking to their bike, and a phone that
+       * reports a position nobody asked it for is a phone somebody turns off.
+       */
+      function toggleTracking() {
+        if (tracker) {
+          tracker.stop()
+          tracker = null
+          sharing.set(false)
+          return
+        }
+
+        tracker = startTracking(courierId())
+        nativeTracking.set(tracker.native)
+        sharing.set(true)
+      }
 
       const earningTiles = derived(() => {
         const current = view()

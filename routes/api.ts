@@ -6,6 +6,7 @@ import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
+import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
 import { runGuards } from '../app/Actions/Admin/guards'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
@@ -652,4 +653,45 @@ route.post('/admin/listings/{slug}/{action}', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { ok: true } })
+})
+
+/**
+ * Courier positions.
+ *
+ * `POST /api/courier/{id}/ping` for a live fix, `/pings` for a batch recorded
+ * while the phone had no signal. Both go through the framework's tracking
+ * pipeline, so a position advances the route rather than only moving a dot.
+ *
+ * The courier is named in the path because this demo has no courier accounts.
+ * A real deployment resolves them from the session, which is exactly what the
+ * framework's own `CourierPingStoreAction` does.
+ */
+route.post('/courier/{id}/ping', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await recordPing(Number(request?.getParam?.('id') ?? 0), {
+    latitude: Number(body?.latitude),
+    longitude: Number(body?.longitude),
+    accuracy: body?.accuracy === undefined ? undefined : Number(body.accuracy),
+    speed: body?.speed === undefined ? undefined : Number(body.speed),
+    heading: body?.heading === undefined ? undefined : Number(body.heading),
+  })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
+})
+
+route.post('/courier/{id}/pings', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const positions = Array.isArray(body?.positions) ? body.positions : []
+
+  if (positions.length === 0)
+    return response.json({ message: 'No positions in that batch.' }, 422)
+
+  // Bounded so one bad client cannot hand over a day of history in one request.
+  const result = await recordBatch(Number(request?.getParam?.('id') ?? 0), positions.slice(0, 500))
+
+  return response.json({ data: result })
 })
