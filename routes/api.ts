@@ -1,7 +1,7 @@
 import { response, route } from '@stacksjs/router'
 import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
 import { menuFor } from '../app/Actions/Order/menu'
-import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
+import { createOrder, ordersForVisitor, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
@@ -81,7 +81,11 @@ route.get('/businesses/{slug}/menu', async (request: any) => {
  */
 route.post('/orders', async (request: any) => {
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
-  const result = await createOrder(body)
+
+  // The visitor comes off the header, never out of the body: this is what ties
+  // an order to the browser that placed it, and the body is the client's to
+  // write whatever it likes into.
+  const result = await createOrder({ ...body, visitorToken: visitorOf(request) })
 
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
@@ -467,4 +471,9 @@ route.post('/claims/{id}/{decision}', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { ok: true } })
+})
+
+/** `GET /api/orders/mine` - what this browser has ordered. */
+route.get('/orders/mine', async (request: any) => {
+  return response.json({ data: await ordersForVisitor(visitorOf(request)) })
 })

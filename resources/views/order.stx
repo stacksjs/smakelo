@@ -64,12 +64,29 @@ const canonicalPath = '/order'
         return match ? decodeURIComponent(match[1]) : ''
       }
 
+      /*
+       * A token for this browser, standing in for the account this demo does
+       * not have. It is what lets /orders show you what you ordered instead of
+       * making you keep the tracking link.
+       */
+      function visitorToken() {
+        let token = localStorage.getItem('smakelo.visitor')
+
+        if (!token) {
+          token = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
+          localStorage.setItem('smakelo.visitor', token)
+        }
+
+        return token
+      }
+
       function postJson(url, body) {
         return fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-csrf-token': csrfToken(),
+            'x-visitor': visitorToken(),
           },
           credentials: 'same-origin',
           body: JSON.stringify(body),

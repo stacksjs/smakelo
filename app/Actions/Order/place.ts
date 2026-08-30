@@ -1,5 +1,6 @@
 import type { PricedLine } from './pricing'
 import { db } from '@stacksjs/database'
+import { customerForVisitor } from '../Visitor/identity'
 import { distanceInMeters } from '../Business/geo'
 import { priceOrder } from './pricing'
 
@@ -34,6 +35,12 @@ export interface PlaceOrderInput {
   deliveryLatitude?: number
   deliveryLongitude?: number
   tipCents?: number
+  /**
+   * The browser placing the order, so it can find the order again later. There
+   * are no accounts here; see `Visitor/identity.ts` for what this token is and
+   * is not.
+   */
+  visitorToken?: unknown
   scheduledFor?: string | null
   tableId?: number | null
   tabId?: number | null
@@ -119,6 +126,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
   const trackingToken = crypto.randomUUID().replace(/-/g, '').slice(0, 24)
   const uuid = crypto.randomUUID()
 
+  /*
+   * Link the order to whoever placed it, when we can tell. This is what makes
+   * an order history possible without accounts, and it is what the verified
+   * badge on a review is checked against later.
+   */
+  const customerId = input.visitorToken
+    ? await customerForVisitor(input.visitorToken, input.customerName ?? 'Guest')
+    : null
+
   await db.insertInto('orders').values({
     uuid,
     business_id: Number(business.id),
@@ -138,6 +154,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
     special_instructions: input.notes ?? '',
     tracking_token: trackingToken,
     scheduled_for: input.scheduledFor ?? null,
+    customer_id: customerId,
     table_id: input.tableId ?? null,
     tab_id: input.tabId ?? null,
     estimated_delivery_time: String(readyInMinutes(business, pricing)),

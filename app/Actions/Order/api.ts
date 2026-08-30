@@ -3,6 +3,7 @@ import { db } from '@stacksjs/database'
 import { distanceInMeters } from '../Business/geo'
 import { placeOrder } from './place'
 import { priceOrder } from './pricing'
+import { existingCustomerFor } from '../Visitor/identity'
 
 /**
  * The order endpoints' thin layer: read an untrusted body, hand something
@@ -56,6 +57,9 @@ function readInput(body: any): PlaceOrderInput | { reason: string } {
     tableId: Number.isFinite(Number(body?.tableId)) ? Number(body.tableId) : null,
     tabId: Number.isFinite(Number(body?.tabId)) ? Number(body.tabId) : null,
     notes: typeof body?.notes === 'string' ? body.notes.slice(0, 500) : '',
+    // Passed by the route from the `x-visitor` header rather than read from the
+    // body, so a client cannot claim to be placing an order as somebody else.
+    visitorToken: body?.visitorToken,
   }
 }
 
@@ -237,4 +241,65 @@ export async function trackOrder(token: string) {
         }
       : null,
   }
+}
+
+/**
+ * Orders this browser placed.
+ *
+ * The tracking token in a confirmation email is the only handle a guest
+ * normally has on an order, and it is a bad one: it lives in whichever tab
+ * they closed. Recording who placed the order means the list can just be
+ * shown, which is the whole of "account" that this demo needs.
+ */
+export async function ordersForVisitor(visitorToken: unknown): Promise<Array<Record<string, unknown>>> {
+  const customerId = await existingCustomerFor(visitorToken)
+
+  if (!customerId)
+    return []
+
+  const rows = await db.selectFrom('orders')
+    .where('customer_id', '=', customerId)
+    .orderBy('id', 'desc')
+    .selectAll()
+    .execute() as Array<Record<string, unknown>>
+
+  const out = []
+
+  for (const row of rows) {
+    const business = await db.selectFrom('businesses')
+      .where('id', '=', Number(row.business_id))
+      .select(['name', 'slug'])
+      .executeTakeFirst() as { name?: string, slug?: string } | undefined
+
+    const items = await db.selectFrom('order_items')
+      .where('order_id', '=', Number(row.id))
+      .selectAll()
+      .execute() as Array<Record<string, unknown>>
+
+    const names = []
+
+    for (const item of items) {
+      const product = await db.selectFrom('products')
+        .where('id', '=', Number(item.product_id))
+        .select(['name'])
+        .executeTakeFirst() as { name?: string } | undefined
+
+      names.push(`${Number(item.quantity)} × ${String(product?.name ?? 'Item')}`)
+    }
+
+    out.push({
+      id: Number(row.id),
+      businessName: String(business?.name ?? ''),
+      businessSlug: String(business?.slug ?? ''),
+      status: String(row.status),
+      orderType: String(row.order_type ?? ''),
+      totalCents: Number(row.total_amount ?? 0),
+      currency: String(row.currency ?? 'usd'),
+      trackingToken: String(row.tracking_token ?? ''),
+      items: names,
+      placedAt: row.created_at ?? null,
+    })
+  }
+
+  return out
 }
