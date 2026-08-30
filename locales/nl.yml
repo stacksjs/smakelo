@@ -11,6 +11,8 @@ nav:
   partner: Voor zaken
   sign_in: Inloggen
   sign_out: Uitloggen
+  shares: Aandelen
+  about: Over deze demo
 
 search:
   placeholder: Zoek een zaak of gerecht
@@ -22,6 +24,10 @@ search:
   sort_rating: Best beoordeeld
   no_results: Hier is nog niets. Probeer een ruimere omgeving.
   results_count: '{count} zaken'
+  takes_orders: Neemt bestellingen
+  sort_name: A tot Z
+  all_types: Alles
+  nearby: In de buurt
 
 business:
   menu: Menu

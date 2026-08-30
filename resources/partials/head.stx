@@ -134,3 +134,100 @@
     }
   })()
 </script>
+
+<script>
+  /*
+   * Language.
+   *
+   * The pages are built once and served as static files, so translation happens
+   * in the browser: a dictionary is fetched for the chosen language and every
+   * element carrying a `data-i18n` key is filled from it. The keys live in
+   * `locales/*.yml`, which `buddy build:locales` compiles into
+   * `public/locales/*.json`.
+   *
+   * English is what the markup already says, so a failed fetch, an unknown key
+   * or a browser with scripting off all leave a page that reads correctly in
+   * English rather than a page of empty boxes. That is the whole reason the
+   * English text is in the HTML rather than being filled in from a dictionary
+   * too.
+   *
+   * The interface is translated. The invented restaurant descriptions, menus
+   * and reviews are not: they are content, and machine-translating a menu is
+   * how a demonstration starts lying about what a kitchen serves.
+   */
+  window.Smakelo = window.Smakelo || {}
+
+  ;(function () {
+    const SUPPORTED = ['en', 'de', 'nl']
+
+    function chosen() {
+      const asked = new URLSearchParams(location.search).get('lang')
+
+      if (asked && SUPPORTED.includes(asked)) {
+        try {
+          localStorage.setItem('smakelo.lang', asked)
+        }
+        catch {}
+
+        return asked
+      }
+
+      try {
+        const saved = localStorage.getItem('smakelo.lang')
+
+        if (saved && SUPPORTED.includes(saved))
+          return saved
+      }
+      catch {}
+
+      // Only the language part: a Swiss German browser should get German
+      // rather than falling through to English on the region tag.
+      const browser = (navigator.language || 'en').slice(0, 2).toLowerCase()
+
+      return SUPPORTED.includes(browser) ? browser : 'en'
+    }
+
+    const locale = chosen()
+
+    window.Smakelo.locale = locale
+    window.Smakelo.dictionary = {}
+    window.Smakelo.t = (key, fallback) => window.Smakelo.dictionary[key] || fallback || key
+
+    document.documentElement.lang = locale
+
+    if (locale === 'en')
+      return
+
+    fetch(`/locales/${locale}.json`)
+      .then(response => response.ok ? response.json() : {})
+      .then((dictionary) => {
+        window.Smakelo.dictionary = dictionary
+        apply()
+
+        // Surfaces that render themselves later ask for this rather than
+        // guessing when the dictionary arrived.
+        document.dispatchEvent(new CustomEvent('smakelo:locale', { detail: { locale, dictionary } }))
+      })
+      .catch(() => undefined)
+
+    function apply() {
+      for (const element of document.querySelectorAll('[data-i18n]')) {
+        const text = window.Smakelo.dictionary[element.dataset.i18n]
+
+        if (text)
+          element.textContent = text
+      }
+
+      // Placeholders and titles need the same treatment, keyed separately so
+      // one element can translate both its text and its placeholder.
+      for (const element of document.querySelectorAll('[data-i18n-placeholder]')) {
+        const text = window.Smakelo.dictionary[element.dataset.i18nPlaceholder]
+
+        if (text)
+          element.setAttribute('placeholder', text)
+      }
+    }
+
+    window.Smakelo.applyTranslations = apply
+  })()
+</script>

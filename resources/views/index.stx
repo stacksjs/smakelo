@@ -175,7 +175,7 @@ function openLabel(business) {
 
       <section class="pb-24 sm:pb-40">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-6">
-          <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Nearby</h2>
+          <h2 data-i18n="search.nearby" class="text-[28px] font-semibold tracking-[-0.03em]">Nearby</h2>
           <p id="result-count" class="text-[13px]" style="color: var(--ink-soft)">Sorted by distance from Santa Monica</p>
         </div>
 
@@ -187,7 +187,7 @@ function openLabel(business) {
           <div class="flex flex-wrap gap-3 items-center p-4 rounded-[calc(1.5rem-0.375rem)]">
             <label class="relative flex-1 min-w-[220px]">
               <i class="absolute left-4 top-1/2 w-4 h-4 -translate-y-1/2 i-hugeicons-search-01" style="color: var(--ink-soft)"></i>
-              <input id="filter-q" type="search" placeholder="Name, cuisine, neighbourhood"
+              <input id="filter-q" type="search" data-i18n-placeholder="search.placeholder" placeholder="Name, cuisine, neighbourhood"
                 class="py-3 pr-4 pl-11 w-full text-[15px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
             </label>
 
@@ -195,24 +195,24 @@ function openLabel(business) {
               wraps onto three rows on a phone reads as a blob, and the row is
               short enough that a nudge reaches the end of it. --}}
             <div class="flex overflow-x-auto gap-1 p-1 rounded-full" style="background: var(--paper); scrollbar-width: none" id="filter-type">
-              <button type="button" data-type="" class="px-4 py-2 text-[13px] font-medium rounded-full shrink-0 transition-all duration-500">All</button>
+              <button type="button" data-type="" data-i18n="search.all_types" class="px-4 py-2 text-[13px] font-medium rounded-full shrink-0 transition-all duration-500">All</button>
               @foreach (types as entry)
                 <button type="button" data-type="{{ entry.type }}" class="px-4 py-2 text-[13px] rounded-full shrink-0 transition-all duration-500">{{ entry.label }}</button>
               @endforeach
             </div>
 
-            <button type="button" id="filter-open" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Open now</button>
-            <button type="button" id="filter-orders" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Takes orders</button>
+            <button type="button" id="filter-open" data-i18n="search.open_now" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Open now</button>
+            <button type="button" id="filter-orders" data-i18n="search.takes_orders" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Takes orders</button>
 
             <select id="filter-sort" class="px-4 py-2.5 text-[13px] rounded-full" style="background: var(--paper); border: 1px solid var(--line)">
-              <option value="distance">Nearest</option>
-              <option value="rating">Best rated</option>
-              <option value="name">A to Z</option>
+              <option value="distance" data-i18n="search.sort_distance">Nearest</option>
+              <option value="rating" data-i18n="search.sort_rating">Best rated</option>
+              <option value="name" data-i18n="search.sort_name">A to Z</option>
             </select>
           </div>
         </div>
 
-        <p id="no-results" hidden class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
+        <p id="no-results" data-i18n="search.no_results" hidden class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
           Nothing matches that. Try fewer words.
         </p>
 
@@ -415,8 +415,17 @@ function openLabel(business) {
 
           empty.hidden = showing.length > 0
 
-          const sortLabel = { distance: 'Nearest first', rating: 'Best rated first', name: 'A to Z' }[state.sort]
-          count.textContent = `${showing.length} of ${cards.length} · ${sortLabel}`
+          // Written by script, so it asks the dictionary directly rather than
+          // carrying a data-i18n key that nothing would re-apply.
+          const say = (key, fallback) => (window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, fallback) : fallback)
+
+          const sortLabel = {
+            distance: say('search.sort_distance', 'Nearest'),
+            rating: say('search.sort_rating', 'Best rated'),
+            name: say('search.sort_name', 'A to Z'),
+          }[state.sort]
+
+          count.textContent = `${showing.length} / ${cards.length} · ${sortLabel}`
 
           // The map should agree with the list it sits above.
           if (markers.size > 0) {
@@ -466,6 +475,10 @@ function openLabel(business) {
 
         paintTypes()
         apply()
+
+        // The dictionary arrives after this runs, so redo the parts that write
+        // their own text.
+        document.addEventListener('smakelo:locale', apply)
       }
     </script>
   </body>

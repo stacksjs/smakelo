@@ -11,6 +11,8 @@ nav:
   partner: For businesses
   sign_in: Sign in
   sign_out: Sign out
+  shares: Shares
+  about: About this demo
 
 search:
   placeholder: Search for a place or a dish
@@ -22,6 +24,10 @@ search:
   sort_rating: Best rated
   no_results: Nothing here yet. Try a wider search.
   results_count: '{count} places'
+  takes_orders: Takes orders
+  sort_name: A to Z
+  all_types: All
+  nearby: Nearby
 
 business:
   menu: Menu

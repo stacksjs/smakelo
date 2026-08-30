@@ -11,6 +11,8 @@ nav:
   partner: Für Betriebe
   sign_in: Anmelden
   sign_out: Abmelden
+  shares: Anteile
+  about: Über diese Demo
 
 search:
   placeholder: Nach einem Ort oder Gericht suchen
@@ -22,6 +24,10 @@ search:
   sort_rating: Beste Bewertung
   no_results: Hier ist noch nichts. Versuche eine größere Umgebung.
   results_count: '{count} Orte'
+  takes_orders: Nimmt Bestellungen
+  sort_name: A bis Z
+  all_types: Alle
+  nearby: In der Nähe
 
 business:
   menu: Speisekarte

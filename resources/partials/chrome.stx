@@ -14,7 +14,7 @@
         <span class="mt-0.5 inline-flex shrink-0 items-center justify-center h-5 w-5 rounded-full" style="background: var(--accent-soft); color: var(--accent)">
           <i class="w-3 h-3 i-hugeicons-information-circle"></i>
         </span>
-        <span>
+        <span data-i18n="demo.banner">
           <strong style="color: var(--ink)">A demonstration.</strong>
           The places are real. The menus, reviews, orders and payments are not, and nothing here can be bought.
         </span>
@@ -33,12 +33,38 @@
     </a>
 
     <div class="hidden gap-8 items-center text-[14px] sm:flex" style="color: var(--ink-soft)">
-      <a href="/" class="transition-colors duration-500 hover:opacity-70">Discover</a>
-      <a href="/orders" class="transition-colors duration-500 hover:opacity-70">Orders</a>
-      <a href="/saved" class="transition-colors duration-500 hover:opacity-70">Saved</a>
-      <a href="/shares" class="transition-colors duration-500 hover:opacity-70">Shares</a>
-      <a href="/partner" class="transition-colors duration-500 hover:opacity-70">For businesses</a>
-      <a href="/about" class="transition-colors duration-500 hover:opacity-70">About this demo</a>
+      <a href="/" data-i18n="nav.discover" class="transition-colors duration-500 hover:opacity-70">Discover</a>
+      <a href="/orders" data-i18n="nav.orders" class="transition-colors duration-500 hover:opacity-70">Orders</a>
+      <a href="/saved" data-i18n="nav.favorites" class="transition-colors duration-500 hover:opacity-70">Saved</a>
+      <a href="/shares" data-i18n="nav.shares" class="transition-colors duration-500 hover:opacity-70">Shares</a>
+      <a href="/partner" data-i18n="nav.partner" class="transition-colors duration-500 hover:opacity-70">For businesses</a>
+      <a href="/about" data-i18n="nav.about" class="transition-colors duration-500 hover:opacity-70">About this demo</a>
+
+      {{-- Three languages, named in their own. A flag would be wrong: German is
+        not Germany, and Dutch is not only the Netherlands. --}}
+      <div class="flex gap-1 items-center pl-1 text-[12px]" id="lang-switch">
+        <a href="?lang=en" data-lang="en" class="px-2 py-1 rounded-full transition-all duration-500">EN</a>
+        <a href="?lang=de" data-lang="de" class="px-2 py-1 rounded-full transition-all duration-500">DE</a>
+        <a href="?lang=nl" data-lang="nl" class="px-2 py-1 rounded-full transition-all duration-500">NL</a>
+      </div>
     </div>
   </nav>
 </header>
+
+<script>
+  /* Mark the language in use, so the switcher says where you are. */
+  ;(function () {
+    try {
+      const current = (window.Smakelo && window.Smakelo.locale) || 'en'
+
+      for (const link of document.querySelectorAll('#lang-switch [data-lang]')) {
+        const on = link.dataset.lang === current
+
+        link.style.background = on ? 'var(--ink)' : 'transparent'
+        link.style.color = on ? 'var(--paper)' : 'var(--ink-soft)'
+        link.setAttribute('aria-current', on ? 'true' : 'false')
+      }
+    }
+    catch {}
+  })()
+</script>
