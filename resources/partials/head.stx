@@ -96,3 +96,41 @@
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 </style>
+
+<script>
+  /*
+   * Make sure this page has a CSRF token before anything tries to POST.
+   *
+   * The framework seeds this cookie from the router, but these pages are served
+   * as built static files and never pass through that step, so in production
+   * the cookie was simply absent and every POST answered 403 while the page
+   * looked perfect. (Edge caching hid it further: a cached response cannot
+   * carry a per-visitor Set-Cookie at all.)
+   *
+   * Minting it here is sound rather than a bypass. The check is a stateless
+   * double submit - the server compares the cookie against the header and
+   * requires them to match - and its security rests on the same-origin policy:
+   * a page on another origin can neither read this cookie nor set one for this
+   * domain, so it cannot produce a request where the two agree. What the
+   * framework mints server-side buys nothing extra under that comparison.
+   *
+   * SameSite=Lax and a two-hour life, matching what the server would have set.
+   */
+  (function () {
+    try {
+      if (document.cookie.includes('X-CSRF-Token='))
+        return
+
+      const bytes = new Uint8Array(32)
+      crypto.getRandomValues(bytes)
+      const token = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('')
+      const secure = location.protocol === 'https:' ? '; Secure' : ''
+
+      document.cookie = `X-CSRF-Token=${token}; Path=/; Max-Age=7200; SameSite=Lax${secure}`
+    }
+    catch {
+      // A browser refusing cookies gets a 403 on submit, which is the honest
+      // outcome; it must not take the whole page down on the way there.
+    }
+  })()
+</script>
