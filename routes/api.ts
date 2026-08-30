@@ -6,6 +6,8 @@ import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
+import { listings, setHidden } from '../app/Actions/Admin/curation'
+import { runGuards } from '../app/Actions/Admin/guards'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
 import { join, membershipsFor, plansFor, setMembershipState } from '../app/Actions/Csa/membership'
@@ -616,6 +618,35 @@ route.post('/manage/{slug}/fulfilment', async (request: any) => {
     pickup: body?.pickup === undefined ? undefined : Boolean(body.pickup),
     dineIn: body?.dineIn === undefined ? undefined : Boolean(body.dineIn),
   })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
+})
+
+/**
+ * The operator's own screens.
+ *
+ * The guard check runs against the database rather than trusting the code that
+ * is supposed to enforce it, because a promise nobody can see the state of is
+ * one you find out about afterwards.
+ */
+route.get('/admin/guards', async () => {
+  return response.json({ data: await runGuards() })
+})
+
+route.get('/admin/listings', async (request: any) => {
+  return response.json({ data: await listings(String(request?.query?.q ?? '')) })
+})
+
+route.post('/admin/listings/{slug}/{action}', async (request: any) => {
+  const action = String(request?.getParam?.('action') ?? '')
+
+  if (!['hide', 'restore'].includes(action))
+    return response.json({ message: 'A listing is hidden or restored.' }, 422)
+
+  const result = await setHidden(String(request?.getParam?.('slug') ?? ''), action === 'hide')
 
   if (!result.ok)
     return response.json({ message: result.reason }, 422)

@@ -50,6 +50,12 @@ const surfaces = [
     href: '/places/nonna-pia',
   },
   {
+    name: 'Operations',
+    detail: 'Whether this site is still keeping its own promises, checked against the database rather than against the code that is supposed to enforce them: sandbox payments, no reviews on real businesses, no orders at them, no contact details stored, noindex, robots.txt. Plus taking a listing down, which removes it from search, the map, its page and ordering.',
+    state: 'Built',
+    href: '/admin',
+  },
+  {
     name: 'Claims',
     detail: 'If you run one of the listed places and would rather not be here, the form says so first. Nothing is emailed to the business, and a claim is read by a person.',
     state: 'Built',

@@ -62,6 +62,9 @@ export interface RejectedOrder {
 export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | RejectedOrder> {
   const business = await db.selectFrom('businesses')
     .where('slug', '=', input.businessSlug)
+    // A listing taken down cannot take an order, the same as it cannot be
+    // found. Curation that stops at the search page is not curation.
+    .where('deleted_at', 'is', null)
     .selectAll()
     .executeTakeFirst() as Record<string, unknown> | undefined
 

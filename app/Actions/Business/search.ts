@@ -73,7 +73,15 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
   const radius = query.radiusMeters ?? DEFAULT_RADIUS_METERS
   const limit = Math.min(query.limit ?? 60, MAX_LIMIT)
 
-  let builder = db.selectFrom('businesses').selectAll()
+  /*
+   * A hidden listing is hidden everywhere.
+   *
+   * Curation sets `deleted_at` rather than deleting the row, and every read
+   * path has to honour it: taking a business down from one screen and leaving
+   * it on the search, the map and its own page is worse than not offering to
+   * take it down at all.
+   */
+  let builder = db.selectFrom('businesses').where('deleted_at', 'is', null).selectAll()
 
   if (hasCentre) {
     const box = boundingBox({ latitude: query.latitude as number, longitude: query.longitude as number }, radius)
@@ -248,6 +256,7 @@ export async function businessBySlug(slug: string): Promise<{
 } | null> {
   const business = await db.selectFrom('businesses')
     .where('slug', '=', slug)
+    .where('deleted_at', 'is', null)
     .selectAll()
     .executeTakeFirst() as Record<string, unknown> | undefined
 
@@ -303,6 +312,7 @@ export async function businessBySlug(slug: string): Promise<{
  */
 export async function countBusinesses(): Promise<number> {
   const rows = await db.selectFrom('businesses')
+    .where('deleted_at', 'is', null)
     .select(['id'])
     .execute() as Array<{ id: number }>
 
