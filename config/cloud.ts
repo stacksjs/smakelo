@@ -151,9 +151,21 @@ export const tsCloud: TsCloudConfig = {
               // Build output is fingerprinted, so the bytes at a URL never
               // change and a long edge TTL is free.
               assetEdgeTtl: 2592000,
-              // HTML carries the references to those fingerprinted files.
-              // Caching it as long would pin visitors to a stale release.
-              documentEdgeTtl: 3600,
+              /*
+               * HTML is not cached at the edge at all.
+               *
+               * Two things break when it is, and both were live here. A cached
+               * response cannot carry a per-visitor `Set-Cookie`, so the CSRF
+               * token never reached the browser and every order POST came back
+               * 403 while the page itself looked perfect. And the discover page
+               * states how many places are open right now, which an hour-old
+               * copy answers wrongly for an hour.
+               *
+               * The pages are cheap to render and the origin is one box away.
+               * Fingerprinted assets keep their thirty days above; those are
+               * the bytes worth caching.
+               */
+              documentEdgeTtl: 0,
             },
             // Purge the edge for these hosts at the end of every deploy, so a
             // release is visible immediately rather than after the document TTL
