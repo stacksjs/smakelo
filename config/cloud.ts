@@ -200,7 +200,24 @@ export const tsCloud: TsCloudConfig = {
       preStart: [
         'bun install --frozen-lockfile',
         'mkdir -p /var/lib/smakelo',
-        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate || true',
+        /*
+         * The schema is rebuilt from the corpus on every deploy, and then
+         * reseeded.
+         *
+         * Heavy-handed for a real product and right for this one: every row
+         * here comes from `seed:demo`, so there is nothing a rebuild can lose
+         * that the next line does not immediately restore. Orders a visitor
+         * placed between deploys do go, which is the honest behaviour for a
+         * demonstration whose orders reach nobody.
+         *
+         * It also fixes the failure this replaces. `migrate` applies pending
+         * files, so after the corpus was regenerated wholesale the ALTERs
+         * collided with columns that already existed, the run aborted, and the
+         * trailing `|| true` swallowed it - leaving production on a schema
+         * without `orders.business_id` while the deploy reported success. Every
+         * order POST then answered 500 against a site that looked perfect.
+         */
+        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate:fresh --force',
         'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo',
         'bun node_modules/@stacksjs/buddy/dist/cli.js build:places',
         // The production server serves what the build produced, so a page added
