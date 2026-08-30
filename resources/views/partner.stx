@@ -38,6 +38,18 @@ const surfaces = [
     href: '/track',
   },
   {
+    name: 'Reviews',
+    detail: 'Ratings, a distribution rather than one average, and one reply per review. Only the invented partners can be reviewed: the real places listed here agreed to nothing, so nobody gets to publish opinions under their name.',
+    state: 'Built',
+    href: '/places/nonna-pia',
+  },
+  {
+    name: 'Claims',
+    detail: 'If you run one of the listed places and would rather not be here, the form says so first. Nothing is emailed to the business, and a claim is read by a person.',
+    state: 'Built',
+    href: '/claims',
+  },
+  {
     name: 'Payouts',
     detail: 'Every order records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. The statement sums those rows, and paying out writes a row of its own rather than clearing a number.',
     state: 'Built',

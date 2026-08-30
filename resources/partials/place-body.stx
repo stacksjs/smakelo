@@ -56,6 +56,15 @@
           <p class="mt-4 text-[14px]" style="color: var(--ink-soft)">
             {{ vm.address }}, {{ vm.city }}
           </p>
+
+          {{-- Saving is private and says nothing about the business, so a real
+            listing can be saved as freely as an invented partner. --}}
+          <button id="save-place" data-place="{{ vm.slug }}" hidden
+            class="inline-flex gap-2 items-center px-4 py-2 mt-6 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+            style="border: 1px solid var(--line); color: var(--ink-soft)">
+            <i class="w-3.5 h-3.5 i-hugeicons-bookmark-02"></i>
+            <span data-label>Save</span>
+          </button>
         </div>
 
         <div class="lg:col-span-5">
@@ -110,18 +119,26 @@
                   Nobody there has signed up with Smakelo, so there is nothing to order
                   and no reviews have been written.
                 </p>
-                <a href="/partner" class="inline-flex gap-3 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group" style="background: var(--ink); color: var(--paper)">
-                  <span>Claim this business</span>
+                <a href="/partner" id="claim-open" data-place="{{ vm.slug }}" data-name="{{ vm.name }}" class="inline-flex gap-3 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group" style="background: var(--ink); color: var(--paper)">
+                  <span>This is my business</span>
                   <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px" style="background: rgba(255,255,255,0.14)">
                     <i class="w-3.5 h-3.5 i-hugeicons-arrow-up-right-01"></i>
                   </span>
                 </a>
+
+                <div id="claim-form" hidden class="mt-6"></div>
               </div>
             </section>
           @endif
 
+          {{-- The reviews below are rendered on the server so the page says
+            something with no JavaScript at all. When the client layer loads it
+            replaces them with the live list, which knows about reviews written
+            since this page was generated and about this browser's own votes. --}}
+          <div id="reviews-live" data-place="{{ vm.slug }}"></div>
+
           @if (vm.reviews.length > 0)
-            <section class="mt-16">
+            <section id="reviews-static" class="mt-16">
               <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Reviews</h2>
 
               <div class="mt-6 space-y-4">
@@ -216,6 +233,344 @@
         }).addTo(map)
 
         new Marker([point.lat, point.lng]).addTo(map).bindPopup(`<strong>${point.name}</strong>`)
+      }
+
+      /*
+       * The interactive layer: saving, reviewing, voting, claiming.
+       *
+       * Everything above this point is server-rendered and readable with no
+       * JavaScript. This replaces the static review list with the live one and
+       * adds the controls that only make sense when something can respond.
+       */
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;',
+      }[ch]))
+
+      function csrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)X-CSRF-Token=([^;]+)/)
+        return match ? decodeURIComponent(match[1]) : ''
+      }
+
+      /*
+       * A token for this browser, standing in for the account this demo does
+       * not have. Minted once and kept, so a person's own reviews and saved
+       * places survive a reload.
+       */
+      function visitorToken() {
+        let token = localStorage.getItem('smakelo.visitor')
+
+        if (!token) {
+          token = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
+          localStorage.setItem('smakelo.visitor', token)
+        }
+
+        return token
+      }
+
+      function send(url, body) {
+        return fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken(),
+            'x-visitor': visitorToken(),
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(body || {}),
+        })
+      }
+
+      const stars = rating => '\u2605'.repeat(rating) + '\u2606'.repeat(5 - rating)
+
+      // --- Saving -------------------------------------------------------
+
+      const saveButton = document.getElementById('save-place')
+
+      if (saveButton) {
+        const placeSlug = saveButton.dataset.place
+        const label = saveButton.querySelector('[data-label]')
+
+        const paint = (saved) => {
+          label.textContent = saved ? 'Saved' : 'Save'
+          saveButton.style.background = saved ? 'var(--accent-soft)' : 'transparent'
+          saveButton.style.color = saved ? 'var(--accent)' : 'var(--ink-soft)'
+          saveButton.style.border = saved ? '1px solid transparent' : '1px solid var(--line)'
+        }
+
+        fetch('/api/saved', { headers: { 'x-visitor': visitorToken() } })
+          .then(response => response.json())
+          .then(({ data }) => {
+            paint(data.some(place => place.handle === placeSlug))
+            saveButton.hidden = false
+          })
+          .catch(() => { saveButton.hidden = false })
+
+        saveButton.addEventListener('click', async () => {
+          const response = await send(`/api/businesses/${placeSlug}/save`)
+
+          if (response.ok)
+            paint((await response.json()).data.saved)
+        })
+      }
+
+      // --- Reviews ------------------------------------------------------
+
+      const reviewsRoot = document.getElementById('reviews-live')
+
+      async function loadReviews() {
+        if (!reviewsRoot)
+          return
+
+        const placeSlug = reviewsRoot.dataset.place
+        const response = await fetch(`/api/businesses/${placeSlug}/reviews`, { headers: { 'x-visitor': visitorToken() } })
+
+        if (!response.ok)
+          return
+
+        const { data } = await response.json()
+
+        // Only now is the static list redundant. If this fetch fails it stays,
+        // which is the whole reason it is rendered on the server.
+        const stale = document.getElementById('reviews-static')
+        if (stale)
+          stale.remove()
+
+        reviewsRoot.innerHTML = `
+          <section class="mt-16">
+            <div class="flex flex-wrap gap-4 justify-between items-baseline">
+              <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Reviews</h2>
+              ${data.stats.count === 0 ? '' : `<p class="text-[14px]" style="color: var(--ink-soft)">${data.stats.average} average from ${data.stats.count}</p>`}
+            </div>
+
+            ${data.stats.count === 0 ? '' : distribution(data.stats)}
+
+            <div class="mt-6 space-y-4">
+              ${data.reviews.map(card).join('') || '<p class="text-[15px]" style="color: var(--ink-soft)">Nobody has written one yet.</p>'}
+            </div>
+
+            ${data.canReview ? composer(data.reviews.some(review => review.mine)) : notReviewable()}
+          </section>`
+
+        wire(placeSlug)
+      }
+
+      function distribution(stats) {
+        const most = Math.max(...stats.distribution, 1)
+
+        return `
+          <div class="mt-6 space-y-1.5 max-w-xs">
+            ${[5, 4, 3, 2, 1].map((star) => {
+              const count = stats.distribution[star - 1]
+              return `
+                <div class="flex gap-3 items-center text-[12px]" style="color: var(--ink-soft)">
+                  <span class="w-3 tabular-nums text-right">${star}</span>
+                  <span class="overflow-hidden flex-1 h-1.5 rounded-full" style="background: var(--line)">
+                    <span class="block h-full rounded-full" style="width: ${Math.round((count / most) * 100)}%; background: var(--accent)"></span>
+                  </span>
+                  <span class="w-5 tabular-nums text-right">${count}</span>
+                </div>`
+            }).join('')}
+          </div>`
+      }
+
+      function card(review) {
+        return `
+          <article class="p-1.5 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 16px 32px -22px rgba(20,17,15,0.12)">
+            <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
+              <div class="flex gap-4 justify-between items-baseline">
+                <p class="text-[15px] font-semibold">${escapeHtml(review.title || 'Untitled')}</p>
+                <span class="shrink-0 text-[13px] tracking-[0.1em]" style="color: var(--accent)">${stars(review.rating)}</span>
+              </div>
+
+              <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">
+                ${escapeHtml(review.authorName)}${review.verified ? ' &middot; ordered through Smakelo' : ''}
+              </p>
+
+              <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(review.body)}</p>
+
+              ${review.dishes ? `<p class="mt-3 text-[13px]" style="color: var(--ink-soft)">Ordered: ${escapeHtml(review.dishes)}</p>` : ''}
+
+              ${review.ownerResponse ? `
+                <div class="pl-4 mt-5 border-l" style="border-color: var(--line)">
+                  <p class="text-[12px] font-medium tracking-[0.14em] uppercase" style="color: var(--ink-soft)">Response from the owner</p>
+                  <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(review.ownerResponse)}</p>
+                </div>` : ''}
+
+              <div class="flex gap-4 items-center mt-5">
+                ${review.mine
+                  ? `<span class="text-[12px]" style="color: var(--ink-soft)">Your review</span>`
+                  : `<button data-helpful="${review.id}" class="text-[12px] transition-opacity duration-500 hover:opacity-70" style="color: ${review.votedByMe ? 'var(--accent)' : 'var(--ink-soft)'}">
+                      ${review.votedByMe ? 'You found this helpful' : 'Helpful'}
+                    </button>`}
+                <span class="text-[12px]" style="color: var(--ink-soft)">${review.helpfulCount} found this helpful</span>
+              </div>
+            </div>
+          </article>`
+      }
+
+      function composer(alreadyWrote) {
+        if (alreadyWrote)
+          return '<p class="mt-8 text-[14px]" style="color: var(--ink-soft)">You have reviewed this place. One each.</p>'
+
+        return `
+          <div class="p-1.5 mt-10 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+            <form id="review-form" class="p-7 rounded-[calc(1.75rem-0.375rem)]">
+              <h3 class="text-[18px] font-semibold tracking-[-0.02em]">Write a review</h3>
+              <p class="mt-2 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
+                This is an invented business, so say what you like. Real places
+                listed here cannot be reviewed.
+              </p>
+
+              <div class="flex gap-1 mt-5" id="rating-picker">
+                ${[1, 2, 3, 4, 5].map(star => `
+                  <button type="button" data-star="${star}" class="p-1 text-[22px] leading-none transition-transform duration-500 hover:scale-110" style="color: var(--line)">&#9733;</button>`).join('')}
+              </div>
+
+              <input name="authorName" placeholder="Your name" maxlength="60"
+                class="px-4 py-3 mt-5 w-full text-[15px] rounded-[1rem]" style="background: var(--paper); border: 1px solid var(--line)">
+
+              <input name="title" placeholder="Sum it up" maxlength="120"
+                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]" style="background: var(--paper); border: 1px solid var(--line)">
+
+              <textarea name="body" rows="4" placeholder="What was it like?" maxlength="4000"
+                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]" style="background: var(--paper); border: 1px solid var(--line)"></textarea>
+
+              <input name="dishes" placeholder="What you ordered (optional)" maxlength="200"
+                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]" style="background: var(--paper); border: 1px solid var(--line)">
+
+              <p id="review-error" hidden class="mt-3 text-[13px]" style="color: var(--accent)"></p>
+
+              <button type="submit" class="px-5 py-2.5 mt-5 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                style="background: var(--ink); color: var(--paper)">Post it</button>
+            </form>
+          </div>`
+      }
+
+      function notReviewable() {
+        return `
+          <p class="mt-8 max-w-lg text-[14px] leading-relaxed" style="color: var(--ink-soft)">
+            This is a real place, listed from open data. Nobody there agreed to
+            be here, so Smakelo will not publish invented opinions attached to
+            their name.
+          </p>`
+      }
+
+      function wire(placeSlug) {
+        let rating = 0
+
+        const picker = document.getElementById('rating-picker')
+
+        if (picker) {
+          picker.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-star]')
+            if (!button)
+              return
+
+            rating = Number(button.dataset.star)
+            picker.querySelectorAll('[data-star]').forEach((star) => {
+              star.style.color = Number(star.dataset.star) <= rating ? 'var(--accent)' : 'var(--line)'
+            })
+          })
+        }
+
+        reviewsRoot.querySelectorAll('[data-helpful]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const response = await send(`/api/reviews/${button.dataset.helpful}/helpful`)
+
+            if (response.ok)
+              loadReviews()
+          })
+        })
+
+        const form = document.getElementById('review-form')
+
+        if (form) {
+          form.addEventListener('submit', async (event) => {
+            event.preventDefault()
+
+            const error = document.getElementById('review-error')
+            const fields = new FormData(form)
+
+            const response = await send(`/api/businesses/${placeSlug}/reviews`, {
+              rating,
+              authorName: fields.get('authorName') || 'Guest',
+              title: fields.get('title') || '',
+              body: fields.get('body') || '',
+              dishes: fields.get('dishes') || '',
+            })
+
+            if (!response.ok) {
+              error.textContent = (await response.json()).message
+              error.hidden = false
+              return
+            }
+
+            loadReviews()
+          })
+        }
+      }
+
+      loadReviews()
+
+      // --- Claims -------------------------------------------------------
+
+      const claimOpen = document.getElementById('claim-open')
+
+      if (claimOpen) {
+        const panel = document.getElementById('claim-form')
+
+        claimOpen.addEventListener('click', (event) => {
+          event.preventDefault()
+          claimOpen.hidden = true
+          panel.hidden = false
+
+          panel.innerHTML = `
+            <form id="claim" class="p-6 rounded-[1.5rem]" style="background: var(--paper); border: 1px solid var(--line)">
+              <p class="text-[14px] leading-relaxed" style="color: var(--ink-soft)">
+                ${escapeHtml(claimOpen.dataset.name)} is listed from OpenStreetMap and
+                Foursquare Open Source Places. Tell us who you are and what you want:
+                the listing corrected, handed to you, or taken down. Nothing is sent to
+                the business, and this demo will never email you an offer.
+              </p>
+
+              <input name="name" placeholder="Your name" maxlength="120"
+                class="px-4 py-3 mt-4 w-full text-[15px] rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+              <input name="email" type="email" placeholder="Where to reply" maxlength="200"
+                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+              <textarea name="message" rows="3" placeholder="What would you like to happen?" maxlength="2000"
+                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)"></textarea>
+
+              <p id="claim-error" hidden class="mt-3 text-[13px]" style="color: var(--accent)"></p>
+
+              <button type="submit" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                style="background: var(--ink); color: var(--paper)">Send it</button>
+            </form>`
+
+          document.getElementById('claim').addEventListener('submit', async (submitEvent) => {
+            submitEvent.preventDefault()
+
+            const fields = new FormData(submitEvent.target)
+            const error = document.getElementById('claim-error')
+
+            const response = await send(`/api/businesses/${claimOpen.dataset.place}/claim`, {
+              name: fields.get('name') || '',
+              email: fields.get('email') || '',
+              message: fields.get('message') || '',
+            })
+
+            if (!response.ok) {
+              error.textContent = (await response.json()).message
+              error.hidden = false
+              return
+            }
+
+            panel.innerHTML = `
+              <p class="p-6 text-[14px] leading-relaxed rounded-[1.5rem]" style="background: var(--accent-soft); color: var(--ink)">
+                Sent. Somebody will read it. Since this is a demonstration, the
+                honest answer to most of these is that the listing comes down.
+              </p>`
+          })
+        })
       }
     </script>
   </body>

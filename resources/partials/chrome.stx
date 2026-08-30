@@ -34,6 +34,7 @@
 
     <div class="hidden gap-8 items-center text-[14px] sm:flex" style="color: var(--ink-soft)">
       <a href="/" class="transition-colors duration-500 hover:opacity-70">Discover</a>
+      <a href="/saved" class="transition-colors duration-500 hover:opacity-70">Saved</a>
       <a href="/partner" class="transition-colors duration-500 hover:opacity-70">For businesses</a>
       <a href="/about" class="transition-colors duration-500 hover:opacity-70">About this demo</a>
     </div>

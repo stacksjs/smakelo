@@ -154,11 +154,91 @@ const canonicalPath = '/kitchen'
                       <span class="tabular-nums" style="color: var(--ink-soft)">${money(order.totalCents, currency)}</span>
                     </li>`).join('')}
                 </ul>
-              </section>`}`
+              </section>`}
+
+          <section id="review-replies" class="mt-12"></section>`
 
         root.querySelectorAll('[data-advance]').forEach((el) => {
           el.addEventListener('click', () => advance(Number(el.dataset.advance), el.dataset.status))
         })
+
+        loadReviews()
+      }
+
+      /*
+       * Reviews waiting for a reply.
+       *
+       * On the same screen as the orders because that is where the person who
+       * would answer them already is. A separate portal they have to remember
+       * to open is a portal nobody opens.
+       */
+      async function loadReviews() {
+        const panel = document.getElementById('review-replies')
+
+        if (!panel)
+          return
+
+        const response = await fetch(`/api/businesses/${encodeURIComponent(slug)}/reviews`)
+
+        if (!response.ok)
+          return
+
+        const { data } = await response.json()
+        const unanswered = data.reviews.filter(review => !review.ownerResponse)
+
+        panel.innerHTML = `
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">
+            ${unanswered.length === 0 ? 'Reviews' : `Reviews waiting for a reply (${unanswered.length})`}
+          </h2>
+
+          ${unanswered.length === 0
+            ? '<p class="mt-4 text-[15px]" style="color: var(--ink-soft)">Everything has been answered.</p>'
+            : `<div class="grid grid-cols-1 gap-4 mt-4 lg:grid-cols-2">${unanswered.slice(0, 6).map(replyCard).join('')}</div>`}`
+
+        panel.querySelectorAll('[data-reply]').forEach((form) => {
+          form.addEventListener('submit', async (event) => {
+            event.preventDefault()
+
+            const text = form.querySelector('textarea').value
+
+            const sent = await fetch(`/api/reviews/${form.dataset.reply}/respond`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
+              credentials: 'same-origin',
+              body: JSON.stringify({ businessSlug: slug, text }),
+            })
+
+            if (!sent.ok) {
+              const { message } = await sent.json()
+              form.querySelector('[data-error]').textContent = message
+              form.querySelector('[data-error]').hidden = false
+              return
+            }
+
+            loadReviews()
+          })
+        })
+      }
+
+      function replyCard(review) {
+        return `
+          <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+            <form data-reply="${review.id}" class="p-5 rounded-[calc(1.5rem-0.375rem)]">
+              <div class="flex gap-4 justify-between items-baseline">
+                <p class="text-[15px] font-semibold">${escapeHtml(review.title || 'Untitled')}</p>
+                <span class="shrink-0 text-[13px] tracking-[0.1em]" style="color: var(--accent)">${'\u2605'.repeat(review.rating)}</span>
+              </div>
+              <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">${escapeHtml(review.authorName)}</p>
+              <p class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">${escapeHtml(review.body)}</p>
+
+              <textarea rows="2" maxlength="1500" placeholder="Reply as the owner"
+                class="px-4 py-3 mt-4 w-full text-[14px] rounded-[1rem]" style="background: var(--paper); border: 1px solid var(--line)"></textarea>
+
+              <p data-error hidden class="mt-2 text-[13px]" style="color: var(--accent)"></p>
+
+              <button type="submit" class="px-4 py-2 mt-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Reply</button>
+            </form>
+          </div>`
       }
 
       load()

@@ -5,6 +5,9 @@ import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
+import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
+import { favoritesFor, toggleFavorite } from '../app/Actions/Favorite/favorites'
+import { respondToReview, reviewsFor, statsFor, submitReview, voteOnReview } from '../app/Actions/Review/write'
 import type { PartyType } from '../app/Actions/Money/statements'
 import { outstandingBalances, recordPayout, statementFor } from '../app/Actions/Money/statements'
 
@@ -335,4 +338,133 @@ route.post('/money/{partyType}/{id}/payout', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { paidCents: result.paidCents } })
+})
+
+/**
+ * Reviews, saved places and claims.
+ *
+ * These carry an `x-visitor` header: a random token the browser mints and
+ * keeps, standing in for the account this demo deliberately does not have.
+ * It identifies a browser rather than a person and is forgeable, which is
+ * fine for what rides on it and is said out loud in `Visitor/identity.ts`.
+ */
+function visitorOf(request: any): string {
+  return String(request?.headers?.get?.('x-visitor') ?? request?.headers?.['x-visitor'] ?? '')
+}
+
+/** `GET /api/businesses/{slug}/reviews` */
+route.get('/businesses/{slug}/reviews', async (request: any) => {
+  const place = await businessBySlug(String(request?.getParam?.('slug') ?? ''))
+
+  if (!place)
+    return response.json({ message: 'That business is not listed.' }, 404)
+
+  const businessId = Number(place.business.id)
+
+  const [list, stats] = await Promise.all([
+    reviewsFor(businessId, visitorOf(request)),
+    statsFor(businessId),
+  ])
+
+  // Only the invented partners can be reviewed. The client asks rather than
+  // assumes, so the composer is never rendered where it would be refused.
+  const canReview = Number(place.business.is_partner) === 1
+
+  return response.json({ data: { reviews: list, stats, canReview } })
+})
+
+/** `POST /api/businesses/{slug}/reviews` */
+route.post('/businesses/{slug}/reviews', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await submitReview({
+    businessSlug: String(request?.getParam?.('slug') ?? ''),
+    visitorToken: visitorOf(request),
+    authorName: String(body?.authorName ?? 'Guest'),
+    rating: Number(body?.rating ?? 0),
+    title: String(body?.title ?? ''),
+    body: String(body?.body ?? ''),
+    dishes: String(body?.dishes ?? ''),
+    visitedAt: body?.visitedAt ? String(body.visitedAt) : undefined,
+  })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { reviewId: result.reviewId, verified: result.verified } })
+})
+
+/** `POST /api/reviews/{id}/helpful` */
+route.post('/reviews/{id}/helpful', async (request: any) => {
+  const result = await voteOnReview(Number(request?.getParam?.('id') ?? 0), visitorOf(request))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { voted: result.voted, helpfulCount: result.helpfulCount } })
+})
+
+/** `POST /api/reviews/{id}/respond` */
+route.post('/reviews/{id}/respond', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await respondToReview(
+    Number(request?.getParam?.('id') ?? 0),
+    String(body?.businessSlug ?? ''),
+    String(body?.text ?? ''),
+  )
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
+})
+
+/** `GET /api/saved` and `POST /api/businesses/{slug}/save` */
+route.get('/saved', async (request: any) => {
+  return response.json({ data: await favoritesFor(visitorOf(request)) })
+})
+
+route.post('/businesses/{slug}/save', async (request: any) => {
+  const result = await toggleFavorite(String(request?.getParam?.('slug') ?? ''), visitorOf(request))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { saved: result.saved } })
+})
+
+/** `POST /api/businesses/{slug}/claim`, `GET /api/claims`, `POST /api/claims/{id}/{decision}` */
+route.post('/businesses/{slug}/claim', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await submitClaim({
+    businessSlug: String(request?.getParam?.('slug') ?? ''),
+    claimantName: String(body?.name ?? ''),
+    claimantEmail: String(body?.email ?? ''),
+    message: String(body?.message ?? ''),
+  })
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { claimId: result.claimId } })
+})
+
+route.get('/claims', async (request: any) => {
+  const status = request?.query?.status ? String(request.query.status) : undefined
+
+  return response.json({ data: await claims(status as 'pending' | 'approved' | 'rejected' | undefined) })
+})
+
+route.post('/claims/{id}/{decision}', async (request: any) => {
+  const result = await decideClaim(
+    Number(request?.getParam?.('id') ?? 0),
+    String(request?.getParam?.('decision') ?? '') as 'approved' | 'rejected',
+  )
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
 })
