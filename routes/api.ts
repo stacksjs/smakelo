@@ -4,6 +4,7 @@ import { menuFor } from '../app/Actions/Order/menu'
 import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
+import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 
 /**
  * Smakelo's JSON API, mounted under `/api` and answered by the API process.
@@ -201,4 +202,91 @@ route.post('/merchant/orders/{id}/status', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { orderId, status: result.status } })
+})
+
+/**
+ * The courier console.
+ *
+ * `GET /api/courier/{id}/console` and `GET /api/couriers-list`
+ *
+ * Unauthenticated for the same reason as the merchant board: there are no
+ * courier accounts in a demo whose couriers are invented. A real deployment
+ * resolves the courier from the session, which is what the framework's own
+ * ping and stop actions already do.
+ */
+route.get('/couriers-list', async () => {
+  return response.json({ data: await allCouriers() })
+})
+
+route.get('/courier/{id}/console', async (request: any) => {
+  const id = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const data = await consoleFor(id)
+
+  if (!data)
+    return response.json({ message: 'No such courier.' }, 404)
+
+  return response.json({ data })
+})
+
+/** `POST /api/courier/{id}/shift` */
+route.post('/courier/{id}/shift', async (request: any) => {
+  const id = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  const result = await setShift(id, Boolean(body?.online))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { status: result.status } })
+})
+
+/**
+ * Advance a stop.
+ *
+ * `POST /api/courier/stops/{id}/{action}` where action is start, complete or
+ * fail. These wrap the framework's own tracking functions, which own the order
+ * status, the events and the pickup-versus-dropoff distinction.
+ */
+route.post('/courier/stops/{id}/{action}', async (request: any) => {
+  const stopId = Number(request?.getParam?.('id') ?? 0)
+  const action = String(request?.getParam?.('action') ?? '')
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const { shippings } = await import('@stacksjs/commerce')
+
+  if (action === 'start') {
+    const stop = await shippings.tracking.startStop(stopId)
+
+    if (!stop)
+      return response.json({ message: 'No such stop.' }, 404)
+
+    /*
+     * Setting off starts the run.
+     *
+     * Until a route is active, pings from its courier find no active route, so
+     * positions are stored and no ETA is ever recomputed and no arrival fires -
+     * a courier who looks stationary on the customer's map while actually
+     * driving. Dispatch cannot do this: it does not know when they set off.
+     */
+    await shippings.tracking.startRoute(Number(stop.delivery_route_id))
+
+    return response.json({ data: stop })
+  }
+
+  if (action === 'complete') {
+    const stop = await shippings.tracking.completeStop(stopId, String(body?.notes ?? '') || undefined)
+    return stop ? response.json({ data: stop }) : response.json({ message: 'No such stop.' }, 404)
+  }
+
+  if (action === 'fail') {
+    const reason = String(body?.reason ?? '').trim()
+
+    if (!reason)
+      return response.json({ message: 'A failed stop needs a reason.' }, 422)
+
+    const stop = await shippings.tracking.failStop(stopId, reason)
+    return stop ? response.json({ data: stop }) : response.json({ message: 'No such stop.' }, 404)
+  }
+
+  return response.json({ message: 'Action must be start, complete or fail.' }, 422)
 })
