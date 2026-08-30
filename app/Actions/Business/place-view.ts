@@ -152,7 +152,7 @@ function weekTable(hours: any[]): Array<{ name: string, text: string }> {
       .sort((a, b) => a.opensAt - b.opensAt)
 
     return {
-      name: DAY_NAMES[day],
+      name: DAY_NAMES[day] ?? '',
       text: intervals.length === 0
         ? 'Closed'
         : intervals.map(hour => `${formatMinuteOfDay(hour.opensAt)} to ${formatMinuteOfDay(hour.closesAt)}`).join(', '),

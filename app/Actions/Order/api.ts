@@ -30,7 +30,7 @@ function readInput(body: any): PlaceOrderInput | { reason: string } {
   if (rawLines.length === 0)
     return { reason: 'An order needs at least one item.' }
 
-  const lines = rawLines.map((line: any) => ({
+  const lines = (rawLines as any[]).map((line: any) => ({
     productId: Number(line?.productId),
     quantity: Number(line?.quantity ?? 1),
     modifierIds: Array.isArray(line?.modifierIds) ? line.modifierIds.map(Number).filter(Number.isFinite) : [],

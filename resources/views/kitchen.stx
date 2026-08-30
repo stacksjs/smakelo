@@ -130,7 +130,9 @@ const canonicalPath = '/kitchen'
             <div class="flex gap-6 text-[13px]" style="color: var(--ink-soft)">
               <span><strong style="color: var(--ink)">${board.today.orders}</strong> orders</span>
               <span><strong style="color: var(--ink)">${money(board.today.grossCents, currency)}</strong> gross</span>
-              <span><strong style="color: var(--ink)">${money(board.today.netCents, currency)}</strong> yours</span>
+              <a href="/earnings?party=business:${board.business.id}" class="transition-opacity duration-500 hover:opacity-70">
+                <strong style="color: var(--ink)">${money(board.today.netCents, currency)}</strong> yours
+              </a>
             </div>
           </div>
 

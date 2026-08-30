@@ -107,14 +107,14 @@ const canonicalPath = '/courier'
             </button>
           </div>
 
-          <div class="grid grid-cols-3 gap-3 mt-8">
+          <a href="/earnings?party=courier:${courierId}" class="grid grid-cols-3 gap-3 mt-8 transition-transform duration-500 hover:-translate-y-0.5">
             ${[['Deliveries', state.earnings.deliveries], ['Fees', money(state.earnings.feeCents)], ['Tips', money(state.earnings.tipCents)]]
               .map(([label, value]) => `
                 <div class="p-5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
                   <p class="text-[22px] font-semibold tracking-[-0.02em] tabular-nums">${value}</p>
                   <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">${label}</p>
                 </div>`).join('')}
-          </div>
+          </a>
 
           ${run ? runCard(run) : `
             <div class="p-8 mt-8 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">

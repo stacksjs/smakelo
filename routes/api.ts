@@ -5,6 +5,7 @@ import { createOrder, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
+import { outstandingBalances, recordPayout, statementFor } from '../app/Actions/Money/statements'
 
 /**
  * Smakelo's JSON API, mounted under `/api` and answered by the API process.
@@ -289,4 +290,48 @@ route.post('/courier/stops/{id}/{action}', async (request: any) => {
   }
 
   return response.json({ message: 'Action must be start, complete or fail.' }, 422)
+})
+
+/**
+ * Statements.
+ *
+ * `GET /api/money/{partyType}/{id}` and `GET /api/money/balances`
+ *
+ * Every figure is a sum over the ledger, never recomputed from orders: one
+ * place decides what a party is owed, and every screen reads it.
+ */
+route.get('/money/balances', async () => {
+  return response.json({ data: await outstandingBalances() })
+})
+
+route.get('/money/{partyType}/{id}', async (request: any) => {
+  const partyType = String(request?.getParam?.('partyType') ?? '')
+  const partyId = Number(request?.getParam?.('id') ?? 0)
+
+  if (!['business', 'courier', 'platform'].includes(partyType))
+    return response.json({ message: 'Party must be business, courier or platform.' }, 422)
+
+  const statement = await statementFor(partyType as 'business' | 'courier' | 'platform', partyId)
+
+  if (!statement)
+    return response.json({ message: 'No such party.' }, 404)
+
+  return response.json({ data: statement })
+})
+
+/** `POST /api/money/{partyType}/{id}/payout` */
+route.post('/money/{partyType}/{id}/payout', async (request: any) => {
+  const partyType = String(request?.getParam?.('partyType') ?? '')
+  const partyId = Number(request?.getParam?.('id') ?? 0)
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  if (!['business', 'courier'].includes(partyType))
+    return response.json({ message: 'Only a business or a courier is paid out.' }, 422)
+
+  const result = await recordPayout(partyType as 'business' | 'courier', partyId, Number(body?.amountCents ?? 0))
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { paidCents: result.paidCents } })
 })

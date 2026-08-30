@@ -149,7 +149,7 @@ async function nearestAvailableCourier(latitude: number, longitude: number): Pro
         { latitude: Number(courier.latitude), longitude: Number(courier.longitude) },
       ),
     }))
-    .sort((a, b) => a.distance - b.distance)[0].courier
+    .sort((a, b) => a.distance - b.distance)[0]?.courier ?? null
 }
 
 async function createStop(input: {

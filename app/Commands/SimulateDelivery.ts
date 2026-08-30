@@ -54,7 +54,7 @@ export default defineCommand((cli) => {
       // Start the courier a little away from the restaurant, so the first leg
       // is a journey rather than an arrival.
       let position = offsetFrom(
-        { latitude: Number(stops[0].latitude), longitude: Number(stops[0].longitude) },
+        { latitude: Number(stops[0]?.latitude), longitude: Number(stops[0]?.longitude) },
         1500,
       )
 

@@ -39,8 +39,9 @@ const surfaces = [
   },
   {
     name: 'Payouts',
-    detail: 'Every order already records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. Connecting that to Stripe Connect, which the framework now supports, is the next piece.',
-    state: 'Ledger built',
+    detail: 'Every order records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. The statement sums those rows, and paying out writes a row of its own rather than clearing a number.',
+    state: 'Built',
+    href: '/earnings',
   },
 ]
 </script>

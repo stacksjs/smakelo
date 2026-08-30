@@ -250,7 +250,7 @@ async function priceLines(
  */
 async function writeLines(orderId: number, priced: PricedLine[], requested: OrderRequestLine[]): Promise<void> {
   for (let index = 0; index < priced.length; index++) {
-    const line = priced[index]
+    const line = priced[index]!
     const modifierTotal = line.modifiers.reduce((sum, modifier) => sum + modifier.priceDeltaCents * modifier.quantity, 0)
 
     // No uuid: the framework's OrderItem carries only `useTimestamps`, so the
