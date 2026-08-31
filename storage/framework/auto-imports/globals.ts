@@ -19,6 +19,7 @@ declare global {
   const toggleDark: typeof autoImports.toggleDark
   const isDark: typeof autoImports.isDark
   const preferredDark: typeof autoImports.preferredDark
+  const keepSized: typeof autoImports.keepSized
   const csrfToken: typeof autoImports.csrfToken
   const visitorToken: typeof autoImports.visitorToken
   const authToken: typeof autoImports.authToken

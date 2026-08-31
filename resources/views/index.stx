@@ -559,6 +559,7 @@ function openLabel(business) {
     <script client>
       import { Marker, tileLayer, TsMap } from 'ts-maps'
       import 'ts-maps/styles.css'
+      import { keepSized } from '../functions/map'
       import { send, visitorToken } from '../functions/session'
 
       /*
@@ -1050,33 +1051,8 @@ function openLabel(business) {
           }
         })
 
-        /*
-         * Keep the map's idea of its own size honest.
-         *
-         * It measures itself once, at construction, and it is constructed
-         * inside a grid column the browser has not finished sizing - so the
-         * measurement it keeps is of a box that is about to change. It then
-         * lays its tiles out for the old size and paints them offset, with
-         * white gaps where the next row should be.
-         *
-         * `invalidateSize()` on its own makes it worse. Its default is to hold
-         * the visible centre still by translating the tile pane half the
-         * difference, which is right when a sidebar opens next to a map
-         * somebody is reading, and wrong here: a map born 456px too narrow
-         * gets its pane shoved 228px sideways and keeps it. `pan: false`
-         * declines the compensation, and `setView` then recomputes the pane
-         * position from the centre and zoom rather than adjusting whatever
-         * position it was already in.
-         *
-         * An observer rather than a call at each site that resizes it - the
-         * pane toggle, a window resize, the breakpoint that moves the results
-         * into their own column - because they are all the same fact, and it
-         * is the only one of them that also hears the initial layout.
-         */
-        new ResizeObserver(() => {
-          map.invalidateSize?.({ pan: false, animate: false })
-          map.setView(map.getCenter(), map.getZoom(), { animate: false })
-        }).observe(mapEl)
+        // Built inside a grid column the browser has not finished sizing.
+        keepSized(map, mapEl)
       }
 
       // The rail's labels come from the dictionary, which arrives after this

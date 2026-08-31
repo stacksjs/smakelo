@@ -1,3 +1,4 @@
+import { keepSized } from './map'
 import { send, visitorToken } from './session'
 
 /**
@@ -214,4 +215,6 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
   }).addTo(map)
 
   new Marker([point.lat, point.lng]).addTo(map).bindPopup(`<strong>${point.name}</strong>`)
+
+  keepSized(map, element)
 }
