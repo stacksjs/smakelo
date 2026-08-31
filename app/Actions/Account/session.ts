@@ -14,39 +14,45 @@ export interface SocialButton {
   name: string
   label: string
   icon: string
+  /** Whether clicking it would actually complete. */
+  configured: boolean
 }
 
+/** The two we offer, in the order they belong in. */
+const SOCIAL_PROVIDERS = [
+  { name: 'google', label: 'Continue with Google', icon: 'i-hugeicons-google' },
+  { name: 'apple', label: 'Continue with Apple', icon: 'i-hugeicons-apple' },
+]
+
 /**
- * Which providers would work if somebody clicked them.
+ * The sign-in buttons, and which of them would work if somebody clicked.
  *
- * Asked of the framework rather than hardcoded, because a button for a
- * provider with no client secret sends a visitor to an error page that reads
- * to them as this site being broken. No keys, no button, no explanation
- * needed.
+ * Both are always returned. Which providers a site offers is a fact about the
+ * site, and a sign-in page that renders a different set of buttons depending
+ * on which secrets happen to be present is one that looks broken in exactly
+ * the deployment where something is: keys missing in production is the case
+ * you most want to be able to see, and hiding the buttons hides it.
+ *
+ * `configured` is what the page needs to avoid the other failure - a live
+ * button that hands somebody to an error page reading as this site's fault.
+ * Rendered, plainly unavailable, and not clickable.
  */
 export async function socialButtons(): Promise<SocialButton[]> {
+  const configured = await configuredNames()
+
+  return SOCIAL_PROVIDERS.map(provider => ({ ...provider, configured: configured.has(provider.name) }))
+}
+
+async function configuredNames(): Promise<Set<string>> {
   try {
     const { configuredSocialProviders } = await import('@stacksjs/socials')
 
-    const icons: Record<string, string> = {
-      google: 'i-hugeicons-google',
-      apple: 'i-hugeicons-apple',
-      github: 'i-hugeicons-github',
-      facebook: 'i-hugeicons-facebook-01',
-    }
-
-    return configuredSocialProviders()
-      .filter(provider => provider.name === 'google' || provider.name === 'apple')
-      .map(provider => ({
-        name: String(provider.name),
-        label: `Continue with ${String(provider.name).charAt(0).toUpperCase()}${String(provider.name).slice(1)}`,
-        icon: icons[String(provider.name)] ?? 'i-hugeicons-user-circle',
-      }))
+    return new Set(configuredSocialProviders().map(provider => String(provider.name)))
   }
   catch {
-    // The package is optional in some builds. A missing social package means
-    // no social buttons, which is the same outcome as no keys.
-    return []
+    // The package is optional in some builds. Missing is the same outcome as
+    // present with no keys: nothing here can be completed.
+    return new Set()
   }
 }
 
