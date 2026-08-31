@@ -435,8 +435,17 @@ function openLabel(business) {
 
           {{-- A pin per result, and a popup that links through. --}}
           <div class="discover-map" :hidden="!mapView()">
-            <div class="relative p-2 h-full rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
+            <div id="discover-map-shell" class="relative p-2 h-full rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
               <div id="discover-map" data-pins="{{ pins }}" data-centre="{{ mapCentre }}" class="w-full h-full rounded-[calc(1.5rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
+
+              <button
+                type="button"
+                class="map-btn map-solo absolute top-6 right-6 z-[500]"
+                aria-label="Fill the window with the map"
+                @click="toggleFullscreen()"
+              >
+                <i class="w-4 h-4 i-hugeicons-arrow-expand-01"></i>
+              </button>
 
               <div class="flex absolute bottom-6 left-6 z-[500] flex-col gap-2">
                 <div class="map-stack">
@@ -565,7 +574,7 @@ function openLabel(business) {
     @include('footer')
 
     <script client>
-      import { Marker, tileLayer, TsMap } from 'ts-maps'
+      import { divIcon, Marker, tileLayer, TsMap } from 'ts-maps'
       import 'ts-maps/styles.css'
       import { keepSized } from '../functions/map'
       import { send, visitorToken } from '../functions/session'
@@ -1040,6 +1049,88 @@ function openLabel(business) {
       const markers = new Map()
       let map = null
 
+      /*
+       * The popup, as a small card built from the same parts as the large ones.
+       *
+       * Read off the card list rather than the pin payload, so the photograph,
+       * the rating and the price are the ones the result beside it is showing
+       * instead of a second version that can disagree. A pin whose card is not
+       * loaded - a remote search result - still gets a name and a link.
+       *
+       * Text goes in through `textContent`, never interpolated into HTML: the
+       * names come from open data and one apostrophe or angle bracket in a
+       * business name would otherwise break the card or worse.
+       */
+      function popupFor(pin) {
+        const card = [...cards(), ...remote()].find(entry => entry.slug === pin.slug)
+        const root = document.createElement('div')
+        root.className = 'map-card'
+
+        if (card && card.photo) {
+          const figure = document.createElement('div')
+          figure.className = 'map-card-photo cover'
+          figure.style.setProperty('--h', card.hue)
+          figure.style.setProperty('--h2', card.hueEnd)
+
+          const image = document.createElement('img')
+          image.className = 'cover-photo'
+          image.src = card.photo
+          image.alt = ''
+          image.loading = 'lazy'
+          image.decoding = 'async'
+          figure.append(image)
+          root.append(figure)
+        }
+
+        const body = document.createElement('div')
+        body.className = 'map-card-body'
+
+        const row = document.createElement('div')
+        row.className = 'map-card-row'
+
+        const name = document.createElement('strong')
+        name.textContent = pin.name
+        row.append(name)
+
+        if (card && card.ratingCount > 0) {
+          const chip = document.createElement('span')
+          chip.className = 'rating-chip'
+          chip.textContent = `★ ${card.rating}`
+          row.append(chip)
+        }
+
+        body.append(row)
+
+        const meta = document.createElement('p')
+        meta.className = 'map-card-meta'
+        meta.textContent = card ? `${card.price} · ${card.cuisine || card.type}` : pin.type
+        body.append(meta)
+
+        const link = document.createElement('a')
+        link.className = 'map-card-link'
+        link.href = `/places/${pin.slug}`
+        link.textContent = pin.partner ? 'Order or read reviews' : 'See details'
+        body.append(link)
+
+        root.append(body)
+
+        return root
+      }
+
+      /* The map is the one pane worth filling the window with, and on a phone
+         it is the only way to see it at more than a strip. */
+      function toggleFullscreen() {
+        const shell = document.getElementById('discover-map-shell')
+
+        if (!shell)
+          return
+
+        if (document.fullscreenElement)
+          document.exitFullscreen?.()
+        else
+          shell.requestFullscreen?.().catch(() => {})
+      }
+
       function zoomBy(delta) {
         if (!map)
           return
@@ -1067,22 +1158,43 @@ function openLabel(business) {
           zoom: 12,
           zoomControl: false,
           attributionControl: false,
+          /* Tiles appear rather than fade. The fade is per-tile and spans
+             several frames, and anything that resets the view while it is
+             running leaves the tile stranded at whatever opacity it had
+             reached - a map that is completely loaded and still looks
+             half-drawn. Nothing is lost: these are flat map tiles, and they
+             are behind the pins either way. */
+          fadeAnimation: false,
         })
 
         tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
 
-        // Pins are keyed by slug so the effect below can hide the ones the
-        // filter has excluded.
+        /*
+         * Pins are ours rather than the library's teardrop.
+         *
+         * Sixty teardrops over a city is a wall of identical shapes with no
+         * information in any of them. A dot carries two things instead: it is
+         * filled when the place can take an order and hollow when it cannot,
+         * which is the one distinction that changes what you can do when you
+         * arrive.
+         *
+         * Keyed by slug so the effect below can hide the ones the filter has
+         * excluded.
+         */
         for (const pin of readPins()) {
-          const marker = new Marker([pin.lat, pin.lng]).addTo(map)
+          const marker = new Marker([pin.lat, pin.lng], {
+            icon: divIcon({
+              className: 'pin-wrap',
+              html: `<span class="pin${pin.partner ? ' pin-partner' : ''}"></span>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            }),
+          }).addTo(map)
 
-          // A partner can take an order; a listing can only be read about, and
-          // the popup should not pretend otherwise.
-          marker.bindPopup(
-            `<strong>${pin.name}</strong><br>`
-            + `<span style="opacity:.7">${pin.type}</span><br>`
-            + `<a href="/places/${pin.slug}">${pin.partner ? 'Order or read reviews' : 'Read reviews'}</a>`,
-          )
+          // Built when it is opened rather than up front: sixty cards of
+          // markup, fifty-nine of which are never looked at, is a slower first
+          // paint for nothing.
+          marker.bindPopup(() => popupFor(pin), { minWidth: 208, maxWidth: 208, offset: [0, -6] })
 
           markers.set(pin.slug, marker)
         }

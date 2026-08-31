@@ -24,8 +24,28 @@ export function keepSized(map: any, element: HTMLElement): void {
   if (typeof ResizeObserver !== 'function')
     return
 
-  new ResizeObserver(() => {
-    map.invalidateSize?.({ pan: false, animate: false })
-    map.setView?.(map.getCenter(), map.getZoom(), { animate: false })
-  }).observe(element)
+  let queued = 0
+
+  /*
+   * Coalesced to one call a frame.
+   *
+   * The initial layout of a grid column produces a burst of size changes, and
+   * resetting the view once per change is not free: the library fades each
+   * tile in over its own frames, and a `setView` landing mid-fade abandons the
+   * tile wherever it had got to. That is how the map ended up fully loaded and
+   * still half transparent - every tile present, `tsmap-tile-loaded` set, and
+   * a third of them stopped at opacity 0.155.
+   */
+  const observer = new ResizeObserver(() => {
+    if (queued)
+      return
+
+    queued = requestAnimationFrame(() => {
+      queued = 0
+      map.invalidateSize?.({ pan: false, animate: false })
+      map.setView?.(map.getCenter(), map.getZoom(), { animate: false })
+    })
+  })
+
+  observer.observe(element)
 }

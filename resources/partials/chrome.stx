@@ -5,26 +5,42 @@
   legal pages, the language switch - lives in the footer, where it is findable
   without competing with the thing people came to do. --}}
 
-<header class="mx-auto px-4 sm:px-8 pt-8 max-w-7xl">
-  <nav class="flex gap-6 justify-between items-center">
-    <a href="/" class="group inline-flex gap-2.5 items-center">
+<header class="mx-auto px-4 sm:px-8 pt-6 sm:pt-8 max-w-7xl">
+  <nav class="flex gap-4 justify-between items-center">
+    <a href="/" class="group inline-flex flex-none gap-2.5 items-center">
       <span class="inline-flex justify-center items-center w-9 h-9 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105" style="background: var(--accent)">
         <i class="w-4 h-4 text-white i-hugeicons-location-01"></i>
       </span>
       <span class="text-[19px] font-semibold tracking-[-0.02em]">Smakelo</span>
     </a>
 
-    <div class="hidden gap-8 items-center text-[14px] sm:flex" style="color: var(--ink-soft)">
-      <a href="/discover" data-i18n="nav.discover" class="transition-colors duration-500 hover:opacity-70">Discover</a>
-      <a href="/orders" data-i18n="nav.orders" class="transition-colors duration-500 hover:opacity-70">Orders</a>
-      <a href="/saved" data-i18n="nav.favorites" class="transition-colors duration-500 hover:opacity-70">Saved</a>
+    {{-- The same three links at every width. They used to be `hidden sm:flex`,
+      which left a phone with no navigation at all - not even a way to sign in
+      - on a site whose whole audience is holding a phone. Below the breakpoint
+      they lose their labels rather than themselves: three icons and the
+      account chip fit next to the wordmark, three words do not. --}}
+    <div class="flex flex-none gap-1 items-center text-[14px] sm:gap-8" style="color: var(--ink-soft)">
+      <a href="/discover" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="Discover">
+        <i class="w-5 h-5 sm:hidden i-hugeicons-search-01"></i>
+        <span data-i18n="nav.discover" class="hidden sm:inline">Discover</span>
+      </a>
+
+      <a href="/orders" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="Orders">
+        <i class="w-5 h-5 sm:hidden i-hugeicons-delivery-truck-01"></i>
+        <span data-i18n="nav.orders" class="hidden sm:inline">Orders</span>
+      </a>
+
+      <a href="/saved" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="Saved">
+        <i class="w-5 h-5 sm:hidden i-hugeicons-favourite"></i>
+        <span data-i18n="nav.favorites" class="hidden sm:inline">Saved</span>
+      </a>
 
       {{-- Says who you are once you are somebody. Filled in by the script at
         the foot of this partial rather than rendered, because these pages are
         built once and served to everybody. --}}
-      <a href="/account" id="account-link" class="inline-flex gap-1.5 items-center px-3 py-1.5 rounded-full transition-all duration-500 hover:opacity-70" style="border: 1px solid var(--line)">
-        <i class="w-3.5 h-3.5 i-hugeicons-user-circle"></i>
-        <span data-account-label>Sign in</span>
+      <a href="/account" id="account-link" class="inline-flex gap-1.5 items-center px-2.5 py-2 rounded-full transition-all duration-500 hover:opacity-70 sm:px-3 sm:py-1.5" style="border: 1px solid var(--line)">
+        <i class="w-4 h-4 sm:w-3.5 sm:h-3.5 i-hugeicons-user-circle"></i>
+        <span data-account-label class="hidden sm:inline">Sign in</span>
       </a>
     </div>
   </nav>
