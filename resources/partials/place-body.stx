@@ -434,11 +434,4 @@
       </div>
     </main>
 
-    <footer class="border-t" style="border-color: var(--line)">
-      <div class="mx-auto px-4 sm:px-8 py-12 max-w-7xl text-[13px]" style="color: var(--ink-soft)">
-        <p>
-          Smakelo is a demonstration built on <a href="https://github.com/stacksjs/stacks" class="underline underline-offset-4">Stacks</a>.
-          Listings from OpenStreetMap and Foursquare Open Source Places. Everything else is invented.
-        </p>
-      </div>
-    </footer>
+    @include('footer')

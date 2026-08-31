@@ -98,5 +98,6 @@ const canonicalPath = '/orders'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

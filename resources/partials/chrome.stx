@@ -18,8 +18,6 @@
       <a href="/" data-i18n="nav.discover" class="transition-colors duration-500 hover:opacity-70">Discover</a>
       <a href="/orders" data-i18n="nav.orders" class="transition-colors duration-500 hover:opacity-70">Orders</a>
       <a href="/saved" data-i18n="nav.favorites" class="transition-colors duration-500 hover:opacity-70">Saved</a>
-      <a href="/shares" data-i18n="nav.shares" class="transition-colors duration-500 hover:opacity-70">Shares</a>
-      <a href="/partner" data-i18n="nav.partner" class="transition-colors duration-500 hover:opacity-70">For businesses</a>
 
       {{-- Says who you are once you are somebody. Filled in by the script at
         the foot of this partial rather than rendered, because these pages are
@@ -28,35 +26,10 @@
         <i class="w-3.5 h-3.5 i-hugeicons-user-circle"></i>
         <span data-account-label>Sign in</span>
       </a>
-
-      {{-- Three languages, named in their own. A flag would be wrong: German is
-        not Germany, and Dutch is not only the Netherlands. --}}
-      <div class="flex gap-1 items-center pl-1 text-[12px]" id="lang-switch">
-        <a href="?lang=en" data-lang="en" class="px-3 py-2 rounded-full transition-all duration-500">EN</a>
-        <a href="?lang=de" data-lang="de" class="px-3 py-2 rounded-full transition-all duration-500">DE</a>
-        <a href="?lang=nl" data-lang="nl" class="px-3 py-2 rounded-full transition-all duration-500">NL</a>
-      </div>
     </div>
   </nav>
 </header>
 
-<script>
-  /* Mark the language in use, so the switcher says where you are. */
-  ;(function () {
-    try {
-      const current = (window.Smakelo && window.Smakelo.locale) || 'en'
-
-      for (const link of document.querySelectorAll('#lang-switch [data-lang]')) {
-        const on = link.dataset.lang === current
-
-        link.style.background = on ? 'var(--ink)' : 'transparent'
-        link.style.color = on ? 'var(--paper)' : 'var(--ink-soft)'
-        link.setAttribute('aria-current', on ? 'true' : 'false')
-      }
-    }
-    catch {}
-  })()
-</script>
 
 <script>
   /* Who is signed in, for the nav.

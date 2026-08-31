@@ -179,5 +179,6 @@ const canonicalPath = '/t'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

@@ -286,5 +286,6 @@ const canonicalPath = '/account'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

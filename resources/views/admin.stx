@@ -151,5 +151,6 @@ const canonicalPath = '/admin'
       loadGuards()
       loadListings()
     </script>
+    @include('footer')
   </body>
 </html>

@@ -228,5 +228,6 @@ const canonicalPath = '/kitchen'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

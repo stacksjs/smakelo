@@ -246,5 +246,6 @@ const canonicalPath = '/earnings'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

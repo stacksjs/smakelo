@@ -634,5 +634,6 @@ const canonicalPath = '/order'
       load()
       loadAddresses()
     </script>
+    @include('footer')
   </body>
 </html>

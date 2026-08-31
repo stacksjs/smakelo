@@ -299,5 +299,6 @@ const canonicalPath = '/manage'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

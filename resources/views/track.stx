@@ -212,5 +212,6 @@ const canonicalPath = '/track'
 
       tick()
     </script>
+    @include('footer')
   </body>
 </html>

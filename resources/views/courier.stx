@@ -255,5 +255,6 @@ const canonicalPath = '/courier'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>

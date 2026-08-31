@@ -95,5 +95,6 @@ const canonicalPath = '/saved'
 
       load()
     </script>
+    @include('footer')
   </body>
 </html>
