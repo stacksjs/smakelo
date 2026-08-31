@@ -81,6 +81,7 @@ declare global {
   const DeliveryRoute: typeof import('../../../app/Models/DeliveryRoute')['default']
   const Courier: typeof import('../../../app/Models/Courier')['default']
   const BusinessHour: typeof import('../../../app/Models/BusinessHour')['default']
+  const Address: typeof import('../../../app/Models/Address')['default']
   const Tag: typeof import('../defaults/app/Models/Tag')['default']
   const SmsOptOut: typeof import('../defaults/app/Models/SmsOptOut')['default']
   const AnalyticsEvent: typeof import('../defaults/app/Models/AnalyticsEvent')['default']

@@ -15,6 +15,7 @@ import { addressesFor, removeAddress, saveAddress } from '../app/Actions/Custome
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
 import { join, membershipsFor, plansFor, setMembershipState } from '../app/Actions/Csa/membership'
 import { favoritesFor, toggleFavorite } from '../app/Actions/Favorite/favorites'
+import { subscribe } from '../app/Actions/Subscriber/subscribe'
 import { respondToReview, reviewsFor, statsFor, submitReview, voteOnReview } from '../app/Actions/Review/write'
 import type { PartyType } from '../app/Actions/Money/statements'
 import { outstandingBalances, recordPayout, statementFor } from '../app/Actions/Money/statements'
@@ -444,6 +445,25 @@ route.post('/businesses/{slug}/save', async (request: any) => {
     return response.json({ message: result.reason }, 422)
 
   return response.json({ data: { saved: result.saved } })
+})
+
+/**
+ * `POST /api/subscribe`
+ *
+ * The one endpoint here that takes something from a stranger and keeps it, so
+ * it is the one that most needs to say as little back as it can: the same
+ * answer for a new address and one already on the list, because otherwise it
+ * reports whether a given person signed up to anybody who asks.
+ */
+route.post('/subscribe', async (request: any) => {
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  const result = await subscribe(body?.email, body?.source)
+
+  if (!result.ok)
+    return response.json({ message: result.error }, 422)
+
+  return response.json({ data: { ok: true } })
 })
 
 /** `POST /api/businesses/{slug}/claim`, `GET /api/claims`, `POST /api/claims/{id}/{decision}` */

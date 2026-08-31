@@ -2,6 +2,7 @@
   "globals": {
     "Action": true,
     "Activity": true,
+    "Address": true,
     "AnalyticsEvent": true,
     "Auction": true,
     "AuctionItem": true,

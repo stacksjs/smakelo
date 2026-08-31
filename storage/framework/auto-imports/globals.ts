@@ -14,9 +14,19 @@ declare global {
   const decrement: typeof autoImports.decrement
   const reset: typeof autoImports.reset
   const count: typeof autoImports.count
+  const placeMap: typeof autoImports.placeMap
+  const placeHandlers: typeof autoImports.placeHandlers
   const toggleDark: typeof autoImports.toggleDark
   const isDark: typeof autoImports.isDark
   const preferredDark: typeof autoImports.preferredDark
+  const csrfToken: typeof autoImports.csrfToken
+  const visitorToken: typeof autoImports.visitorToken
+  const authToken: typeof autoImports.authToken
+  const setAuthToken: typeof autoImports.setAuthToken
+  const clearAuthToken: typeof autoImports.clearAuthToken
+  const send: typeof autoImports.send
+  const money: typeof autoImports.money
+  const startTracking: typeof autoImports.startTracking
 }
 
 export {}

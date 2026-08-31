@@ -486,8 +486,74 @@ function openLabel(business) {
           Map data and tiles from OpenStreetMap contributors.
         </p>
       </section>
-    </main>
 
+      {{-- The one thing this site asks for.
+
+        Placed at the bottom rather than as a bar over the results, because a
+        directory that interrupts you to collect an address before you have
+        found anything is asking for a favour it has not earned yet. Somebody
+        who has scrolled the whole list is somebody it might be useful to.
+
+        It asks for an address and nothing else. A name field would be a
+        second thing to type for a message nobody signs. --}}
+      <section class="pb-24 sm:pb-32">
+        <div class="overflow-hidden relative px-6 py-12 rounded-[2rem] sm:px-12 sm:py-16" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 24px 48px -28px rgba(20,17,15,0.18)">
+          <span class="absolute -top-24 -right-16 w-72 h-72 rounded-full pointer-events-none" style="background: var(--accent-soft); filter: blur(60px)"></span>
+
+          <div class="relative max-w-xl">
+            <h2 class="text-[clamp(1.6rem,3.4vw,2.25rem)] font-semibold leading-[1.1] tracking-[-0.03em] text-balance">
+              Hear when somewhere near you starts delivering.
+            </h2>
+
+            <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+              Twelve of these places take orders today. When one of the others
+              does, this is how you find out.
+            </p>
+
+            <div :if="!subscribed()" class="flex flex-col gap-2 mt-7 sm:flex-row">
+              <label class="flex-1">
+                <span class="sr-only">Email address</span>
+                <input
+                  type="email"
+                  autocomplete="email"
+                  inputmode="email"
+                  placeholder="you@example.com"
+                  maxlength="200"
+                  :value="subscribeEmail()"
+                  @input="subscribeEmail.set($event.target.value)"
+                  @keydown="$event.key === 'Enter' && sendSubscribe()"
+                  class="px-5 py-3.5 w-full text-[15px] rounded-full outline-none transition-shadow duration-500 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
+                  style="background: var(--paper); border: 1px solid var(--line)"
+                >
+              </label>
+
+              <button
+                type="button"
+                @click="sendSubscribe()"
+                :disabled="subscribeBusy()"
+                class="px-7 py-3.5 text-[15px] font-medium whitespace-nowrap rounded-full transition-all duration-500 hover:-translate-y-px active:scale-[0.99] disabled:opacity-60"
+                style="background: var(--ink); color: var(--paper)"
+              >
+                {{ subscribeBusy() ? 'One moment…' : 'Keep me posted' }}
+              </button>
+            </div>
+
+            {{-- Replaces the form rather than sitting under it, so there is no
+              second chance to submit an address that is already taken. --}}
+            <p :if="subscribed()" class="inline-flex gap-2 items-center px-4 py-3 mt-7 text-[15px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">
+              <i class="w-4 h-4 i-hugeicons-checkmark-circle-02"></i>
+              That is on the list. Nothing else will arrive.
+            </p>
+
+            <p :if="subscribeError()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ subscribeError() }}</p>
+
+            <p class="mt-4 text-[12px]" style="color: var(--ink-soft)">
+              One address, one purpose. Leave any time.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
     @include('footer')
 
     <script client>
@@ -552,6 +618,43 @@ function openLabel(business) {
       const ordersOnly = state(false)
       const sort = state('distance')
       const remote = state([])
+
+      const subscribeEmail = state('')
+      const subscribeBusy = state(false)
+      const subscribeError = state('')
+      const subscribed = state(false)
+
+      /*
+       * The signup at the foot of the page.
+       *
+       * A shape check before the request, so the obvious typo is caught
+       * without a round trip. It is deliberately not the same check the server
+       * does - that one is authoritative and this one is a courtesy, and a
+       * client that tried to match it exactly would drift out of step with it
+       * and start rejecting addresses the server would have taken.
+       */
+      async function sendSubscribe() {
+        const address = subscribeEmail().trim()
+
+        if (!/^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(address)) {
+          subscribeError.set('That does not look like an email address.')
+          return
+        }
+
+        subscribeBusy.set(true)
+        subscribeError.set('')
+
+        const answer = await send('/api/subscribe', { email: address, source: 'home' }).catch(() => null)
+
+        subscribeBusy.set(false)
+
+        if (!answer || !answer.ok) {
+          subscribeError.set('That did not send. Try again in a moment.')
+          return
+        }
+
+        subscribed.set(true)
+      }
 
       const mapView = state(true)
       const moreFilters = state(false)
