@@ -37,6 +37,18 @@
     --line: rgba(20, 17, 15, 0.08);
     --accent: #b4532a;
     --accent-soft: #f3e6df;
+
+    /* The rating green. A separate hue from the accent on purpose: a rating is
+       a fact about a place, and painting it in the brand colour makes it read
+       as something the site is claiming rather than something it is
+       reporting. */
+    --mint: #dcf2e7;
+    --mint-ink: #0d8055;
+
+    /* Selected controls invert. Two names rather than reusing --ink/--paper so
+       dark mode can swap them without every rule needing to know. */
+    --sel: #14110f;
+    --sel-ink: #ffffff;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -48,6 +60,15 @@
       --line: rgba(245, 242, 239, 0.10);
       --accent: #e0794a;
       --accent-soft: rgba(224, 121, 74, 0.14);
+
+      /* The chip keeps its light ground in the dark: it is a small bright
+         token, and inverting it turns the one green thing on the card into
+         another grey rectangle. */
+      --mint: #d3efe2;
+      --mint-ink: #0a6b47;
+
+      --sel: #f5f2ef;
+      --sel-ink: #14110f;
     }
   }
 
@@ -91,9 +112,54 @@
     }
   }
 
-  /* The map is the one place a third-party stylesheet paints, so it gets the
-     app's radius and hairline rather than the library's defaults. */
+  /* --- The map -------------------------------------------------------------
+
+     The one place a third-party stylesheet paints, so it gets the app's
+     radius, hairline and buttons rather than the library's defaults. */
   .tsmap-container { background: var(--paper-raised); }
+
+  /* A basemap is a background, and the stock OSM raster does not behave like
+     one: it is the most saturated thing on a page whose whole point is the
+     photographs beside it, and every pin has to compete with a green park.
+     Desaturated and lifted, it goes back to being paper with streets on it.
+
+     A filter rather than a different tile provider, because the tiles are
+     already OpenStreetMap's and swapping to a styled basemap means a second
+     attribution and a second thing that can go down. */
+  .tsmap-container img { filter: saturate(0.16) brightness(1.06) contrast(0.94); }
+
+  @media (prefers-color-scheme: dark) {
+    /* Inverting the hue back after inverting the lightness is what keeps the
+       water blue instead of orange. */
+    :root:not([data-theme='light']) .tsmap-container img {
+      filter: invert(1) hue-rotate(180deg) saturate(0.2) brightness(0.92) contrast(0.9);
+    }
+  }
+
+  /* The popup is a small card, so it is built out of the same parts as the
+     large ones rather than the library's white box with a tail. */
+  .tsmap-popup-content-wrapper,
+  .tsmap-popup-tip {
+    background: var(--paper-raised);
+    color: var(--ink);
+    box-shadow: 0 2px 10px rgba(20, 17, 15, 0.18);
+  }
+
+  .tsmap-popup-content-wrapper { border-radius: 14px; }
+
+  .tsmap-popup-content {
+    margin: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .tsmap-popup-content a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .tsmap-popup-content a:hover { text-decoration: underline; }
 
   /* --- Covers --------------------------------------------------------------
 
@@ -204,6 +270,369 @@
     color: var(--accent);
   }
 
+  /* --- The discover surface ------------------------------------------------
+
+     Filters, map and results. One grid, three named areas, and a data
+     attribute for the map switch so the toggle is a single attribute write
+     rather than three class lists kept in step.
+
+     The breakpoints do the responsive work rather than inline styles, because
+     the map switch and the viewport both want a say in the column count and
+     only CSS can hear both. */
+  .discover {
+    display: grid;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (min-width: 1024px) {
+    .discover { grid-template-columns: 248px minmax(0, 1fr); }
+
+    /* The rail and the map hold still; the results are the only thing that
+       scrolls, which is what makes filtering feel like it happens to the list
+       rather than to the page. */
+    .discover-rail,
+    .discover-map {
+      position: sticky;
+      top: 24px;
+    }
+
+    .discover-map { height: calc(100vh - 190px); min-height: 460px; }
+  }
+
+  /* Below this the map would be a letterbox between two full-width columns,
+     so it keeps its own row and the results run under both. */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .discover[data-map='on'] .discover-map { grid-column: 2; }
+    .discover[data-map='on'] .discover-list { grid-column: 2; }
+  }
+
+  @media (min-width: 1280px) {
+    .discover[data-map='on'] { grid-template-columns: 248px minmax(0, 1fr) 340px; }
+    .discover[data-map='off'] { grid-template-columns: 248px minmax(0, 1fr); }
+
+    .discover[data-map='on'] .discover-list {
+      position: sticky;
+      top: 24px;
+      max-height: calc(100vh - 190px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+  }
+
+  .discover-map[hidden] { display: none; }
+
+  /* On a phone the map sits between the filters and the results, at a height
+     that is a map rather than a strip. */
+  .discover-map { height: 340px; }
+
+  .discover-results {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+  }
+
+  /* With the map on, the results are a single narrow column beside it. With it
+     off they are the whole width and go back to being a grid. */
+  @media (min-width: 640px) {
+    .discover[data-map='off'] .discover-results { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (min-width: 1280px) {
+    .discover[data-map='off'] .discover-results { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Cuisine and price fold away on a phone: four hundred pixels of controls
+     above the first result is a filter panel wearing the page as a hat. */
+  .rail-more { display: none; }
+  .discover[data-more='on'] .rail-more { display: flex; }
+
+  @media (min-width: 1024px) {
+    .rail-more { display: flex; }
+    .rail-toggle { display: none; }
+  }
+
+  /* The price slider, drawn rather than left to the browser: the native track
+     is a different shape and colour in every engine, and this one sits
+     directly under a histogram it has to line up with. */
+  .price-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 20px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .price-range::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line);
+  }
+
+  .price-range::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line);
+  }
+
+  .price-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border: none;
+    border-radius: 999px;
+    background: var(--sel);
+    box-shadow: 0 1px 4px rgba(20, 17, 15, 0.3);
+  }
+
+  .price-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 999px;
+    background: var(--sel);
+    box-shadow: 0 1px 4px rgba(20, 17, 15, 0.3);
+  }
+
+  /* --- Filter controls -----------------------------------------------------
+
+     The vocabulary the discover rail is built from: a section heading, a pill,
+     a checkbox, a segment, a switch. Written once here rather than as utility
+     soup at each call site, because there are five of them on one screen and
+     they have to agree about radius, height and what "selected" looks like.
+
+     Selected is an inversion in every one of them - the control takes the ink
+     colour and its label goes to paper. That is a single idea the eye learns
+     once, and --sel/--sel-ink let dark mode flip it without any rule below
+     mentioning a colour. */
+
+  /* "Map View", "Price Range": the noun in full weight, the qualifier lighter.
+     One heading that reads as two words rather than a label shouting twice. */
+  .rail-head {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .rail-head span {
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+
+  .pill {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--paper-raised);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 400ms cubic-bezier(0.32, 0.72, 0, 1), color 400ms cubic-bezier(0.32, 0.72, 0, 1), border-color 400ms;
+  }
+
+  .pill:hover { border-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+
+  .pill[aria-pressed='true'] {
+    background: var(--sel);
+    color: var(--sel-ink);
+    border-color: var(--sel);
+  }
+
+  /* A rounded square rather than a tick in a circle, because it sits at the end
+     of a text row and a circle there reads as a radio - one of these, not any
+     of these. */
+  .check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--paper-raised);
+    color: transparent;
+    cursor: pointer;
+    transition: background 300ms, color 300ms, border-color 300ms;
+  }
+
+  .check[aria-pressed='true'] {
+    background: var(--sel);
+    border-color: var(--sel);
+    color: var(--sel-ink);
+  }
+
+  /* The tick is a character rather than an icon: the set has no bare
+     checkmark, only ones already inside a circle or a square, and this one is
+     already in a square of its own. */
+  .check {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  /* The map's follow toggle carries an accent check rather than an ink one -
+     it is the only control that changes what the map means rather than what
+     the list contains. */
+  .follow-check[aria-pressed='true'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* The cuisine list is longer than its box on purpose: a hard bottom edge
+     says "that is all of them", and a fade says "there is more, scroll".
+     Masked rather than faded to a background colour so it works on both
+     themes without knowing which is on. */
+  .fade-list {
+    overflow-y: auto;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 34px), transparent 100%);
+  }
+
+  .fade-list::-webkit-scrollbar { display: none; }
+
+  /* Star rating: four buttons that behave as one control, so they are drawn as
+     one strip with shared borders rather than four loose pills. */
+  .seg {
+    display: flex;
+    gap: 8px;
+  }
+
+  .seg > button {
+    flex: 1;
+    padding: 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--paper-raised);
+    cursor: pointer;
+    transition: background 300ms, color 300ms, border-color 300ms;
+  }
+
+  .seg > button[aria-pressed='true'] {
+    background: var(--sel);
+    color: var(--sel-ink);
+    border-color: var(--sel);
+  }
+
+  /* The one control that is accent-coloured rather than ink: it turns a whole
+     pane of the layout on and off, which is a bigger thing than a filter. */
+  .switch {
+    position: relative;
+    width: 46px;
+    height: 26px;
+    flex: none;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: var(--line);
+    cursor: pointer;
+    transition: background 400ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: var(--paper-raised);
+    box-shadow: 0 1px 3px rgba(20, 17, 15, 0.28);
+    transition: transform 400ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .switch[aria-pressed='true'] { background: var(--accent); }
+  .switch[aria-pressed='true']::after { transform: translateX(20px); }
+
+  /* --- Rating chip ---------------------------------------------------------
+
+     The number, once, in green, on the card and in the map popup. The five
+     drawn stars stay on the place page where there is room to read them; in a
+     list of sixteen results they are sixteen rows of identical glyphs and the
+     only part anybody scans is the digit. */
+  .rating-chip {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    padding: 3px 8px 3px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: var(--mint);
+    color: var(--mint-ink);
+  }
+
+  /* --- Save -----------------------------------------------------------------
+
+     Sits on the photograph, so it carries its own ground. Unsaved is a white
+     disc with a hollow heart; saved fills with the accent. */
+  .save {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--ink);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(20, 17, 15, 0.18);
+    transition: transform 400ms cubic-bezier(0.32, 0.72, 0, 1), background 300ms, color 300ms;
+  }
+
+  .save:hover { transform: scale(1.08); }
+  .save[aria-pressed='true'] { background: var(--accent); color: #fff; }
+
+  /* --- Map furniture -------------------------------------------------------
+
+     Zoom, locate and the follow-the-map toggle are ours rather than the
+     library's, so they match the buttons everywhere else on the page. They
+     float over the canvas, which is a photograph of a city and not a known
+     colour, so each one carries an opaque ground and a shadow. */
+  .map-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: none;
+    background: var(--paper-raised);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 300ms;
+  }
+
+  .map-btn:hover { background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised)); }
+
+  .map-stack {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(20, 17, 15, 0.18);
+  }
+
+  .map-stack > .map-btn + .map-btn { border-top: 1px solid var(--line); }
+
+  .map-solo {
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(20, 17, 15, 0.18);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .reveal { opacity: 1; transform: none; filter: none; transition: none; }
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -238,6 +667,8 @@
   <i class="i-hugeicons-facebook-01"></i><i class="i-hugeicons-bookmark-02"></i>
   <i class="i-hugeicons-delivery-truck-01"></i><i class="i-hugeicons-star"></i>
   <i class="i-hugeicons-money-bag-02"></i><i class="i-hugeicons-checkmark-circle-02"></i>
+  <i class="i-hugeicons-favourite"></i><i class="i-hugeicons-plus-sign"></i>
+  <i class="i-hugeicons-minus-sign"></i><i class="i-hugeicons-target-02"></i>
   <i class="i-hugeicons-bicycle-01"></i><i class="i-hugeicons-plant-01"></i>
 </div>
 

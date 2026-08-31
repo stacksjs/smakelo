@@ -248,46 +248,22 @@ function openLabel(business) {
         </p>
       </section>
 
-      {{-- Categories as a row of tiles rather than a row of words. An icon per
-        category is the cheapest way for somebody to find "coffee" without
-        reading, and it is built from the results so nothing is stranded. --}}
-      <section class="pb-12">
-        <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          <button
-            :for="entry in typeFilters()"
-            type="button"
-            @click="type.set(entry.type)"
-            class="flex flex-col gap-2 items-center px-3 py-5 rounded-[1.25rem] transition-all duration-500 hover:-translate-y-0.5"
-            :style="type() === entry.type ? 'background: var(--ink); color: var(--paper); box-shadow: 0 14px 28px -20px rgba(20,17,15,0.4)' : 'background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04)'"
-          >
-            <i class="w-6 h-6" :class="'i-hugeicons-' + entry.icon"></i>
-            <span class="text-[12px] font-medium">{{ entry.label }}</span>
-            <span class="text-[11px]" :style="type() === entry.type ? 'opacity: .6' : 'color: var(--ink-soft)'">{{ entry.count }}</span>
-          </button>
-        </div>
-      </section>
+      {{-- The discover surface: filters, map and results side by side.
 
-      {{-- A pin per result, and a popup that links through. The map sits above
-        the list rather than beside it so the phone layout is the same layout. --}}
-      <section class="pb-14">
-        <div class="p-2 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 24px 48px -24px rgba(20,17,15,0.16)">
-          <div id="discover-map" data-pins="{{ pins }}" data-centre="{{ mapCentre }}" class="h-[380px] sm:h-[460px] w-full rounded-[calc(2rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
-        </div>
-        <p class="mt-3 text-[11px]" style="color: var(--ink-soft)">
-          Map data and tiles from OpenStreetMap contributors.
-        </p>
-      </section>
+        Three panes because they answer three different questions and reading
+        one should not cost you the other two - narrowing the cuisine list
+        while watching the map redraw is the whole point, and it does not work
+        when the filters are a sheet over the top of it.
 
+        The rail and the map are sticky; only the results column scrolls. On a
+        phone the same three stack, the map keeps its place between filters and
+        results, and the longer filters fold behind a button rather than
+        putting four hundred pixels of controls above the first result. --}}
       <section class="pb-24 sm:pb-40">
-        <div class="flex flex-wrap gap-4 justify-between items-baseline pb-6">
-          <h2 data-i18n="search.nearby" class="text-[28px] font-semibold tracking-[-0.03em]">Nearby</h2>
-          <p class="text-[13px]" style="color: var(--ink-soft)">{{ countLine() }}</p>
-        </div>
-
-        {{-- Controls and grid both read the same signal, so filtering,
-          sorting and server-backed search cannot disagree about what the list
-          is. The payload is embedded in `data-cards` rather than fetched, so
-          the cards arrive with the page. --}}
+        {{-- Controls, grid and map pins all read the same derived list, which
+          is the point: when filtering lived in the DOM, the map had to be told
+          separately what the grid had hidden. The payload is embedded rather
+          than fetched, so the cards arrive with the page. --}}
         <div
           id="page-data"
           data-cards="{{ cardsJson }}"
@@ -296,87 +272,219 @@ function openLabel(business) {
           hidden
         ></div>
 
-        <div class="flex flex-wrap gap-4 justify-between items-baseline pb-6">
-          <h2 data-i18n="search.nearby" class="text-[24px] font-semibold tracking-[-0.03em]">Nearby</h2>
+        <div class="discover" :data-map="mapView() ? 'on' : 'off'" :data-more="moreFilters() ? 'on' : 'off'">
+          <aside class="discover-rail">
+            <div class="flex flex-col gap-7 p-5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
+              <div class="flex justify-between items-center">
+                <h2 class="rail-head">Map <span>View</span></h2>
+                <button
+                  type="button"
+                  class="switch"
+                  :aria-pressed="mapView() ? 'true' : 'false'"
+                  aria-label="Show the map"
+                  @click="mapView.set(!mapView())"
+                ></button>
+              </div>
 
-          <div class="flex gap-3 items-center">
-            <p class="text-[13px]" style="color: var(--ink-soft)">{{ countLine() }}</p>
-            <select @change="sort.set($event.target.value)" class="px-4 py-2 text-[13px] rounded-full" style="background: var(--paper-raised); border: 1px solid var(--line)">
-              <option value="distance" data-i18n="search.sort_distance">Nearest</option>
-              <option value="rating" data-i18n="search.sort_rating">Best rated</option>
-              <option value="name" data-i18n="search.sort_name">A to Z</option>
-            </select>
+              <div>
+                <h2 class="rail-head">Category</h2>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                  <button
+                    :for="entry in typeFilters()"
+                    type="button"
+                    class="pill"
+                    :aria-pressed="type() === entry.type ? 'true' : 'false'"
+                    @click="type.set(entry.type)"
+                  >
+                    <i class="w-3.5 h-3.5" :class="'i-hugeicons-' + entry.icon"></i>
+                    {{ entry.label }}
+                  </button>
+                </div>
+              </div>
+
+              {{-- Cuisine and price are the two long controls, and the two a
+                phone can do without until asked. --}}
+              <div class="rail-more flex-col gap-7">
+                <div>
+                  <h2 class="rail-head">Cuisine</h2>
+                  <div class="fade-list mt-3 max-h-[188px]">
+                    <div class="flex flex-col gap-1 pr-1">
+                      <button
+                        :for="entry in cuisineFilters()"
+                        type="button"
+                        class="flex gap-3 justify-between items-center py-1 text-left"
+                        @click="toggleCuisine(entry.value)"
+                      >
+                        <span class="text-[14px] truncate">{{ entry.label }}</span>
+                        <span class="check" :aria-pressed="cuisines().includes(entry.value) ? 'true' : 'false'" aria-hidden="true">✓</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h2 class="rail-head">Price <span>Range</span></h2>
+
+                  {{-- The bars are the results, counted per tier, so the
+                    control shows you where the places actually are before you
+                    move it. The ones outside the range dim rather than vanish:
+                    a bar that disappears when excluded takes away the reason
+                    you would widen the range again. --}}
+                  <div class="flex gap-1.5 items-end mt-4 h-12">
+                    <span
+                      :for="bar in priceHistogram()"
+                      class="flex-1 rounded-t-[4px] transition-all duration-500"
+                      :style="'height: ' + Math.max(6, bar.share * 100) + '%; background: ' + (bar.tier <= maxPrice() ? 'var(--accent)' : 'var(--line)') + '; opacity: ' + (bar.tier <= maxPrice() ? 1 : 0.9)"
+                    ></span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="1"
+                    max="4"
+                    step="1"
+                    class="price-range mt-2 w-full"
+                    :value="maxPrice()"
+                    @input="maxPrice.set(Number($event.target.value))"
+                    aria-label="Highest price tier"
+                  >
+
+                  <div class="flex justify-between items-baseline mt-1 text-[12px]">
+                    <span class="font-medium">{{ maxPrice() >= 4 ? 'Any price' : '$ - ' + '$'.repeat(maxPrice()) }}</span>
+                    <span style="color: var(--ink-soft)">Average: {{ averagePrice() }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 class="rail-head">Star <span>Rating</span></h2>
+                <div class="seg mt-3">
+                  <button
+                    :for="entry in ratingFilters"
+                    type="button"
+                    :aria-pressed="minRating() === entry.value ? 'true' : 'false'"
+                    @click="minRating.set(minRating() === entry.value ? 0 : entry.value)"
+                  >{{ entry.label }}</button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="rail-toggle pill justify-center"
+                @click="moreFilters.set(!moreFilters())"
+              >{{ moreFilters() ? 'Fewer filters' : 'More filters' }}</button>
+            </div>
+          </aside>
+
+          {{-- A pin per result, and a popup that links through. --}}
+          <div class="discover-map" :hidden="!mapView()">
+            <div class="relative p-2 h-full rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
+              <div id="discover-map" data-pins="{{ pins }}" data-centre="{{ mapCentre }}" class="w-full h-full rounded-[calc(1.5rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
+
+              <div class="flex absolute bottom-6 left-6 z-[500] flex-col gap-2">
+                <div class="map-stack">
+                  <button type="button" class="map-btn" aria-label="Zoom in" @click="zoomBy(1)"><i class="w-4 h-4 i-hugeicons-plus-sign"></i></button>
+                  <button type="button" class="map-btn" aria-label="Zoom out" @click="zoomBy(-1)"><i class="w-4 h-4 i-hugeicons-minus-sign"></i></button>
+                </div>
+
+                <button type="button" class="map-btn map-solo" aria-label="Centre on me" @click="locate()"><i class="w-4 h-4 i-hugeicons-target-02"></i></button>
+              </div>
+
+              {{-- Off by default. Panning the map and having the list rewrite
+                itself underneath is the behaviour people complain about, so it
+                is something you switch on rather than something that happens
+                to you. --}}
+              <button
+                type="button"
+                class="pill absolute bottom-6 left-1/2 z-[500] -translate-x-1/2 gap-2 whitespace-nowrap"
+                style="box-shadow: 0 2px 10px rgba(20,17,15,0.18)"
+                :aria-pressed="followMap() ? 'true' : 'false'"
+                @click="followMap.set(!followMap())"
+              >
+                <span class="check follow-check w-[18px] h-[18px] rounded-[6px] text-[11px]" :aria-pressed="followMap() ? 'true' : 'false'" aria-hidden="true">✓</span>
+                Search as I move the map
+              </button>
+            </div>
+          </div>
+
+          <div class="discover-list">
+            <div class="flex flex-wrap gap-3 justify-between items-center pb-4">
+              <h2 class="rail-head">{{ shown().length }} <span>{{ shown().length === 1 ? 'Result' : 'Results' }}</span></h2>
+
+              <select @change="sort.set($event.target.value)" class="px-3 py-2 text-[12px] rounded-[10px]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+                <option value="distance" data-i18n="search.sort_distance">Nearest</option>
+                <option value="rating" data-i18n="search.sort_rating">Best rated</option>
+                <option value="name" data-i18n="search.sort_name">A to Z</option>
+              </select>
+            </div>
+
+            <p :if="shown().length === 0" data-i18n="search.no_results" class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
+              Nothing matches that. Try fewer words.
+            </p>
+
+            <div class="discover-results">
+              <a
+                :for="card in shown()"
+                :href="'/places/' + card.slug"
+                class="reveal group overflow-hidden block rounded-[1.25rem] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
+                style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)"
+              >
+                {{-- The photograph, over the business's own colour. The colour
+                  is what shows while it decodes and what remains if it never
+                  arrives; see app/Actions/Business/imagery.ts. --}}
+                <div class="cover flex justify-center items-center aspect-[16/10]" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
+                  <i class="cover-mark w-9 h-9" :class="'i-hugeicons-' + card.icon"></i>
+
+                  <img class="cover-photo" :src="card.photo" alt="" loading="lazy" decoding="async" width="800" height="560">
+
+                  <span class="cover-scrim"></span>
+
+                  <span
+                    :if="card.openState === 'open'"
+                    class="absolute top-3 left-3 inline-flex gap-1.5 items-center px-2.5 py-1 text-[11px] font-medium rounded-full backdrop-blur-sm"
+                    style="background: rgba(255,255,255,0.92); color: #14713f"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" style="background: #14713f"></span>
+                    Open
+                  </span>
+
+                  {{-- A link inside a link is not a link, so the save button
+                    stops the card's navigation before it starts. --}}
+                  <button
+                    type="button"
+                    class="save"
+                    :aria-pressed="saved().includes(card.slug) ? 'true' : 'false'"
+                    :aria-label="saved().includes(card.slug) ? 'Saved' : 'Save ' + card.name"
+                    @click="toggleSaved(card.slug, $event)"
+                  >
+                    <i class="w-3.5 h-3.5 i-hugeicons-favourite"></i>
+                  </button>
+                </div>
+
+                <div class="flex flex-col p-4">
+                  <div class="flex gap-3 justify-between items-start">
+                    <h3 class="text-[16px] font-semibold leading-snug tracking-[-0.01em]">{{ card.name }}</h3>
+
+                    <span :if="card.ratingCount > 0" class="rating-chip flex-none">
+                      <i class="w-3 h-3 i-hugeicons-star"></i>
+                      {{ card.rating }}
+                    </span>
+                  </div>
+
+                  <p class="mt-1.5 text-[13px]" style="color: var(--ink-soft)">
+                    {{ card.openLabel }}<span :if="card.distance"> · {{ card.distance }}</span>
+                  </p>
+
+                  <p class="mt-0.5 text-[13px]" style="color: var(--ink-soft)">{{ card.cuisine || card.type }} · {{ card.price }}</p>
+                </div>
+              </a>
+            </div>
           </div>
         </div>
 
-        <p :if="shown().length === 0" data-i18n="search.no_results" class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
-          Nothing matches that. Try fewer words.
+        <p class="mt-6 text-[11px]" style="color: var(--ink-soft)">
+          Map data and tiles from OpenStreetMap contributors.
         </p>
-
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <a
-            :for="card in shown()"
-            :href="'/places/' + card.slug"
-            class="reveal group overflow-hidden block rounded-[1.5rem] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
-            style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)"
-          >
-            {{-- The photograph, over the business's own colour. The colour is
-              what shows while it decodes and what remains if it never
-              arrives; see app/Actions/Business/imagery.ts. --}}
-            <div class="cover flex justify-center items-center h-44" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
-              <i class="cover-mark w-9 h-9" :class="'i-hugeicons-' + card.icon"></i>
-
-              <img class="cover-photo" :src="card.photo" alt="" loading="lazy" decoding="async" width="800" height="560">
-
-              <span class="cover-scrim"></span>
-
-              <span
-                :if="card.openState === 'open'"
-                class="absolute top-3 left-3 inline-flex gap-1.5 items-center px-2.5 py-1 text-[11px] font-medium rounded-full backdrop-blur-sm"
-                style="background: rgba(255,255,255,0.92); color: #14713f"
-              >
-                <span class="w-1.5 h-1.5 rounded-full" style="background: #14713f"></span>
-                Open
-              </span>
-
-              <span
-                :if="card.isPartner"
-                class="absolute top-3 right-3 inline-flex gap-1 items-center px-2.5 py-1 text-[11px] font-medium rounded-full"
-                style="background: var(--accent); color: #fff"
-              >
-                <i class="w-3 h-3 i-hugeicons-delivery-truck-01"></i>
-                Orders
-              </span>
-
-              <span class="absolute right-3 bottom-2.5 text-[11px] font-semibold tracking-[0.14em] text-white" style="opacity: .82; text-shadow: 0 1px 2px rgba(0,0,0,.4)">{{ card.monogram }}</span>
-            </div>
-
-            <div class="flex flex-col p-5 h-full">
-              <h3 class="text-[17px] font-semibold leading-snug tracking-[-0.01em]">{{ card.name }}</h3>
-
-              <div class="flex flex-wrap gap-2 items-center mt-1.5 text-[13px]">
-                <span :if="card.ratingCount > 0" class="inline-flex gap-1.5 items-center">
-                  <span class="stars text-[13px]">★★★★★<span :style="'width: ' + (card.rating / 5 * 100) + '%'">★★★★★</span></span>
-                  <span class="font-medium">{{ card.rating }}</span>
-                  <span style="color: var(--ink-soft)">({{ card.ratingCount }})</span>
-                </span>
-                <span :if="card.ratingCount === 0" style="color: var(--ink-soft)">No reviews yet</span>
-              </div>
-
-              <p class="mt-2 text-[13px]" style="color: var(--ink-soft)">{{ card.cuisine || card.type }} · {{ card.price }}</p>
-
-              <p :if="card.description" class="mt-3 text-[14px] leading-relaxed line-clamp-2" style="color: var(--ink-soft)">{{ card.description }}</p>
-
-              <div class="flex flex-wrap gap-2 items-center pt-4 mt-auto text-[11px]">
-                <span :if="card.distance" class="inline-flex gap-1 items-center px-2.5 py-1 rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-                  <i class="w-3 h-3 i-hugeicons-navigation-03"></i>
-                  {{ card.distance }}
-                </span>
-                <span class="px-2.5 py-1 rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ card.openLabel }}</span>
-              </div>
-            </div>
-          </a>
-        </div>
       </section>
     </main>
 
@@ -392,6 +500,7 @@ function openLabel(business) {
     <script client>
       import { Marker, tileLayer, TsMap } from 'ts-maps'
       import 'ts-maps/styles.css'
+      import { send, visitorToken } from '../functions/session'
 
       /*
        * One list, four controls, and a search that reaches past the page.
@@ -406,12 +515,120 @@ function openLabel(business) {
       const total = Number(source ? source.dataset.total : 0)
       const centre = source ? JSON.parse(source.dataset.centre || '{}') : { latitude: 34.0195, longitude: -118.4912 }
 
+      /*
+       * Where each business is, by slug.
+       *
+       * Read off the map's pin payload rather than added to every card,
+       * because the cards are already the larger of the two blobs and the only
+       * thing that needs a coordinate is the bounds filter. Read here rather
+       * than inside the map's own setup so that "search as I move the map"
+       * does not depend on the map library having loaded.
+       *
+       * A slug missing from this table - a remote search result, which is not
+       * on the map - is never filtered out by bounds. Hiding a result for
+       * being outside a box it was never placed in would just lose it.
+       */
+      const coords = new Map()
+
+      for (const pin of readPins())
+        coords.set(pin.slug, pin)
+
+      function readPins() {
+        const holder = document.getElementById('discover-map')
+
+        try {
+          return JSON.parse(holder?.dataset.pins || '[]')
+        }
+        catch {
+          return []
+        }
+      }
+
+      function withinBounds(card, box) {
+        const point = coords.get(card.slug)
+
+        if (!point)
+          return true
+
+        return point.lat >= box.south && point.lat <= box.north && point.lng >= box.west && point.lng <= box.east
+      }
+
       const query = state('')
       const type = state('')
       const openOnly = state(false)
       const ordersOnly = state(false)
       const sort = state('distance')
       const remote = state([])
+
+      const mapView = state(true)
+      const moreFilters = state(false)
+      const cuisines = state([])
+      const maxPrice = state(4)
+      const minRating = state(0)
+      const followMap = state(false)
+      const bounds = state(null)
+
+      /*
+       * Saves, against the same endpoint the place page and the saved list use.
+       *
+       * Held as one array of slugs rather than a flag per card, because the
+       * cards are re-derived on every keystroke and per-card state would not
+       * survive the re-render.
+       *
+       * The write is optimistic: the heart fills on click and the request
+       * follows. A save is small and idempotent, and a heart that waits for a
+       * round trip before moving reads as a broken button. If the request
+       * fails the heart goes back, which is the only honest thing it can do.
+       */
+      const saved = state([])
+
+      async function loadSaved() {
+        const response = await fetch('/api/saved', { headers: { 'x-visitor': visitorToken() } }).catch(() => null)
+
+        if (!response || !response.ok)
+          return
+
+        const { data } = await response.json()
+
+        saved.set(data.map(place => place.slug))
+      }
+
+      loadSaved()
+
+      async function toggleSaved(slug, event) {
+        // The heart is inside the card's anchor, so without this the click
+        // navigates to the place instead of saving it.
+        event.preventDefault()
+        event.stopPropagation()
+
+        const was = saved()
+
+        saved.set(was.includes(slug) ? was.filter(entry => entry !== slug) : [...was, slug])
+
+        const response = await send(`/api/businesses/${slug}/save`).catch(() => null)
+
+        if (!response || !response.ok) {
+          saved.set(was)
+          return
+        }
+
+        // The server is the authority on whether it is saved; the optimistic
+        // guess above only has to be right often enough not to flicker.
+        const { data } = await response.json()
+
+        saved.set(data.saved ? [...new Set([...saved(), slug])] : saved().filter(entry => entry !== slug))
+      }
+
+      function toggleCuisine(value) {
+        cuisines.set(cuisines().includes(value) ? cuisines().filter(entry => entry !== value) : [...cuisines(), value])
+      }
+
+      const ratingFilters = [
+        { value: 2, label: '1-2' },
+        { value: 3, label: '3' },
+        { value: 4, label: '4' },
+        { value: 5, label: '★ 5' },
+      ]
 
       /*
        * Built from what is actually here rather than a hand-kept list. The seed
@@ -439,8 +656,64 @@ function openLabel(business) {
         ]
       })
 
+      /*
+       * The cuisine facets, counted off the results rather than listed by hand.
+       *
+       * A business's `cuisine` is free text out of open data - "Mexican, Tacos",
+       * "Coffee", "Japanese, Sushi" - so it is split on commas and the parts
+       * counted separately. Anything appearing once is dropped: the tail is
+       * hundreds of one-off spellings, and a filter that narrows to a single
+       * result is a filter nobody wants twice.
+       */
+      const cuisineFilters = derived(() => {
+        const tally = new Map()
+
+        for (const card of cards()) {
+          for (const part of String(card.cuisine || '').split(',')) {
+            const written = part.trim()
+
+            if (!written)
+              continue
+
+            const token = written.toLowerCase()
+
+            tally.set(token, { value: token, label: written, count: (tally.get(token)?.count || 0) + 1 })
+          }
+        }
+
+        return [...tally.values()]
+          .filter(entry => entry.count > 1)
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+      })
+
+      /* Bars for the four price tiers, as a share of the tallest, so the shape
+         is readable whether the set is sixty places or six. */
+      const priceHistogram = derived(() => {
+        const tiers = [1, 2, 3, 4].map(tier => ({ tier, count: 0 }))
+
+        for (const card of cards())
+          tiers[Math.max(1, Math.min(4, String(card.price || '$').length)) - 1].count += 1
+
+        const tallest = Math.max(1, ...tiers.map(entry => entry.count))
+
+        return tiers.map(entry => ({ ...entry, share: entry.count / tallest }))
+      })
+
+      const averagePrice = derived(() => {
+        const list = cards()
+
+        if (!list.length)
+          return '$$'
+
+        const mean = list.reduce((sum, card) => sum + String(card.price || '$').length, 0) / list.length
+
+        return '$'.repeat(Math.max(1, Math.round(mean)))
+      })
+
       const shown = derived(() => {
         const words = query().trim().toLowerCase().split(/\s+/).filter(Boolean)
+        const wanted = cuisines()
+        const viewBox = followMap() ? bounds() : null
 
         const matching = [...cards(), ...remote()].filter((card) => {
           if (type() && card.type !== type())
@@ -450,6 +723,22 @@ function openLabel(business) {
             return false
 
           if (ordersOnly() && !card.isPartner)
+            return false
+
+          if (String(card.price || '$').length > maxPrice())
+            return false
+
+          // A place with no rating is not a bad place, but it cannot answer
+          // "at least four stars" either, so it drops out of the answer.
+          if (minRating() && Number(card.rating || 0) < minRating())
+            return false
+
+          // Any of the checked cuisines, not all: checking Italian and Chinese
+          // means either would do, which is what a list of checkboxes reads as.
+          if (wanted.length && !wanted.some(value => String(card.cuisine || '').toLowerCase().includes(value)))
+            return false
+
+          if (viewBox && !withinBounds(card, viewBox))
             return false
 
           // Every word has to appear somewhere, so "venice coffee" narrows
@@ -467,19 +756,6 @@ function openLabel(business) {
           // A card with no distance sorts last rather than first.
           return (Number(a.distanceMeters) || Infinity) - (Number(b.distanceMeters) || Infinity)
         })
-      })
-
-      const countLine = derived(() => {
-        const sortLabel = {
-          distance: say('search.sort_distance', 'Nearest'),
-          rating: say('search.sort_rating', 'Best rated'),
-          name: say('search.sort_name', 'A to Z'),
-        }[sort()]
-
-        if (query().trim().length >= 3)
-          return `${shown().length} found · ${sortLabel}`
-
-        return `${shown().length} / ${total} · ${sortLabel}`
       })
 
       function say(key, fallback) {
@@ -580,24 +856,54 @@ function openLabel(business) {
         })))
       }
 
-      // The map is imperative by nature: it owns its own DOM. It is set up once
-      // and then only told which pins to show.
+      /*
+       * The map owns its own DOM, so it is imperative where the rest of this
+       * file is declarative: set up once, then told what to show.
+       *
+       * The library's own zoom and attribution controls are off. Ours are in
+       * the markup above, so they inherit the page's buttons instead of
+       * arriving as a second design; the attribution moves to a line of text
+       * under the section, which is where the licence wants it and where it is
+       * not sitting on top of a result.
+       */
       const mapEl = document.getElementById('discover-map')
       const markers = new Map()
+      let map = null
+
+      function zoomBy(delta) {
+        if (!map)
+          return
+
+        delta > 0 ? map.zoomIn() : map.zoomOut()
+      }
+
+      /* Best effort, and silent when declined: a browser that says no to
+         geolocation has given the user's answer, and a dialog repeating the
+         question is the site arguing with it. */
+      function locate() {
+        if (!map || !navigator.geolocation)
+          return
+
+        navigator.geolocation.getCurrentPosition(
+          position => map.setView([position.coords.latitude, position.coords.longitude], 14),
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000 },
+        )
+      }
 
       if (mapEl) {
-        const map = new TsMap(mapEl, { center: [centre.latitude, centre.longitude], zoom: 12 })
+        map = new TsMap(mapEl, {
+          center: [centre.latitude, centre.longitude],
+          zoom: 12,
+          zoomControl: false,
+          attributionControl: false,
+        })
 
-        tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(map)
+        tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
 
         // Pins are keyed by slug so the effect below can hide the ones the
         // filter has excluded.
-        const pins = JSON.parse(mapEl.dataset.pins || '[]')
-
-        for (const pin of pins) {
+        for (const pin of readPins()) {
           const marker = new Marker([pin.lat, pin.lng]).addTo(map)
 
           // A partner can take an order; a listing can only be read about, and
@@ -611,7 +917,32 @@ function openLabel(business) {
           markers.set(pin.slug, marker)
         }
 
-        // The map should agree with the list beneath it.
+        /* Only published while the switch is on. The read is cheap; the
+           consequence is not - writing bounds on every pan with the switch off
+           would invalidate `shown()` on every pan, and re-derive and re-render
+           sixty cards for a filter nobody asked to apply. */
+        function publishBounds() {
+          if (!followMap())
+            return
+
+          const edge = map.getBounds()
+
+          bounds.set({
+            north: edge.getNorth(),
+            south: edge.getSouth(),
+            east: edge.getEast(),
+            west: edge.getWest(),
+          })
+        }
+
+        map.on('moveend', publishBounds)
+        map.on('zoomend', publishBounds)
+
+        // Switching it on has to take effect where the map already is, rather
+        // than waiting for the next pan to notice.
+        effect(() => followMap() ? publishBounds() : bounds.set(null))
+
+        // The map should agree with the list beside it.
         effect(() => {
           const visible = new Set(shown().map(card => card.slug))
 
@@ -622,10 +953,38 @@ function openLabel(business) {
               element.style.display = visible.has(slug) ? '' : 'none'
           }
         })
+
+        /*
+         * Keep the map's idea of its own size honest.
+         *
+         * It measures itself once, at construction, and it is constructed
+         * inside a grid column the browser has not finished sizing - so the
+         * measurement it keeps is of a box that is about to change. It then
+         * lays its tiles out for the old size and paints them offset, with
+         * white gaps where the next row should be.
+         *
+         * `invalidateSize()` on its own makes it worse. Its default is to hold
+         * the visible centre still by translating the tile pane half the
+         * difference, which is right when a sidebar opens next to a map
+         * somebody is reading, and wrong here: a map born 456px too narrow
+         * gets its pane shoved 228px sideways and keeps it. `pan: false`
+         * declines the compensation, and `setView` then recomputes the pane
+         * position from the centre and zoom rather than adjusting whatever
+         * position it was already in.
+         *
+         * An observer rather than a call at each site that resizes it - the
+         * pane toggle, a window resize, the breakpoint that moves the results
+         * into their own column - because they are all the same fact, and it
+         * is the only one of them that also hears the initial layout.
+         */
+        new ResizeObserver(() => {
+          map.invalidateSize?.({ pan: false, animate: false })
+          map.setView(map.getCenter(), map.getZoom(), { animate: false })
+        }).observe(mapEl)
       }
 
-      // The count line writes itself from the dictionary, which arrives after
-      // this runs.
+      // The rail's labels come from the dictionary, which arrives after this
+      // runs; poking a signal re-renders everything derived from one.
       document.addEventListener('smakelo:locale', () => sort.set(sort()))
     </script>
   </body>
