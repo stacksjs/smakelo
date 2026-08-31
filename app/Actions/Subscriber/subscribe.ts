@@ -58,7 +58,7 @@ export async function subscribe(rawEmail: unknown, rawSource: unknown): Promise<
   if (existing) {
     if (existing.status !== ON_THE_LIST) {
       await db
-        .update('subscribers')
+        .updateTable('subscribers')
         .set({ status: ON_THE_LIST, unsubscribed_at: null } as never)
         .where('id', '=', existing.id)
         .execute()
