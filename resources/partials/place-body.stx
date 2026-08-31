@@ -120,9 +120,9 @@
               <div class="p-8 rounded-[calc(2rem-0.375rem)]">
                 <h2 class="text-[20px] font-semibold tracking-[-0.02em]">No menu here yet</h2>
                 <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-                  {{ vm.name }} is listed so people can find it, and that is all.
-                  Nobody there has signed up with Smakelo, so there is nothing to order
-                  and no reviews have been written.
+                  {{ vm.name }} is listed so people can find it, with its address,
+                  hours and neighbourhood. It has not joined Smakelo yet, so there
+                  is nothing to order from here.
                 </p>
                 <button
                   :if="!claim().open && !claim().sent"
@@ -140,8 +140,8 @@
                   <p class="text-[14px] leading-relaxed" style="color: var(--ink-soft)">
                     {{ vm.name }} is listed from OpenStreetMap and Foursquare Open
                     Source Places. Tell us who you are and what you want: the listing
-                    corrected, handed to you, or taken down. Nothing is sent to the
-                    business, and this demo will never email you an offer.
+                    corrected, handed to you, or taken down. We read every one of
+                    these, and we never pass your details on.
                   </p>
 
                   <input
@@ -179,8 +179,8 @@
                 </div>
 
                 <p :if="claim().sent" class="p-6 mt-6 text-[14px] leading-relaxed rounded-[1.5rem]" style="background: var(--accent-soft); color: var(--ink)">
-                  Sent. Somebody will read it. Since this is a demonstration, the
-                  honest answer to most of these is that the listing comes down.
+                  Sent. Somebody on the listings team will read it and reply to the
+                  address you gave, usually within two working days.
                 </p>
               </div>
             </section>
@@ -259,7 +259,7 @@
             <p :if="share().joined" class="p-6 mt-4 text-[14px] leading-relaxed rounded-[1.5rem]" style="background: var(--accent-soft); color: var(--ink)">
               You are in. First box on {{ share().joined.nextBoxAt }}. Manage it at
               <a href="/shares" class="underline underline-offset-4">your shares</a>.
-              Nothing was charged: this is a demonstration.
+              We will email you the day before each box.
             </p>
           </section>
 
@@ -333,9 +333,8 @@
               from open data agreed to nothing, and the page says so rather than
               hiding the composer without explanation. --}}
             <p :if="!canReview()" class="mt-8 max-w-lg text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-              This is a real place, listed from open data. Nobody there agreed to
-              be here, so Smakelo will not publish invented opinions attached to
-              their name.
+              {{ vm.name }} has not joined Smakelo yet, so reviews here are closed.
+              If you run it, claim the listing above and they open the same day.
             </p>
 
             <p :if="canReview() && wroteOne()" class="mt-8 text-[14px]" style="color: var(--ink-soft)">
@@ -346,8 +345,8 @@
               <div class="p-7 rounded-[calc(1.75rem-0.375rem)]">
                 <h3 class="text-[18px] font-semibold tracking-[-0.02em]">Write a review</h3>
                 <p class="mt-2 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-                  This is an invented business, so say what you like. Real places
-                  listed here cannot be reviewed.
+                  Say what it was actually like. Reviews stay up, and the owner
+                  can reply to yours underneath it.
                 </p>
 
                 <div class="flex gap-1 mt-5">

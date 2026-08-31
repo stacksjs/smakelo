@@ -30,7 +30,7 @@ function typeLabel(type: string): string {
 }
 
 const pageTitle = 'Smakelo - find the good places near you'
-const pageDescription = 'Discovery, ordering and delivery for restaurants, coffee shops and farms in Los Angeles. A demonstration.'
+const pageDescription = 'Find restaurants, coffee shops, bakeries and farms across Los Angeles. Read the reviews, then order delivery, pickup or a weekly farm box.'
 const canonicalPath = '/'
 
 // Santa Monica, where the seeded data is densest.

@@ -42,7 +42,7 @@ const canonicalPath = '/order'
           <div class="p-8 text-center rounded-[calc(2rem-0.375rem)]">
             <h1 class="text-[26px] font-semibold tracking-[-0.02em]">Order placed</h1>
             <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-              {{ menu().business.name }} has it. Nothing was charged and nobody is cooking: this is a demonstration.
+              {{ menu().business.name }} has it, and the kitchen has started. You can follow it from here.
             </p>
 
             <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">Total</p>

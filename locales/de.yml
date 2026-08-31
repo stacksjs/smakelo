@@ -1,8 +1,3 @@
-demo:
-  banner: Alles hier ist eine Demonstration. Die Orte gibt es wirklich; die Speisekarten, Bewertungen, Bestellungen und Zahlungen nicht.
-  dismiss: Verstanden
-  sandbox: Testmodus. Es wird keine Karte belastet und keine Bestellung erreicht jemanden.
-
 nav:
   discover: Entdecken
   orders: Bestellungen
@@ -12,7 +7,6 @@ nav:
   sign_in: Anmelden
   sign_out: Abmelden
   shares: Anteile
-  about: Über diese Demo
 
 search:
   placeholder: Nach einem Ort oder Gericht suchen

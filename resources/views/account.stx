@@ -144,9 +144,8 @@ const canonicalPath = '/account'
           </p>
 
           <p class="mt-8 text-[12px] leading-relaxed" style="color: var(--ink-soft)">
-            This is a demonstration. Use an address you do not mind typing into
-            one: nothing is ever sent to it, and the whole database is rebuilt
-            on every deploy.
+            By continuing you agree to the <a href="/terms" class="underline underline-offset-4">terms</a>
+            and the <a href="/privacy" class="underline underline-offset-4">privacy policy</a>.
           </p>
         </div>
       </div>
