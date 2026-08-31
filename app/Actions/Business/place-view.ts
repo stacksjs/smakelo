@@ -21,7 +21,11 @@ export interface PlaceViewModel {
   name: string
   slug: string
   type: string
-  /** Generated cover art; see Business/identity.ts for why not a photograph. */
+  /** The photograph and the colour behind it; see Business/identity.ts. */
+  photoId: string
+  photo: string
+  photoWide: string
+  photoThumb: string
   hue: number
   hueEnd: number
   icon: string

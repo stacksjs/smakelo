@@ -93,6 +93,7 @@ const canonicalPath = '/order'
             <div class="flex gap-4 items-center">
               <div class="cover flex justify-center items-center w-14 h-14 rounded-[1rem] shrink-0" :style="'--h: ' + menu().business.hue + '; --h2: ' + menu().business.hueEnd">
                 <i class="cover-mark w-6 h-6" :class="menu().business.iconClass"></i>
+                <img class="cover-photo" :src="menu().business.photoThumb" alt="" decoding="async" width="160" height="160">
               </div>
 
               <div>

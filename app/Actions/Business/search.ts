@@ -56,7 +56,12 @@ export interface BusinessResult {
   openState: OpenState
   closesInMinutes?: number
   opensInMinutes?: number
-  /** Generated cover art, so every card has something to look at. */
+  /** The photograph, at the three sizes a card or a page needs. */
+  photoId: string
+  photo: string
+  photoWide: string
+  photoThumb: string
+  /** The colour behind it, and the fallback when it does not load. */
   hue: number
   hueEnd: number
   icon: string

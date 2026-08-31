@@ -22,6 +22,10 @@
   a font handshake. --}}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+{{-- Cover photography is served from Unsplash's image CDN, one host for every
+  card on the page, so the handshake is worth getting out of the way early. --}}
+<link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
 
 <style>
@@ -91,16 +95,25 @@
      app's radius and hairline rather than the library's defaults. */
   .tsmap-container { background: var(--paper-raised); }
 
-  /* --- Generated cover art -------------------------------------------------
+  /* --- Covers --------------------------------------------------------------
 
-     Every business gets a cover derived from its name rather than a photograph.
-     268 of these are real places taken from open data, and a stock photo of
-     somebody else's dining room under a real restaurant's name is a fabricated
-     record of a real place; see app/Actions/Business/identity.ts.
+     A cover is a photograph laid over a coloured ground. The ground is the
+     part that always renders: the hue arrives as a custom property, so the
+     markup carries two numbers rather than a whole gradient and light and dark
+     can light it differently without the server knowing which one is on. It
+     shows through while the photograph decodes, and it is what remains if the
+     photograph never arrives - a coloured tile with a monogram on it, rather
+     than a broken-image glyph.
 
-     The hue arrives as a custom property so the markup carries two numbers
-     rather than a whole gradient, and so light and dark can light it
-     differently without the server knowing which one is on. */
+     See app/Actions/Business/imagery.ts for which photograph a business gets
+     and why the library is curated by hand.
+
+     Every cover image is `alt=""`. The photograph is stock - of the kind of
+     food the place serves, not of the place - so an alt of the business name
+     would tell a screen-reader user it is a picture of that business, which is
+     the same fabrication the reviews guard draws a line at. The name is in the
+     heading beside it either way, so there is nothing to lose by going quiet
+     here. */
   .cover {
     position: relative;
     overflow: hidden;
@@ -119,6 +132,37 @@
       linear-gradient(90deg, hsl(var(--h) 40% 30% / 0.05) 1px, transparent 1px);
     background-size: 22px 22px;
     pointer-events: none;
+  }
+
+  .cover-photo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Fades in on decode rather than snapping, so a grid of sixty does not
+       flicker its way down the page as each one lands. */
+    opacity: 0;
+    transition: opacity 700ms cubic-bezier(0.32, 0.72, 0, 1), transform 700ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .cover-photo[data-loaded] { opacity: 1; }
+
+  /* A broken or blocked image leaves the ground and the monogram, which is
+     already a complete cover. Without this the browser draws its own alt
+     placeholder on top of them. */
+  .cover-photo[data-failed] { display: none; }
+
+  .group:hover .cover-photo { transform: scale(1.04); }
+
+  /* Badges sit on the photograph, and a photograph is not a known colour.
+     A scrim under them is cheaper than measuring the pixels behind. */
+  .cover-scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.34));
   }
 
   .cover-mark { color: hsl(var(--h) 46% 26%); }
@@ -196,6 +240,53 @@
   <i class="i-hugeicons-money-bag-02"></i><i class="i-hugeicons-checkmark-circle-02"></i>
   <i class="i-hugeicons-bicycle-01"></i><i class="i-hugeicons-plant-01"></i>
 </div>
+
+<script>
+  /*
+   * Cover photographs: fade them in, and stand out of the way when one fails.
+   *
+   * Delegated on the document rather than bound per image, because the cards
+   * are rendered from a signal after this runs and there is nothing to bind to
+   * yet. Capture phase, because `load` and `error` do not bubble.
+   *
+   * Only the `error` event marks a cover failed. The tempting shortcut -
+   * treating `complete && !naturalWidth` as a failure - cannot tell a broken
+   * image from a lazy one that has not started yet: both report exactly that,
+   * and every card passes through the second state on the tick it is inserted.
+   * Reading it as failure hid all sixty photographs behind their fallback.
+   *
+   * So the sweep only ever confirms success, for the case the listeners cannot
+   * catch: an image served from cache that finished before they were attached.
+   */
+  ;(function () {
+    function loaded(image) {
+      if (image && image.classList && image.classList.contains('cover-photo'))
+        image.setAttribute('data-loaded', '')
+    }
+
+    function failed(image) {
+      if (image && image.classList && image.classList.contains('cover-photo'))
+        image.setAttribute('data-failed', '')
+    }
+
+    document.addEventListener('load', function (event) { loaded(event.target) }, true)
+    document.addEventListener('error', function (event) { failed(event.target) }, true)
+
+    function sweep() {
+      for (const image of document.querySelectorAll('.cover-photo:not([data-loaded])'))
+        if (image.complete && image.naturalWidth > 0)
+          loaded(image)
+    }
+
+    document.addEventListener('DOMContentLoaded', sweep)
+
+    // Signal-rendered grids arrive after that, so sweep again whenever the
+    // document grows. An observer rather than a poll: the cards land in one
+    // burst when a search resolves, and a timer either misses that burst or
+    // runs forever waiting for it.
+    new MutationObserver(sweep).observe(document.documentElement, { childList: true, subtree: true })
+  })()
+</script>
 
 <script>
   /*

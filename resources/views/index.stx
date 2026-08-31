@@ -144,6 +144,7 @@ const cardsJson = JSON.stringify(results.map(business => ({
   openState: business.openState,
   isPartner: business.isPartner,
   haystack: `${business.name} ${business.cuisine} ${business.city} ${business.description}`.toLowerCase(),
+  photo: business.photo,
   hue: business.hue,
   hueEnd: business.hueEnd,
   icon: business.icon,
@@ -319,18 +320,22 @@ function openLabel(business) {
             class="reveal group overflow-hidden block rounded-[1.5rem] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
             style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)"
           >
-            {{-- Generated, not photographed. See Business/identity.ts. --}}
-            <div class="cover flex justify-center items-center h-32" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
-              <i class="cover-mark w-9 h-9 transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-110" :class="'i-hugeicons-' + card.icon"></i>
+            {{-- The photograph, over the business's own colour. The colour is
+              what shows while it decodes and what remains if it never
+              arrives; see app/Actions/Business/imagery.ts. --}}
+            <div class="cover flex justify-center items-center h-44" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
+              <i class="cover-mark w-9 h-9" :class="'i-hugeicons-' + card.icon"></i>
 
-              <span class="cover-mark absolute right-3 bottom-2.5 text-[11px] font-semibold tracking-[0.14em]" style="opacity: .5">{{ card.monogram }}</span>
+              <img class="cover-photo" :src="card.photo" alt="" loading="lazy" decoding="async" width="800" height="560">
+
+              <span class="cover-scrim"></span>
 
               <span
                 :if="card.openState === 'open'"
-                class="absolute top-3 left-3 inline-flex gap-1.5 items-center px-2.5 py-1 text-[11px] font-medium rounded-full"
-                style="background: rgba(255,255,255,0.86); color: #1c7a4a"
+                class="absolute top-3 left-3 inline-flex gap-1.5 items-center px-2.5 py-1 text-[11px] font-medium rounded-full backdrop-blur-sm"
+                style="background: rgba(255,255,255,0.92); color: #14713f"
               >
-                <span class="w-1.5 h-1.5 rounded-full" style="background: #1c7a4a"></span>
+                <span class="w-1.5 h-1.5 rounded-full" style="background: #14713f"></span>
                 Open
               </span>
 
@@ -342,6 +347,8 @@ function openLabel(business) {
                 <i class="w-3 h-3 i-hugeicons-delivery-truck-01"></i>
                 Orders
               </span>
+
+              <span class="absolute right-3 bottom-2.5 text-[11px] font-semibold tracking-[0.14em] text-white" style="opacity: .82; text-shadow: 0 1px 2px rgba(0,0,0,.4)">{{ card.monogram }}</span>
             </div>
 
             <div class="flex flex-col p-5 h-full">
@@ -565,6 +572,7 @@ function openLabel(business) {
           openState: business.openState,
           isPartner: business.isPartner,
           haystack: `${business.name} ${business.cuisine} ${business.city}`.toLowerCase(),
+          photo: business.photo,
           hue: business.hue,
           hueEnd: business.hueEnd,
           icon: business.icon,

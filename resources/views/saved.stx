@@ -42,6 +42,7 @@ const canonicalPath = '/saved'
               <div class="flex flex-1 gap-4 items-center min-w-0">
                 <div class="cover flex justify-center items-center w-12 h-12 rounded-[0.9rem] shrink-0" :style="'--h: ' + place.hue + '; --h2: ' + place.hueEnd">
                   <i class="cover-mark w-5 h-5" :class="place.iconClass"></i>
+                  <img class="cover-photo" :src="place.photoThumb" alt="" loading="lazy" decoding="async" width="160" height="160">
                 </div>
 
                 <div class="min-w-0">

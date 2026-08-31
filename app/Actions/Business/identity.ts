@@ -1,21 +1,22 @@
+import type { BusinessPhoto } from './imagery'
+import { photoFor } from './imagery'
+
 /**
  * A visual identity for a business, derived rather than uploaded.
  *
- * The obvious way to make a directory look alive is photographs. This one
- * cannot use them: 268 of these businesses are real places taken from open
- * data, and putting a stock photo of somebody else's dining room under a real
- * restaurant's name is fabricating a record of a real place. That is the same
- * line the reviews guard draws, and a picture crosses it more convincingly
- * than words do.
+ * Four parts, all of them a function of the business and none of them stored:
+ * a photograph of the food it serves (see ./imagery), a hue derived from its
+ * name for everything that sits behind or beside that photograph, an icon
+ * chosen from its cuisine, and its initials.
  *
- * So every business gets a generated cover instead: a colour derived from its
- * name, a second colour to give the gradient somewhere to go, an icon chosen
- * from its cuisine, and its initials. It is recognisably a placeholder, it is
- * stable for a given business, and no two adjacent cards look alike. Nothing
- * here claims to be a photograph of anything.
+ * Derived rather than uploaded because nobody has uploaded anything. The hue
+ * and the monogram carry the small surfaces - a 48px tile in a list, an avatar
+ * - where a photograph is just a smudge, and they are what a broken image
+ * falls back to. They are also stable: the same business is the same colour on
+ * the card, on its page and in the order it appears in later.
  */
 
-export interface BusinessVisual {
+export interface BusinessVisual extends BusinessPhoto {
   /** Base hue, 0-359. */
   hue: number
   /** Where the gradient lands, kept close so it reads as one colour. */
@@ -95,6 +96,7 @@ export function visualFor(input: { name?: unknown, slug?: unknown, type?: unknow
   const hue = hashHue(slug)
 
   return {
+    ...photoFor({ slug, name, type, cuisine }),
     hue,
     // A short rotation rather than a complementary colour: opposite hues make
     // a gradient look like a bruise.
