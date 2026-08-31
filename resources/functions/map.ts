@@ -48,3 +48,48 @@ export function keepSized(map: any, element: HTMLElement): void {
 
   observer.observe(element)
 }
+
+/**
+ * The basemap.
+ *
+ * Not OpenStreetMap's own raster any more. That tileset is drawn to be read on
+ * its own - saturated greens, heavy road casings, motorway shields - and next
+ * to a page of food photographs it fought them for attention. Desaturating it
+ * in CSS made it quieter without making it better: the same heavy geometry,
+ * greyed, and still a 256px image on a display with twice the pixels.
+ *
+ * Wikimedia's `osm-intl` is drawn as a background - pale land, soft parks,
+ * quiet water, roads with a hairline casing - and it serves `@2x`, which is
+ * the half of this that CSS could never fix. It is the closest of the
+ * no-key rasters to the map people already know how to read.
+ *
+ * CARTO's Voyager is closer still and was the first choice; their basemaps now
+ * answer without a key and return a tile with API KEY REQUIRED written across
+ * it, which a status check happily calls a 200. Esri's light grey canvas is
+ * free and keyless but nearly monochrome.
+ *
+ * ONE PLACE TO CHANGE. Wikimedia ask that third parties not lean on their
+ * tile servers, and this is a third party. For anything with real traffic,
+ * put a keyed provider here - MapTiler, Stadia and Thunderforest all serve a
+ * style like this one - and nothing else in the app needs to know.
+ */
+const BASEMAP = 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}@2x.png'
+
+/**
+ * Add the basemap.
+ *
+ * There is no dark variant of this tileset, so dark mode inverts it in CSS -
+ * see the `.tsmap-tile` rule in the head partial. That is the one thing a
+ * filter is genuinely good for: turning a light map dark is a change to every
+ * pixel, which is what a filter does, rather than an attempt to restyle
+ * cartography that was already drawn.
+ */
+export function basemap(tileLayerFactory: any, map: any): void {
+  tileLayerFactory(BASEMAP, {
+    maxZoom: 19,
+    // The tiles are 512px images standing in for 256px ones. Saying so is what
+    // keeps labels at their intended size instead of half of it.
+    tileSize: 256,
+    detectRetina: false,
+  }).addTo(map)
+}

@@ -4,7 +4,7 @@ export { increment, decrement, reset, count } from '../../../resources/functions
 export { placeMap, placeHandlers } from '../../../resources/functions/place-page'
 export type { PlaceSignals } from '../../../resources/functions/place-page'
 export { toggleDark, isDark, preferredDark } from '../../../resources/functions/dark'
-export { keepSized } from '../../../resources/functions/map'
+export { keepSized, basemap } from '../../../resources/functions/map'
 export { csrfToken, visitorToken, authToken, setAuthToken, clearAuthToken, send, money } from '../../../resources/functions/session'
 export { startTracking } from '../../../resources/functions/courier-tracking'
 export type { TrackingHandle } from '../../../resources/functions/courier-tracking'

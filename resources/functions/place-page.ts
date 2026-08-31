@@ -1,4 +1,4 @@
-import { keepSized } from './map'
+import { basemap, keepSized } from './map'
 import { send, visitorToken } from './session'
 
 /**
@@ -224,7 +224,7 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
     fadeAnimation: false,
   })
 
-  tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
+  basemap(tileLayer, map)
 
   // Filled, the way a partner's pin is on the discover map: you are looking at
   // this one place, so it is the one thing on the map worth the accent colour.

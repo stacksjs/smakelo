@@ -78,7 +78,7 @@ const canonicalPath = '/track'
 
     <script client>
       import { Marker, tileLayer, TsMap } from 'ts-maps'
-      import { keepSized } from '../functions/map'
+      import { basemap, keepSized } from '../functions/map'
       import { money } from '../functions/session'
 
       const order = state(null)
@@ -181,10 +181,7 @@ const canonicalPath = '/track'
 
         map = new TsMap(el, { center: [current.business.latitude, current.business.longitude], zoom: 14 })
 
-        tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(map)
+        basemap(tileLayer, map)
 
         new Marker([current.business.latitude, current.business.longitude])
           .addTo(map)

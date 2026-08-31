@@ -203,15 +203,18 @@ function typeIcon(type) {
         </form>
 
         <div class="flex flex-wrap gap-x-8 gap-y-3 mt-7">
-          <p class="text-[13px]" style="color: var(--ink-soft)">
+          <p class="inline-flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
+            <span class="inline-flex justify-center items-center w-7 h-7 rounded-[9px]" style="background: var(--info-soft); color: var(--info)"><i class="w-3.5 h-3.5 i-hugeicons-store-01"></i></span>
             <strong class="text-[20px] font-semibold" style="color: var(--ink)">{{ total }}</strong>
             places listed
           </p>
-          <p class="text-[13px]" style="color: var(--ink-soft)">
+          <p class="inline-flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
+            <span class="inline-flex justify-center items-center w-7 h-7 rounded-[9px]" style="background: var(--mint); color: var(--mint-ink)"><i class="w-3.5 h-3.5 i-hugeicons-flash"></i></span>
             <strong class="text-[20px] font-semibold" style="color: var(--ink)">{{ openNow.length }}</strong>
             open right now
           </p>
-          <p class="text-[13px]" style="color: var(--ink-soft)">
+          <p class="inline-flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
+            <span class="inline-flex justify-center items-center w-7 h-7 rounded-[9px]" style="background: var(--accent-soft); color: var(--accent)"><i class="w-3.5 h-3.5 i-hugeicons-delivery-truck-01"></i></span>
             <strong class="text-[20px] font-semibold" style="color: var(--ink)">{{ partners.length }}</strong>
             take orders
           </p>
@@ -222,7 +225,7 @@ function typeIcon(type) {
         category is the cheapest way to find "coffee" without reading, and each
         one is a link into /discover already filtered. --}}
       <section class="pb-14">
-        <h2 class="rail-head text-[20px]">Browse <span>by kind</span></h2>
+        <h2 class="rail-head text-[20px]"><i class="i-hugeicons-dish-01"></i>Browse <span>by kind</span></h2>
 
         <div class="grid grid-cols-2 gap-3 mt-5 sm:grid-cols-3 lg:grid-cols-6">
           @foreach (categories as category)
@@ -231,7 +234,7 @@ function typeIcon(type) {
               class="flex flex-col gap-2 items-center px-3 py-5 rounded-[1.25rem] transition-all duration-500 hover:-translate-y-0.5"
               style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04)"
             >
-              <i class="w-6 h-6" :class="'i-hugeicons-' + category.icon"></i>
+              <i class="w-6 h-6 i-hugeicons-{{ category.icon }}"></i>
               <span class="text-[13px] font-medium">{{ category.label }}</span>
               <span class="text-[11px]" style="color: var(--ink-soft)">{{ category.count }}</span>
             </a>
@@ -243,7 +246,7 @@ function typeIcon(type) {
         it goes first. --}}
       <section class="pb-14">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-5">
-          <h2 class="rail-head text-[20px]">Open <span>right now</span></h2>
+          <h2 class="rail-head text-[20px]"><i class="i-hugeicons-flash"></i>Open <span>right now</span></h2>
           <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">See all {{ total }}</a>
         </div>
 
@@ -272,7 +275,10 @@ function typeIcon(type) {
                     {{ place.ratingAverage }}
                   </span>
                 </div>
-                <p class="mt-1.5 text-[13px] truncate" style="color: var(--ink-soft)">{{ place.cuisine || place.type }} · {{ place.city }}</p>
+                <div class="meta-row mt-2">
+                  <span class="truncate"><i class="i-hugeicons-restaurant-01"></i>{{ place.cuisine || place.type }}</span>
+                  <span><i class="i-hugeicons-location-01"></i>{{ place.city }}</span>
+                </div>
               </div>
             </a>
           @endforeach
@@ -284,7 +290,7 @@ function typeIcon(type) {
         one listing at a time. --}}
       <section class="pb-14">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-5">
-          <h2 class="rail-head text-[20px]">Taking <span>orders</span></h2>
+          <h2 class="rail-head text-[20px]"><i class="i-hugeicons-delivery-truck-01"></i>Taking <span>orders</span></h2>
           <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">Browse everything</a>
         </div>
 
@@ -315,7 +321,10 @@ function typeIcon(type) {
                     </span>
                   @endif
                 </div>
-                <p class="mt-1.5 text-[13px] truncate" style="color: var(--ink-soft)">{{ place.cuisine || place.type }} · {{ place.city }}</p>
+                <div class="meta-row mt-2">
+                  <span class="truncate"><i class="i-hugeicons-restaurant-01"></i>{{ place.cuisine || place.type }}</span>
+                  <span><i class="i-hugeicons-location-01"></i>{{ place.city }}</span>
+                </div>
               </div>
             </a>
           @endforeach
@@ -331,7 +340,7 @@ function typeIcon(type) {
         <div class="overflow-hidden p-6 rounded-[2rem] sm:p-10" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -28px rgba(20,17,15,0.16)">
           <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-center">
             <div>
-              <h2 class="rail-head text-[clamp(1.35rem,3vw,1.75rem)]">Straight <span>from the farm</span></h2>
+              <h2 class="rail-head text-[clamp(1.35rem,3vw,1.75rem)]"><i class="i-hugeicons-leaf-01"></i>Straight <span>from the farm</span></h2>
               <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
                 A weekly box from a grower in Ojai, Moorpark or Tehachapi. They
                 are an hour out of the city rather than round the corner, which
@@ -368,7 +377,7 @@ function typeIcon(type) {
         the part somebody reads only if the rows above have not already
         answered it. --}}
       <section class="pb-16">
-        <h2 class="rail-head text-[20px]">How <span>it works</span></h2>
+        <h2 class="rail-head text-[20px]"><i class="i-hugeicons-help-circle"></i>How <span>it works</span></h2>
 
         <div class="grid grid-cols-1 gap-5 mt-5 sm:grid-cols-3">
           <div class="p-6 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04)">
@@ -430,7 +439,8 @@ function typeIcon(type) {
             </p>
 
             <div :if="!subscribed()" class="flex flex-col gap-2 mt-7 sm:flex-row">
-              <label class="flex-1">
+              <label class="flex relative flex-1 items-center">
+                <i class="absolute left-5 w-4 h-4 i-hugeicons-mail-01" style="color: var(--ink-soft)"></i>
                 <span class="sr-only">Email address</span>
                 <input
                   type="email"
@@ -441,7 +451,7 @@ function typeIcon(type) {
                   :value="subscribeEmail()"
                   @input="subscribeEmail.set($event.target.value)"
                   @keydown="$event.key === 'Enter' && sendSubscribe()"
-                  class="px-5 py-3.5 w-full text-[15px] rounded-full outline-none transition-shadow duration-500 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
+                  class="py-3.5 pr-5 pl-12 w-full text-[15px] rounded-full outline-none transition-shadow duration-500 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                   style="background: var(--paper); border: 1px solid var(--line)"
                 >
               </label>

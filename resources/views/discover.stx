@@ -333,7 +333,7 @@ function openLabel(business) {
           <aside class="discover-rail">
             <div class="flex flex-col gap-7 p-5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
               <div class="flex justify-between items-center">
-                <h2 class="rail-head">Map <span>View</span></h2>
+                <h2 class="rail-head"><i class="i-hugeicons-maps-location-01"></i>Map <span>View</span></h2>
                 <button
                   type="button"
                   class="switch"
@@ -344,7 +344,7 @@ function openLabel(business) {
               </div>
 
               <div>
-                <h2 class="rail-head">Category</h2>
+                <h2 class="rail-head"><i class="i-hugeicons-dish-01"></i>Category</h2>
                 <div class="grid grid-cols-2 gap-2 mt-3">
                   <button
                     :for="entry in typeFilters()"
@@ -363,7 +363,7 @@ function openLabel(business) {
                 phone can do without until asked. --}}
               <div class="rail-more flex-col gap-7">
                 <div>
-                  <h2 class="rail-head">Cuisine</h2>
+                  <h2 class="rail-head"><i class="i-hugeicons-restaurant-01"></i>Cuisine</h2>
                   <div class="fade-list mt-3 max-h-[188px]">
                     <div class="flex flex-col gap-1 pr-1">
                       <button
@@ -380,7 +380,7 @@ function openLabel(business) {
                 </div>
 
                 <div>
-                  <h2 class="rail-head">Price <span>Range</span></h2>
+                  <h2 class="rail-head"><i class="i-hugeicons-money-03"></i>Price <span>Range</span></h2>
 
                   {{-- The bars are the results, counted per tier, so the
                     control shows you where the places actually are before you
@@ -414,7 +414,7 @@ function openLabel(business) {
               </div>
 
               <div>
-                <h2 class="rail-head">Star <span>Rating</span></h2>
+                <h2 class="rail-head"><i class="i-hugeicons-star"></i>Star <span>Rating</span></h2>
                 <div class="seg mt-3">
                   <button
                     :for="entry in ratingFilters"
@@ -477,11 +477,15 @@ function openLabel(business) {
             <div class="flex flex-wrap gap-3 justify-between items-center pb-4">
               <h2 class="rail-head">{{ shown().length }} <span>{{ shown().length === 1 ? 'Result' : 'Results' }}</span></h2>
 
-              <select :value="sort()" @change="sort.set($event.target.value)" class="px-3 py-2 text-[12px] rounded-[10px]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+              <label class="inline-flex gap-1.5 items-center px-2.5 py-2 rounded-[10px]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+                <i class="w-3.5 h-3.5 i-hugeicons-sort-by-down-01" style="color: var(--ink-soft)"></i>
+                <span class="sr-only">Order the results</span>
+                <select :value="sort()" @change="sort.set($event.target.value)" class="text-[12px] outline-none cursor-pointer" style="background: transparent">
                 <option value="distance" data-i18n="search.sort_distance">Nearest</option>
                 <option value="rating" data-i18n="search.sort_rating">Best rated</option>
                 <option value="name" data-i18n="search.sort_name">A to Z</option>
-              </select>
+                </select>
+              </label>
             </div>
 
             {{-- What the time picker is holding back, and the one click that
@@ -554,10 +558,12 @@ function openLabel(business) {
                     money, for the places that can actually deliver. Anywhere
                     else says when it is open and how far away it is, which is
                     the same question answered with what is known. --}}
-                  <p class="mt-1.5 text-[13px]" style="color: var(--ink-soft)">
-                    <span :if="card.eta">{{ card.eta }}<span :if="card.deliveryFee"> · Delivery fee {{ card.deliveryFee }}</span></span>
-                    <span :if="!card.eta">{{ card.openLabel }}<span :if="card.distance"> · {{ card.distance }}</span></span>
-                  </p>
+                  <div class="meta-row mt-2">
+                    <span :if="card.eta"><i class="i-hugeicons-time-04"></i>{{ card.eta }}</span>
+                    <span :if="card.deliveryFee"><i class="i-hugeicons-bicycle-01"></i>{{ card.deliveryFee }}</span>
+                    <span :if="!card.eta"><i class="i-hugeicons-clock-01"></i>{{ card.openLabel }}</span>
+                    <span :if="!card.eta && card.distance"><i class="i-hugeicons-navigation-03"></i>{{ card.distance }}</span>
+                  </div>
 
                   <p class="mt-0.5 text-[13px] truncate" style="color: var(--ink-soft)">{{ card.cuisine || card.type }} · {{ card.price }}</p>
                 </div>
@@ -567,7 +573,7 @@ function openLabel(business) {
         </div>
 
         <p class="mt-6 text-[11px]" style="color: var(--ink-soft)">
-          Map data and tiles from OpenStreetMap contributors.
+          Map tiles by CARTO, data from OpenStreetMap contributors.
         </p>
       </section>
     </main>
@@ -575,7 +581,7 @@ function openLabel(business) {
 
     <script client>
       import { divIcon, Marker, tileLayer, TsMap } from 'ts-maps'
-      import { keepSized } from '../functions/map'
+      import { basemap, keepSized } from '../functions/map'
       import { send, visitorToken } from '../functions/session'
 
       /*
@@ -1166,7 +1172,7 @@ function openLabel(business) {
           fadeAnimation: false,
         })
 
-        tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
+        basemap(tileLayer, map)
 
         /*
          * Pins are ours rather than the library's teardrop.
