@@ -73,7 +73,8 @@
     "docs:links:check": "./buddy docs:links:check",
     "deps:lockfile:check": "bun .github/scripts/check-lockfile-version.ts",
     "bud": "./buddy",
-    "stx": "./buddy"
+    "stx": "./buddy",
+    "sync:map-css": "printf '%s\\n' \"$(sed -n '1,/^$/p' resources/assets/styles/ts-maps.css)\" > /tmp/hdr.css && cat /tmp/hdr.css node_modules/ts-maps/src/core-map/ts-maps.css > resources/assets/styles/ts-maps.css && rm /tmp/hdr.css"
   },
   "dependencies": {
     "pickier": "^0.1.65",

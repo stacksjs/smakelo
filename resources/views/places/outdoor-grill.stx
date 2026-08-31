@@ -29,7 +29,6 @@ const canonicalPath = vm.canonicalPath
       // linter cannot see from here.
       // eslint-disable-next-line unused-imports/no-unused-imports
       import { money } from '../../functions/session'
-      import 'ts-maps/styles.css'
 
       // Read off the element rather than interpolated: a raw echo inside
       // <script client> is not processed by the views build, so the page

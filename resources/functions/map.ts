@@ -8,13 +8,21 @@
  * box that is about to change. It lays its tiles out for the old size and
  * paints them offset, with white gaps where the next row should be.
  *
- * `invalidateSize()` on its own makes it worse. Its default is to hold the
- * visible centre still by translating the tile pane half the difference, which
- * is right when a sidebar opens beside a map somebody is reading, and wrong
- * here: a map born 456px too narrow gets its pane shoved 228px sideways and
- * keeps it there. `pan: false` declines the compensation, and `setView`
- * recomputes the pane position from the centre and zoom rather than adjusting
- * whatever position it was already in.
+ * `pan: false` because the default is to hold the visible centre still by
+ * translating the tile pane half the difference. That is right when a sidebar
+ * opens beside a map somebody is reading, and wrong here: a map born 456px too
+ * narrow would keep its pane shoved sideways for the rest of the session.
+ *
+ * `invalidateSize` is also the *only* thing called. Following it with a
+ * `setView` back to the current centre and zoom reads as a harmless
+ * belt-and-braces reset and is not: every call builds a fresh tile container
+ * with its own offset, the old ones are not reliably pruned, and the tiles end
+ * up spread down a diagonal - y = -23, 233, 745, 1257, 1513 inside a 444px
+ * box. The map then reports every tile present, loaded and fully opaque while
+ * covering 44% of itself, which is a state no amount of squinting at
+ * `naturalWidth` will catch. Coverage has to be measured from
+ * `getBoundingClientRect`, because that is the only reading that includes what
+ * the ancestor transforms did.
  *
  * An observer rather than a call at each site that resizes a map, because they
  * are all the same fact - the box changed - and it is the only one of them
@@ -26,16 +34,8 @@ export function keepSized(map: any, element: HTMLElement): void {
 
   let queued = 0
 
-  /*
-   * Coalesced to one call a frame.
-   *
-   * The initial layout of a grid column produces a burst of size changes, and
-   * resetting the view once per change is not free: the library fades each
-   * tile in over its own frames, and a `setView` landing mid-fade abandons the
-   * tile wherever it had got to. That is how the map ended up fully loaded and
-   * still half transparent - every tile present, `tsmap-tile-loaded` set, and
-   * a third of them stopped at opacity 0.155.
-   */
+  // Coalesced to one call a frame: laying out a grid column produces a burst
+  // of size changes, and there is nothing to gain from answering each one.
   const observer = new ResizeObserver(() => {
     if (queued)
       return
@@ -43,7 +43,6 @@ export function keepSized(map: any, element: HTMLElement): void {
     queued = requestAnimationFrame(() => {
       queued = 0
       map.invalidateSize?.({ pan: false, animate: false })
-      map.setView?.(map.getCenter(), map.getZoom(), { animate: false })
     })
   })
 

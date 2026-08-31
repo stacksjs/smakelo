@@ -575,7 +575,6 @@ function openLabel(business) {
 
     <script client>
       import { divIcon, Marker, tileLayer, TsMap } from 'ts-maps'
-      import 'ts-maps/styles.css'
       import { keepSized } from '../functions/map'
       import { send, visitorToken } from '../functions/session'
 
