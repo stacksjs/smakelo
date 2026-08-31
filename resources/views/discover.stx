@@ -1,0 +1,1136 @@
+<script server>
+/*
+ * Discover: the search surface.
+ *
+ * Everything is rendered server-side from the same `searchBusinesses` the API
+ * uses, so the page is complete before any script runs and the map is an
+ * enhancement rather than a dependency. Someone on a slow connection still gets
+ * the whole list; the pins arrive when they arrive.
+ */
+import { formatDistance } from '../../app/Actions/Business/geo'
+import { searchBusinesses } from '../../app/Actions/Business/search'
+import { deliveryFee } from '../../app/Actions/Order/pricing'
+
+// Named rather than pluralised by rule: "Coffee" reads better than "Cafes",
+// and appending an s produces "Bakerys".
+function typeLabel(type: string): string {
+  if (type === 'restaurant')
+    return 'Restaurants'
+  if (type === 'cafe')
+    return 'Coffee'
+  if (type === 'farm')
+    return 'Farms'
+  if (type === 'bakery')
+    return 'Bakeries'
+  if (type === 'grocery')
+    return 'Grocers'
+  if (type === 'bar')
+    return 'Bars'
+
+  return `${type.charAt(0).toUpperCase()}${type.slice(1)}`
+}
+
+const pageTitle = 'Discover - Smakelo'
+const pageDescription = 'Search every restaurant, coffee shop, bakery and farm we list across Los Angeles - by cuisine, price, rating, and what is open now.'
+const canonicalPath = '/discover'
+
+// Santa Monica, where the seeded data is densest.
+const CENTRE = { latitude: 34.0195, longitude: -118.4912 }
+
+// Wide enough to include the farms. They are real growers in Ojai, Moorpark
+// and Tehachapi rather than anything in the city, so a tidy city-sized radius
+// would drop the entire farm side of the app off its own home page. Distance is
+// shown per card, so a box coming from an hour away says so.
+/*
+ * One query, sliced two ways.
+ *
+ * A second top-level `await` in this file stops `<script server>` reaching the
+ * template at all: every variable comes through undefined and the page renders
+ * its full layout around empty values, in the dev server and in the build
+ * alike. So the count and the cards come from one call rather than two.
+ */
+const everything = await searchBusinesses({
+  latitude: CENTRE.latitude,
+  longitude: CENTRE.longitude,
+  radiusMeters: 200000,
+  sort: 'distance',
+  limit: 400,
+})
+
+const total = everything.length
+
+/*
+ * The page renders the sixty nearest. Shipping all of them would be a megabyte
+ * of HTML for a list nobody scrolls to the end of; the search box covers the
+ * rest by asking the server, so nothing is unreachable.
+ */
+const results = everything.slice(0, 60)
+
+/*
+ * The three headline numbers describe everything listed, not the sixty this
+ * page happens to render. Counting the slice said "4 take orders" when twelve
+ * do, and `openNow` was lost entirely in an edit, leaving a stat card with a
+ * label and no number above it.
+ */
+const partners = everything.filter(business => business.isPartner)
+const openNow = everything.filter(business => business.openState === 'open')
+
+/*
+ * The type filter is built from what is actually here rather than a hand-kept
+ * list. The seed has bakeries, bars and grocers alongside the restaurants,
+ * cafes and farms, and a hardcoded row of three would have quietly stranded
+ * them: visible under "All" and reachable by no filter.
+ *
+ * Written as a plain loop on purpose. The first version built this with a Map,
+ * spread-of-entries and destructured arrow parameters, and every @foreach on
+ * the page then reported its array "is not iterable" - including `results`,
+ * which this code does not touch. The page rendered its whole layout around an
+ * empty grid, in the dev server and in the build alike. The same snippet in
+ * isolation is fine, so the trigger is something about this file rather than
+ * the constructs themselves; until that is understood, boring code here costs
+ * nothing.
+ */
+const types = []
+
+for (const business of results) {
+  const seen = types.find(entry => entry.type === business.type)
+
+  if (seen)
+    seen.count = seen.count + 1
+  else
+    types.push({ type: business.type, count: 1, label: typeLabel(business.type) })
+}
+
+types.sort((a, b) => b.count - a.count)
+
+// The map needs coordinates and a label per pin and nothing else, so it gets
+// exactly that. Serialised here so the client script never queries.
+const pins = JSON.stringify(results.map(business => ({
+  name: business.name,
+  slug: business.slug,
+  lat: business.latitude,
+  lng: business.longitude,
+  partner: business.isPartner,
+  type: business.type,
+})))
+
+const mapCentre = JSON.stringify(CENTRE)
+
+/*
+ * The cards, serialised for the client.
+ *
+ * The grid is rendered from a signal rather than by `@foreach`, so that
+ * filtering, sorting and server-backed search all describe the same list
+ * instead of one of them reaching into markup the others rendered. The payload
+ * is embedded rather than fetched, so the cards appear with the page and not a
+ * round trip later.
+ *
+ * This does trade away a listing that reads with JavaScript off. On a site that
+ * carries `noindex` on every page and whose ordering, tracking and merchant
+ * screens all need scripting, that baseline was protecting nobody.
+ */
+const cardsJson = JSON.stringify(results.map(business => ({
+  slug: business.slug,
+  name: business.name,
+  type: business.type,
+  cuisine: business.cuisine,
+  description: business.description,
+  city: business.city,
+  price: priceLabel(business.priceTier),
+  rating: business.ratingAverage,
+  ratingCount: business.ratingCount,
+  distance: business.distanceMeters === null ? '' : formatDistance(business.distanceMeters),
+  distanceMeters: business.distanceMeters,
+  openLabel: openLabel(business),
+  openState: business.openState,
+  isPartner: business.isPartner,
+  offersDelivery: business.offersDelivery,
+  offersPickup: business.offersPickup,
+  offersDineIn: business.offersDineIn,
+  eta: etaLabel(business),
+  deliveryFee: feeLabel(business),
+  haystack: `${business.name} ${business.cuisine} ${business.city} ${business.description}`.toLowerCase(),
+  photo: business.photo,
+  hue: business.hue,
+  hueEnd: business.hueEnd,
+  icon: business.icon,
+  monogram: business.monogram,
+})))
+
+function priceLabel(tier) {
+  return '$'.repeat(Math.max(1, Math.min(4, Number(tier) || 2)))
+}
+
+/*
+ * How long it would take, as a band.
+ *
+ * The kitchen's own prep time plus the ride, at 22km/h - a courier through
+ * city traffic, not a car on a motorway. Given as a range because a single
+ * number is a promise this app is in no position to make, and rounded to five
+ * minutes because the inputs do not justify more precision than that.
+ *
+ * Only for places that actually deliver. Everyone else gets nothing rather
+ * than a plausible-looking number about a service they do not offer.
+ */
+function etaLabel(business) {
+  if (!business.isPartner || !business.offersDelivery)
+    return ''
+
+  const prep = Number(business.prepTimeMinutes) || 15
+  const km = Math.max(0, Number(business.distanceMeters) || 0) / 1000
+  const ride = Math.round((km / 22) * 60)
+  const low = Math.max(10, Math.round((prep + ride) / 5) * 5)
+
+  return `${low}-${low + 15} min`
+}
+
+/*
+ * The delivery fee, from the same function the basket uses.
+ *
+ * Imported rather than reimplemented: a card that quotes one number and a
+ * checkout that charges another is worse than a card that quotes nothing.
+ */
+function feeLabel(business) {
+  if (!business.isPartner || !business.offersDelivery || business.distanceMeters === null)
+    return ''
+
+  return `$${(deliveryFee(business.distanceMeters) / 100).toFixed(2)}`
+}
+
+function openLabel(business) {
+  if (business.openState === 'unknown')
+    return 'Hours unknown'
+
+  if (business.openState === 'closed') {
+    if (typeof business.opensInMinutes === 'number' && business.opensInMinutes < 180)
+      return `Opens in ${business.opensInMinutes} min`
+
+    return 'Closed'
+  }
+
+  if (typeof business.closesInMinutes === 'number' && business.closesInMinutes < 60)
+    return `Closing in ${business.closesInMinutes} min`
+
+  return 'Open now'
+}
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body>
+    @include('chrome')
+
+    <main class="mx-auto px-4 sm:px-8 max-w-7xl" data-stx-content>
+      {{-- The search bar, as one strip.
+
+        Where you are, how you want it, and when - the three questions that
+        change every result under them - kept on one line above the panes
+        rather than scattered through the filter rail. The rail narrows a set;
+        these three decide what the set is. --}}
+      <section class="pt-8 pb-6">
+        <div class="flex flex-col overflow-hidden rounded-[1.5rem] lg:flex-row lg:items-stretch" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.16)">
+          <label class="flex flex-1 gap-3 items-center px-5 py-4 min-w-0">
+            <i class="flex-none w-5 h-5 i-hugeicons-search-01" style="color: var(--ink-soft)"></i>
+            <input
+              type="search"
+              data-i18n-placeholder="search.placeholder"
+              placeholder="Tacos, oat flat white, a farm box"
+              :value="query()"
+              @input="onQuery($event.target.value)"
+              class="flex-1 min-w-0 text-[17px] outline-none"
+              style="background: transparent"
+            >
+            <button
+              :if="query()"
+              type="button"
+              @click="onQuery('')"
+              aria-label="Clear the search"
+              class="inline-flex flex-none justify-center items-center w-6 h-6 rounded-full transition-opacity duration-300 hover:opacity-70"
+              style="background: var(--line); color: var(--ink-soft)"
+            >
+              <i class="w-3 h-3 i-hugeicons-cancel-01"></i>
+            </button>
+          </label>
+
+          <span class="hidden w-px lg:block" style="background: var(--line)"></span>
+
+          {{-- Fulfilment and time are pickers rather than toggles: each has
+            three answers, and three states do not fit in a switch. --}}
+          <label class="flex gap-3 items-center px-5 py-4 border-t lg:border-t-0" style="border-color: var(--line)">
+            <span class="inline-flex flex-none justify-center items-center w-9 h-9 rounded-[12px]" style="background: var(--accent-soft); color: var(--accent)">
+              <i class="w-4 h-4 i-hugeicons-bicycle-01"></i>
+            </span>
+            <span class="sr-only">How you want it</span>
+            <select
+              :value="fulfilment()"
+              @change="fulfilment.set($event.target.value)"
+              class="text-[14px] font-medium outline-none cursor-pointer"
+              style="background: transparent"
+            >
+              <option value="">Any way</option>
+              <option value="delivery">Delivery</option>
+              <option value="pickup">Pickup</option>
+              <option value="dinein">Dine in</option>
+            </select>
+          </label>
+
+          <span class="hidden w-px lg:block" style="background: var(--line)"></span>
+
+          <label class="flex gap-3 items-center px-5 py-4 border-t lg:border-t-0" style="border-color: var(--line)">
+            <span class="inline-flex flex-none justify-center items-center w-9 h-9 rounded-[12px]" style="background: var(--mint); color: var(--mint-ink)">
+              <i class="w-4 h-4 i-hugeicons-clock-01"></i>
+            </span>
+            <span class="sr-only">When</span>
+            <select
+              :value="when()"
+              @change="when.set($event.target.value)"
+              class="text-[14px] font-medium outline-none cursor-pointer"
+              style="background: transparent"
+            >
+              <option value="asap">Today · ASAP</option>
+              <option value="open">Open now</option>
+              <option value="any">Any time</option>
+            </select>
+          </label>
+        </div>
+
+        <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">
+          <strong style="color: var(--ink)">{{ total }}</strong> places ·
+          <strong style="color: var(--ink)">{{ openNow.length }}</strong> open now ·
+          <strong style="color: var(--ink)">{{ partners.length }}</strong> take orders
+        </p>
+      </section>
+
+      {{-- The discover surface: filters, map and results side by side.
+
+        Three panes because they answer three different questions and reading
+        one should not cost you the other two - narrowing the cuisine list
+        while watching the map redraw is the whole point, and it does not work
+        when the filters are a sheet over the top of it.
+
+        The rail and the map are sticky; only the results column scrolls. On a
+        phone the same three stack, the map keeps its place between filters and
+        results, and the longer filters fold behind a button rather than
+        putting four hundred pixels of controls above the first result. --}}
+      <section class="pb-24 sm:pb-40">
+        {{-- Controls, grid and map pins all read the same derived list, which
+          is the point: when filtering lived in the DOM, the map had to be told
+          separately what the grid had hidden. The payload is embedded rather
+          than fetched, so the cards arrive with the page. --}}
+        <div
+          id="page-data"
+          data-cards="{{ cardsJson }}"
+          data-total="{{ total }}"
+          data-centre="{{ mapCentre }}"
+          hidden
+        ></div>
+
+        <div class="discover" :data-map="mapView() ? 'on' : 'off'" :data-more="moreFilters() ? 'on' : 'off'">
+          <aside class="discover-rail">
+            <div class="flex flex-col gap-7 p-5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
+              <div class="flex justify-between items-center">
+                <h2 class="rail-head">Map <span>View</span></h2>
+                <button
+                  type="button"
+                  class="switch"
+                  :aria-pressed="mapView() ? 'true' : 'false'"
+                  aria-label="Show the map"
+                  @click="mapView.set(!mapView())"
+                ></button>
+              </div>
+
+              <div>
+                <h2 class="rail-head">Category</h2>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                  <button
+                    :for="entry in typeFilters()"
+                    type="button"
+                    class="pill"
+                    :aria-pressed="type() === entry.type ? 'true' : 'false'"
+                    @click="type.set(entry.type)"
+                  >
+                    <i class="w-3.5 h-3.5" :class="'i-hugeicons-' + entry.icon"></i>
+                    {{ entry.label }}
+                  </button>
+                </div>
+              </div>
+
+              {{-- Cuisine and price are the two long controls, and the two a
+                phone can do without until asked. --}}
+              <div class="rail-more flex-col gap-7">
+                <div>
+                  <h2 class="rail-head">Cuisine</h2>
+                  <div class="fade-list mt-3 max-h-[188px]">
+                    <div class="flex flex-col gap-1 pr-1">
+                      <button
+                        :for="entry in cuisineFilters()"
+                        type="button"
+                        class="flex gap-3 justify-between items-center py-1 text-left"
+                        @click="toggleCuisine(entry.value)"
+                      >
+                        <span class="text-[14px] truncate">{{ entry.label }}</span>
+                        <span class="check" :aria-pressed="cuisines().includes(entry.value) ? 'true' : 'false'" aria-hidden="true">✓</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h2 class="rail-head">Price <span>Range</span></h2>
+
+                  {{-- The bars are the results, counted per tier, so the
+                    control shows you where the places actually are before you
+                    move it. The ones outside the range dim rather than vanish:
+                    a bar that disappears when excluded takes away the reason
+                    you would widen the range again. --}}
+                  <div class="flex gap-1.5 items-end mt-4 h-12">
+                    <span
+                      :for="bar in priceHistogram()"
+                      class="flex-1 rounded-t-[4px] transition-all duration-500"
+                      :style="'height: ' + Math.max(6, bar.share * 100) + '%; background: ' + (bar.tier <= maxPrice() ? 'var(--accent)' : 'var(--line)') + '; opacity: ' + (bar.tier <= maxPrice() ? 1 : 0.9)"
+                    ></span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="1"
+                    max="4"
+                    step="1"
+                    class="price-range mt-2 w-full"
+                    :value="maxPrice()"
+                    @input="maxPrice.set(Number($event.target.value))"
+                    aria-label="Highest price tier"
+                  >
+
+                  <div class="flex justify-between items-baseline mt-1 text-[12px]">
+                    <span class="font-medium">{{ maxPrice() >= 4 ? 'Any price' : '$ - ' + '$'.repeat(maxPrice()) }}</span>
+                    <span style="color: var(--ink-soft)">Average: {{ averagePrice() }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 class="rail-head">Star <span>Rating</span></h2>
+                <div class="seg mt-3">
+                  <button
+                    :for="entry in ratingFilters"
+                    type="button"
+                    :aria-pressed="minRating() === entry.value ? 'true' : 'false'"
+                    @click="minRating.set(minRating() === entry.value ? 0 : entry.value)"
+                  >{{ entry.label }}</button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="rail-toggle pill justify-center"
+                @click="moreFilters.set(!moreFilters())"
+              >{{ moreFilters() ? 'Fewer filters' : 'More filters' }}</button>
+            </div>
+          </aside>
+
+          {{-- A pin per result, and a popup that links through. --}}
+          <div class="discover-map" :hidden="!mapView()">
+            <div class="relative p-2 h-full rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
+              <div id="discover-map" data-pins="{{ pins }}" data-centre="{{ mapCentre }}" class="w-full h-full rounded-[calc(1.5rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
+
+              <div class="flex absolute bottom-6 left-6 z-[500] flex-col gap-2">
+                <div class="map-stack">
+                  <button type="button" class="map-btn" aria-label="Zoom in" @click="zoomBy(1)"><i class="w-4 h-4 i-hugeicons-plus-sign"></i></button>
+                  <button type="button" class="map-btn" aria-label="Zoom out" @click="zoomBy(-1)"><i class="w-4 h-4 i-hugeicons-minus-sign"></i></button>
+                </div>
+
+                <button type="button" class="map-btn map-solo" aria-label="Centre on me" @click="locate()"><i class="w-4 h-4 i-hugeicons-target-02"></i></button>
+              </div>
+
+              {{-- Off by default. Panning the map and having the list rewrite
+                itself underneath is the behaviour people complain about, so it
+                is something you switch on rather than something that happens
+                to you. --}}
+              <button
+                type="button"
+                class="pill absolute bottom-6 left-1/2 z-[500] -translate-x-1/2 gap-2 whitespace-nowrap"
+                style="box-shadow: 0 2px 10px rgba(20,17,15,0.18)"
+                :aria-pressed="followMap() ? 'true' : 'false'"
+                @click="followMap.set(!followMap())"
+              >
+                <span class="check follow-check w-[18px] h-[18px] rounded-[6px] text-[11px]" :aria-pressed="followMap() ? 'true' : 'false'" aria-hidden="true">✓</span>
+                Search as I move the map
+              </button>
+            </div>
+          </div>
+
+          <div class="discover-list">
+            <div class="flex flex-wrap gap-3 justify-between items-center pb-4">
+              <h2 class="rail-head">{{ shown().length }} <span>{{ shown().length === 1 ? 'Result' : 'Results' }}</span></h2>
+
+              <select :value="sort()" @change="sort.set($event.target.value)" class="px-3 py-2 text-[12px] rounded-[10px]" style="background: var(--paper-raised); border: 1px solid var(--line)">
+                <option value="distance" data-i18n="search.sort_distance">Nearest</option>
+                <option value="rating" data-i18n="search.sort_rating">Best rated</option>
+                <option value="name" data-i18n="search.sort_name">A to Z</option>
+              </select>
+            </div>
+
+            {{-- What the time picker is holding back, and the one click that
+              lets it go. Only when it is actually hiding something. --}}
+            <button
+              :if="closedRightNow() > 0"
+              type="button"
+              @click="when.set('any')"
+              class="flex gap-2 items-center px-3 py-2.5 mb-4 w-full text-left text-[13px] rounded-[12px] transition-colors duration-300"
+              style="background: var(--accent-soft); color: var(--accent)"
+            >
+              <i class="flex-none w-4 h-4 i-hugeicons-clock-01"></i>
+              <span><strong>{{ closedRightNow() }}</strong> more closed right now — show them</span>
+            </button>
+
+            <p :if="shown().length === 0" data-i18n="search.no_results" class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
+              Nothing matches that. Try fewer words.
+            </p>
+
+            <div class="discover-results">
+              <a
+                :for="card in shown()"
+                :href="'/places/' + card.slug"
+                class="reveal group overflow-hidden block rounded-[1.25rem] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1"
+                style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -20px rgba(20,17,15,0.14)"
+              >
+                {{-- The photograph, over the business's own colour. The colour
+                  is what shows while it decodes and what remains if it never
+                  arrives; see app/Actions/Business/imagery.ts. --}}
+                <div class="cover flex justify-center items-center aspect-[16/10]" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
+                  <i class="cover-mark w-9 h-9" :class="'i-hugeicons-' + card.icon"></i>
+
+                  <img class="cover-photo" :src="card.photo" alt="" loading="lazy" decoding="async" width="800" height="560">
+
+                  <span class="cover-scrim"></span>
+
+                  <span
+                    :if="card.openState === 'open'"
+                    class="absolute top-3 left-3 inline-flex gap-1.5 items-center px-2.5 py-1 text-[11px] font-medium rounded-full backdrop-blur-sm"
+                    style="background: rgba(255,255,255,0.92); color: #14713f"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" style="background: #14713f"></span>
+                    Open
+                  </span>
+
+                  {{-- A link inside a link is not a link, so the save button
+                    stops the card's navigation before it starts. --}}
+                  <button
+                    type="button"
+                    class="save"
+                    :aria-pressed="saved().includes(card.slug) ? 'true' : 'false'"
+                    :aria-label="saved().includes(card.slug) ? 'Saved' : 'Save ' + card.name"
+                    @click="toggleSaved(card.slug, $event)"
+                  >
+                    <i class="w-3.5 h-3.5 i-hugeicons-favourite"></i>
+                  </button>
+                </div>
+
+                <div class="flex flex-col p-4">
+                  <div class="flex gap-3 justify-between items-start">
+                    <h3 class="text-[16px] font-semibold leading-snug tracking-[-0.01em]">{{ card.name }}</h3>
+
+                    <span :if="card.ratingCount > 0" class="rating-chip flex-none">
+                      <i class="w-3 h-3 i-hugeicons-star"></i>
+                      {{ card.rating }}
+                    </span>
+                  </div>
+
+                  {{-- What it would cost you to eat from here, in time and
+                    money, for the places that can actually deliver. Anywhere
+                    else says when it is open and how far away it is, which is
+                    the same question answered with what is known. --}}
+                  <p class="mt-1.5 text-[13px]" style="color: var(--ink-soft)">
+                    <span :if="card.eta">{{ card.eta }}<span :if="card.deliveryFee"> · Delivery fee {{ card.deliveryFee }}</span></span>
+                    <span :if="!card.eta">{{ card.openLabel }}<span :if="card.distance"> · {{ card.distance }}</span></span>
+                  </p>
+
+                  <p class="mt-0.5 text-[13px] truncate" style="color: var(--ink-soft)">{{ card.cuisine || card.type }} · {{ card.price }}</p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-6 text-[11px]" style="color: var(--ink-soft)">
+          Map data and tiles from OpenStreetMap contributors.
+        </p>
+      </section>
+    </main>
+    @include('footer')
+
+    <script client>
+      import { Marker, tileLayer, TsMap } from 'ts-maps'
+      import 'ts-maps/styles.css'
+      import { keepSized } from '../functions/map'
+      import { send, visitorToken } from '../functions/session'
+
+      /*
+       * One list, four controls, and a search that reaches past the page.
+       *
+       * The cards come embedded in `data-cards` rather than from a fetch, so
+       * they render with the page. The controls, the grid and the map pins all
+       * read the same derived list, which is the point: when filtering lived in
+       * the DOM, the map had to be told separately what the grid had hidden.
+       */
+      const source = document.getElementById('page-data')
+      const cards = state(source ? JSON.parse(source.dataset.cards || '[]') : [])
+      const total = Number(source ? source.dataset.total : 0)
+      const centre = source ? JSON.parse(source.dataset.centre || '{}') : { latitude: 34.0195, longitude: -118.4912 }
+
+      /*
+       * Where each business is, by slug.
+       *
+       * Read off the map's pin payload rather than added to every card,
+       * because the cards are already the larger of the two blobs and the only
+       * thing that needs a coordinate is the bounds filter. Read here rather
+       * than inside the map's own setup so that "search as I move the map"
+       * does not depend on the map library having loaded.
+       *
+       * A slug missing from this table - a remote search result, which is not
+       * on the map - is never filtered out by bounds. Hiding a result for
+       * being outside a box it was never placed in would just lose it.
+       */
+      const coords = new Map()
+
+      for (const pin of readPins())
+        coords.set(pin.slug, pin)
+
+      function readPins() {
+        const holder = document.getElementById('discover-map')
+
+        try {
+          return JSON.parse(holder?.dataset.pins || '[]')
+        }
+        catch {
+          return []
+        }
+      }
+
+      function withinBounds(card, box) {
+        const point = coords.get(card.slug)
+
+        if (!point)
+          return true
+
+        return point.lat >= box.south && point.lat <= box.north && point.lng >= box.west && point.lng <= box.east
+      }
+
+      const query = state('')
+      const type = state('')
+      const sort = state('distance')
+      const remote = state([])
+
+      const subscribeEmail = state('')
+      const subscribeBusy = state(false)
+      const subscribeError = state('')
+      const subscribed = state(false)
+
+      /*
+       * The signup at the foot of the page.
+       *
+       * A shape check before the request, so the obvious typo is caught
+       * without a round trip. It is deliberately not the same check the server
+       * does - that one is authoritative and this one is a courtesy, and a
+       * client that tried to match it exactly would drift out of step with it
+       * and start rejecting addresses the server would have taken.
+       */
+      async function sendSubscribe() {
+        const address = subscribeEmail().trim()
+
+        if (!/^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(address)) {
+          subscribeError.set('That does not look like an email address.')
+          return
+        }
+
+        subscribeBusy.set(true)
+        subscribeError.set('')
+
+        const answer = await send('/api/subscribe', { email: address, source: 'home' }).catch(() => null)
+
+        subscribeBusy.set(false)
+
+        if (!answer || !answer.ok) {
+          subscribeError.set('That did not send. Try again in a moment.')
+          return
+        }
+
+        subscribed.set(true)
+      }
+
+      /* The two pickers in the bar above the panes. `when` folds in what the
+         old "Open now" toggle did, so there is one control for time rather
+         than a toggle and a picker disagreeing about it. */
+      const fulfilment = state('')
+      const when = state('asap')
+
+      /*
+       * The home page hands off here with what somebody already told it - the
+       * words they typed, or the category tile they pressed - so the search
+       * starts where they left rather than blank.
+       *
+       * `when` opens up when a query arrives: somebody who searched for a
+       * dish means "do you have this", not "do you have this in the next
+       * twenty minutes", and answering the narrower question with two results
+       * looks like the site not having it.
+       */
+      const entry = new URLSearchParams(location.search)
+
+      const mapView = state(true)
+
+      if (entry.get('q')) {
+        query.set(entry.get('q'))
+        when.set('any')
+        runSearch()
+      }
+
+      if (entry.get('type'))
+        type.set(entry.get('type'))
+      const moreFilters = state(false)
+      const cuisines = state([])
+      const maxPrice = state(4)
+      const minRating = state(0)
+      const followMap = state(false)
+      const bounds = state(null)
+
+      /*
+       * Saves, against the same endpoint the place page and the saved list use.
+       *
+       * Held as one array of slugs rather than a flag per card, because the
+       * cards are re-derived on every keystroke and per-card state would not
+       * survive the re-render.
+       *
+       * The write is optimistic: the heart fills on click and the request
+       * follows. A save is small and idempotent, and a heart that waits for a
+       * round trip before moving reads as a broken button. If the request
+       * fails the heart goes back, which is the only honest thing it can do.
+       */
+      const saved = state([])
+
+      async function loadSaved() {
+        const response = await fetch('/api/saved', { headers: { 'x-visitor': visitorToken() } }).catch(() => null)
+
+        if (!response || !response.ok)
+          return
+
+        const { data } = await response.json()
+
+        saved.set(data.map(place => place.slug))
+      }
+
+      loadSaved()
+
+      async function toggleSaved(slug, event) {
+        // The heart is inside the card's anchor, so without this the click
+        // navigates to the place instead of saving it.
+        event.preventDefault()
+        event.stopPropagation()
+
+        const was = saved()
+
+        saved.set(was.includes(slug) ? was.filter(entry => entry !== slug) : [...was, slug])
+
+        const response = await send(`/api/businesses/${slug}/save`).catch(() => null)
+
+        if (!response || !response.ok) {
+          saved.set(was)
+          return
+        }
+
+        // The server is the authority on whether it is saved; the optimistic
+        // guess above only has to be right often enough not to flicker.
+        const { data } = await response.json()
+
+        saved.set(data.saved ? [...new Set([...saved(), slug])] : saved().filter(entry => entry !== slug))
+      }
+
+      function toggleCuisine(value) {
+        cuisines.set(cuisines().includes(value) ? cuisines().filter(entry => entry !== value) : [...cuisines(), value])
+      }
+
+      const ratingFilters = [
+        { value: 2, label: '1-2' },
+        { value: 3, label: '3' },
+        { value: 4, label: '4' },
+        { value: 5, label: '★ 5' },
+      ]
+
+      /*
+       * Built from what is actually here rather than a hand-kept list. The seed
+       * has bakeries, bars and grocers alongside the restaurants, cafes and
+       * farms, and a hardcoded row of three would strand them: visible under
+       * "All" and reachable by no filter.
+       */
+      const typeFilters = derived(() => {
+        const counts = []
+
+        for (const card of cards()) {
+          const seen = counts.find(entry => entry.type === card.type)
+
+          if (seen)
+            seen.count += 1
+          else
+            counts.push({ type: card.type, count: 1, label: label(card.type), icon: typeIcon(card.type) })
+        }
+
+        counts.sort((a, b) => b.count - a.count)
+
+        return [
+          { type: '', label: say('search.all_types', 'All'), count: cards().length, icon: 'restaurant-01' },
+          ...counts,
+        ]
+      })
+
+      /*
+       * The cuisine facets, counted off the results rather than listed by hand.
+       *
+       * A business's `cuisine` is free text out of open data - "Mexican, Tacos",
+       * "Coffee", "Japanese, Sushi" - so it is split on commas and the parts
+       * counted separately. Anything appearing once is dropped: the tail is
+       * hundreds of one-off spellings, and a filter that narrows to a single
+       * result is a filter nobody wants twice.
+       */
+      const cuisineFilters = derived(() => {
+        const tally = new Map()
+
+        for (const card of cards()) {
+          for (const part of String(card.cuisine || '').split(',')) {
+            const written = part.trim()
+
+            if (!written)
+              continue
+
+            const token = written.toLowerCase()
+
+            tally.set(token, { value: token, label: written, count: (tally.get(token)?.count || 0) + 1 })
+          }
+        }
+
+        return [...tally.values()]
+          .filter(entry => entry.count > 1)
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+      })
+
+      /* Bars for the four price tiers, as a share of the tallest, so the shape
+         is readable whether the set is sixty places or six. */
+      const priceHistogram = derived(() => {
+        const tiers = [1, 2, 3, 4].map(tier => ({ tier, count: 0 }))
+
+        for (const card of cards())
+          tiers[Math.max(1, Math.min(4, String(card.price || '$').length)) - 1].count += 1
+
+        const tallest = Math.max(1, ...tiers.map(entry => entry.count))
+
+        return tiers.map(entry => ({ ...entry, share: entry.count / tallest }))
+      })
+
+      const averagePrice = derived(() => {
+        const list = cards()
+
+        if (!list.length)
+          return '$$'
+
+        const mean = list.reduce((sum, card) => sum + String(card.price || '$').length, 0) / list.length
+
+        return '$'.repeat(Math.max(1, Math.round(mean)))
+      })
+
+      /*
+       * How many places the time picker alone is holding back.
+       *
+       * "Today - ASAP" is the right default for someone who wants food now,
+       * and the wrong one to apply silently to a directory: most of these 280
+       * places are closed at any given hour, and a farm open Tuesday to
+       * Saturday is invisible for most of the week. So the number is shown and
+       * it is one click to see them, rather than the page quietly being a
+       * third of itself.
+       *
+       * Counted with every other filter applied, so it says what dropping this
+       * one would actually add rather than advertising places the cuisine or
+       * price filter would exclude anyway.
+       */
+      const closedRightNow = derived(() => {
+        if (when() === 'any')
+          return 0
+
+        return matches({ ignoreTime: true }).length - matches({}).length
+      })
+
+      /*
+       * Every filter except the sort, in one place.
+       *
+       * A function rather than a derived value because two callers need it
+       * with one clause switched off: the list wants the real answer, and the
+       * closed-right-now count wants to know what the time picker alone is
+       * costing. Written twice, the two would drift and the count would start
+       * advertising places the list would not show.
+       */
+      function matches(options) {
+        const words = query().trim().toLowerCase().split(/\s+/).filter(Boolean)
+        const wanted = cuisines()
+        const viewBox = followMap() ? bounds() : null
+
+        return [...cards(), ...remote()].filter((card) => {
+          if (type() && card.type !== type())
+            return false
+
+          // `asap` and `open` both mean "somewhere I can get something from
+          // now"; `any` is the only one that stops asking.
+          if (!options.ignoreTime && when() !== 'any' && card.openState !== 'open')
+            return false
+
+          if (fulfilment() === 'delivery' && !card.offersDelivery)
+            return false
+
+          if (fulfilment() === 'pickup' && !card.offersPickup)
+            return false
+
+          if (fulfilment() === 'dinein' && !card.offersDineIn)
+            return false
+
+          if (String(card.price || '$').length > maxPrice())
+            return false
+
+          // A place with no rating is not a bad place, but it cannot answer
+          // "at least four stars" either, so it drops out of the answer.
+          if (minRating() && Number(card.rating || 0) < minRating())
+            return false
+
+          // Any of the checked cuisines, not all: checking Italian and Chinese
+          // means either would do, which is what a list of checkboxes reads as.
+          if (wanted.length && !wanted.some(value => String(card.cuisine || '').toLowerCase().includes(value)))
+            return false
+
+          if (viewBox && !withinBounds(card, viewBox))
+            return false
+
+          // Every word has to appear somewhere, so "venice coffee" narrows
+          // rather than widening the way an any-word match would.
+          return words.every(word => card.haystack.includes(word))
+        })
+      }
+
+      const shown = derived(() => {
+        return matches({}).sort((a, b) => {
+          if (sort() === 'rating')
+            return Number(b.rating) - Number(a.rating)
+
+          if (sort() === 'name')
+            return a.name.localeCompare(b.name)
+
+          // A card with no distance sorts last rather than first.
+          return (Number(a.distanceMeters) || Infinity) - (Number(b.distanceMeters) || Infinity)
+        })
+      })
+
+      function say(key, fallback) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, fallback) : fallback
+      }
+
+      // The tile icons, which are the category icons the covers use so the two
+      // read as one vocabulary rather than two.
+      function typeIcon(value) {
+        return {
+          restaurant: 'restaurant-01',
+          cafe: 'coffee-01',
+          farm: 'plant-01',
+          bakery: 'bread-01',
+          grocery: 'shopping-basket-01',
+          bar: 'drink',
+        }[value] || 'restaurant-01'
+      }
+
+      function label(value) {
+        const named = {
+          restaurant: 'Restaurants',
+          cafe: 'Coffee',
+          farm: 'Farms',
+          bakery: 'Bakeries',
+          grocery: 'Grocers',
+          bar: 'Bars',
+        }
+
+        return named[value] || `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+      }
+
+      /*
+       * Typing searches everything, not just what is on the page.
+       *
+       * The page carries the sixty nearest; the rest are reachable because a
+       * query goes to the server, which searches the lot. Filtering only what
+       * was embedded would mean a search box that quietly cannot find most of
+       * the places the site lists.
+       *
+       * Short queries stay local: one or two letters match half the city, and a
+       * request per keystroke to learn that is waste.
+       */
+      let pending = null
+
+      function onQuery(value) {
+        query.set(value)
+
+        clearTimeout(pending)
+        pending = setTimeout(runSearch, 250)
+      }
+
+      async function runSearch() {
+        const term = query().trim()
+
+        if (term.length < 3) {
+          remote.set([])
+          return
+        }
+
+        const params = new URLSearchParams({
+          q: term,
+          limit: '60',
+          lat: String(centre.latitude),
+          lng: String(centre.longitude),
+          radius: '200000',
+        })
+
+        const response = await fetch(`/api/businesses?${params}`).catch(() => null)
+
+        if (!response || !response.ok)
+          return
+
+        const { data } = await response.json()
+        const have = new Set(cards().map(card => card.slug))
+
+        remote.set(data.filter(business => !have.has(business.slug)).map(business => ({
+          slug: business.slug,
+          name: business.name,
+          type: business.type,
+          cuisine: business.cuisine || business.type,
+          description: business.description || '',
+          city: business.city,
+          price: '$'.repeat(Math.max(1, Math.min(4, Number(business.priceTier) || 2))),
+          rating: business.ratingAverage,
+          ratingCount: business.ratingCount,
+          distance: '',
+          distanceMeters: business.distanceMeters,
+          openLabel: business.openState === 'open' ? 'Open now' : business.city,
+          openState: business.openState,
+          isPartner: business.isPartner,
+          haystack: `${business.name} ${business.cuisine} ${business.city}`.toLowerCase(),
+          photo: business.photo,
+          hue: business.hue,
+          hueEnd: business.hueEnd,
+          icon: business.icon,
+          monogram: business.monogram,
+        })))
+      }
+
+      /*
+       * The map owns its own DOM, so it is imperative where the rest of this
+       * file is declarative: set up once, then told what to show.
+       *
+       * The library's own zoom and attribution controls are off. Ours are in
+       * the markup above, so they inherit the page's buttons instead of
+       * arriving as a second design; the attribution moves to a line of text
+       * under the section, which is where the licence wants it and where it is
+       * not sitting on top of a result.
+       */
+      const mapEl = document.getElementById('discover-map')
+      const markers = new Map()
+      let map = null
+
+      function zoomBy(delta) {
+        if (!map)
+          return
+
+        delta > 0 ? map.zoomIn() : map.zoomOut()
+      }
+
+      /* Best effort, and silent when declined: a browser that says no to
+         geolocation has given the user's answer, and a dialog repeating the
+         question is the site arguing with it. */
+      function locate() {
+        if (!map || !navigator.geolocation)
+          return
+
+        navigator.geolocation.getCurrentPosition(
+          position => map.setView([position.coords.latitude, position.coords.longitude], 14),
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000 },
+        )
+      }
+
+      if (mapEl) {
+        map = new TsMap(mapEl, {
+          center: [centre.latitude, centre.longitude],
+          zoom: 12,
+          zoomControl: false,
+          attributionControl: false,
+        })
+
+        tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
+
+        // Pins are keyed by slug so the effect below can hide the ones the
+        // filter has excluded.
+        for (const pin of readPins()) {
+          const marker = new Marker([pin.lat, pin.lng]).addTo(map)
+
+          // A partner can take an order; a listing can only be read about, and
+          // the popup should not pretend otherwise.
+          marker.bindPopup(
+            `<strong>${pin.name}</strong><br>`
+            + `<span style="opacity:.7">${pin.type}</span><br>`
+            + `<a href="/places/${pin.slug}">${pin.partner ? 'Order or read reviews' : 'Read reviews'}</a>`,
+          )
+
+          markers.set(pin.slug, marker)
+        }
+
+        /* Only published while the switch is on. The read is cheap; the
+           consequence is not - writing bounds on every pan with the switch off
+           would invalidate `shown()` on every pan, and re-derive and re-render
+           sixty cards for a filter nobody asked to apply. */
+        function publishBounds() {
+          if (!followMap())
+            return
+
+          const edge = map.getBounds()
+
+          bounds.set({
+            north: edge.getNorth(),
+            south: edge.getSouth(),
+            east: edge.getEast(),
+            west: edge.getWest(),
+          })
+        }
+
+        map.on('moveend', publishBounds)
+        map.on('zoomend', publishBounds)
+
+        // Switching it on has to take effect where the map already is, rather
+        // than waiting for the next pan to notice.
+        effect(() => followMap() ? publishBounds() : bounds.set(null))
+
+        // The map should agree with the list beside it.
+        effect(() => {
+          const visible = new Set(shown().map(card => card.slug))
+
+          for (const [slug, marker] of markers) {
+            const element = marker.getElement?.()
+
+            if (element)
+              element.style.display = visible.has(slug) ? '' : 'none'
+          }
+        })
+
+        // Built inside a grid column the browser has not finished sizing.
+        keepSized(map, mapEl)
+      }
+
+      // The rail's labels come from the dictionary, which arrives after this
+      // runs; poking a signal re-renders everything derived from one.
+      document.addEventListener('smakelo:locale', () => sort.set(sort()))
+    </script>
+  </body>
+</html>

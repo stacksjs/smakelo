@@ -29,7 +29,7 @@
       <div>
         <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">Browse</h2>
         <ul class="flex flex-col gap-2.5 mt-4 text-[14px]">
-          <li><a href="/" data-i18n="nav.discover" class="transition-opacity duration-500 hover:opacity-70">Discover</a></li>
+          <li><a href="/discover" data-i18n="nav.discover" class="transition-opacity duration-500 hover:opacity-70">Discover</a></li>
           <li><a href="/orders" data-i18n="nav.orders" class="transition-opacity duration-500 hover:opacity-70">Orders</a></li>
           <li><a href="/saved" data-i18n="nav.favorites" class="transition-opacity duration-500 hover:opacity-70">Saved</a></li>
           <li><a href="/shares" data-i18n="nav.shares" class="transition-opacity duration-500 hover:opacity-70">Shares</a></li>

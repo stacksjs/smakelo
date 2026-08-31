@@ -15,7 +15,7 @@
     </a>
 
     <div class="hidden gap-8 items-center text-[14px] sm:flex" style="color: var(--ink-soft)">
-      <a href="/" data-i18n="nav.discover" class="transition-colors duration-500 hover:opacity-70">Discover</a>
+      <a href="/discover" data-i18n="nav.discover" class="transition-colors duration-500 hover:opacity-70">Discover</a>
       <a href="/orders" data-i18n="nav.orders" class="transition-colors duration-500 hover:opacity-70">Orders</a>
       <a href="/saved" data-i18n="nav.favorites" class="transition-colors duration-500 hover:opacity-70">Saved</a>
 
