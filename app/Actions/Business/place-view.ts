@@ -40,6 +40,8 @@ export interface PlaceViewModel {
   cuisine: string
   address: string
   city: string
+  /** Address and city, joined by what is actually there. */
+  location: string
   priceLabel: string
   ratingAverage: number
   ratingCount: number
@@ -83,6 +85,13 @@ export function placeViewModel(found: any): PlaceViewModel {
     cuisine: String(business.cuisine ?? ''),
     address: String(business.address ?? ''),
     city: String(business.city ?? ''),
+    /*
+     * Joined here rather than as `{{ address }}, {{ city }}` in the template.
+     * 106 of the 280 listings have no street address - they came out of open
+     * data that way - and the template's comma was rendering a leading one on
+     * every one of them: ", Los Angeles".
+     */
+    location: [String(business.address ?? '').trim(), String(business.city ?? '').trim()].filter(Boolean).join(', '),
     priceLabel: '$'.repeat(Math.max(1, Math.min(4, Number(business.price_tier) || 2))),
     ratingAverage: Number(business.rating_average ?? 0),
     ratingCount: Number(business.rating_count ?? 0),

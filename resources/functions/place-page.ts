@@ -205,16 +205,37 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
   if (!element || !Number.isFinite(point?.lat))
     return
 
-  const { Marker, tileLayer, TsMap } = await import('ts-maps')
+  const { divIcon, Marker, tileLayer, TsMap } = await import('ts-maps')
 
-  const map = new TsMap(element, { center: [point.lat, point.lng], zoom: 15 })
+  /*
+   * Set up like the discover map, because it is the same map.
+   *
+   * It had the library's defaults - a blue teardrop and its own zoom buttons -
+   * next to a page using ours everywhere else, and the tiles at full
+   * saturation next to the photographs. One pin, one place, no controls: this
+   * map answers "where is it", and a reader who wants to move around it has
+   * the whole of /discover for that.
+   */
+  const map = new TsMap(element, {
+    center: [point.lat, point.lng],
+    zoom: 15,
+    zoomControl: false,
+    attributionControl: false,
+    fadeAnimation: false,
+  })
 
-  tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
+  tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
+
+  // Filled, the way a partner's pin is on the discover map: you are looking at
+  // this one place, so it is the one thing on the map worth the accent colour.
+  new Marker([point.lat, point.lng], {
+    icon: divIcon({
+      className: 'pin-wrap',
+      html: '<span class="pin pin-partner"></span>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    }),
   }).addTo(map)
-
-  new Marker([point.lat, point.lng]).addTo(map).bindPopup(`<strong>${point.name}</strong>`)
 
   keepSized(map, element)
 }
