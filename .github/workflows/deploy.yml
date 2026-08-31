@@ -38,10 +38,19 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
-      # A fresh app has nowhere to deploy to, and a red X on day one is worse
-      # than no deploy, so every step below is gated on the two secrets that
-      # cannot be defaulted. Without them this finishes green with a notice
-      # saying exactly what to add.
+      # Missing secrets fail this job rather than skipping it.
+      #
+      # This used to finish green with a notice, on the reasoning that a fresh
+      # app has nowhere to deploy to and a red X on day one is worse than no
+      # deploy. That trade is wrong once an app is actually live, and it cost
+      # exactly what it was designed to avoid noticing: every push to main ran
+      # this workflow, reported success, skipped every step, and left a stale
+      # site up for days. A deploy that cannot deploy is a failure, and the
+      # only useful thing it can do is say so where somebody is looking.
+      #
+      # A genuinely fresh app opts out with the DEPLOY_OPTIONAL repository
+      # variable, which is a deliberate statement that this repo has nowhere
+      # to ship to yet - not a default that quietly outlives its reason.
       #
       # Checked here rather than in `if:` on the job, because a job-level
       # condition cannot read `secrets`.
@@ -50,13 +59,27 @@ jobs:
         env:
           DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_OPTIONAL: ${{ vars.DEPLOY_OPTIONAL }}
         run: |
           if [ -n "$DOTENV_PRIVATE_KEY_PRODUCTION" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
             echo 'configured=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'configured=false' >> "$GITHUB_OUTPUT"
-            echo '::notice::Deployment is not configured, so this run did nothing. Add DEPLOY_SSH_KEY (a private key the target server trusts) and DOTENV_PRIVATE_KEY_PRODUCTION (from .env.keys) to deploy on every green push to main.'
+            exit 0
           fi
+
+          missing=
+          [ -z "$DEPLOY_SSH_KEY" ] && missing="$missing DEPLOY_SSH_KEY"
+          [ -z "$DOTENV_PRIVATE_KEY_PRODUCTION" ] && missing="$missing DOTENV_PRIVATE_KEY_PRODUCTION"
+
+          echo 'configured=false' >> "$GITHUB_OUTPUT"
+
+          if [ "$DEPLOY_OPTIONAL" = 'true' ]; then
+            echo "::notice::Deployment is not configured (missing:$missing) and DEPLOY_OPTIONAL is set, so this run did nothing."
+            exit 0
+          fi
+
+          echo "::error::Deployment is not configured, so nothing was deployed. Missing:$missing."
+          echo '::error::Add them as secrets on the production environment - DEPLOY_SSH_KEY is a private key the target server trusts, DOTENV_PRIVATE_KEY_PRODUCTION comes from .env.keys. If this repo has nowhere to deploy yet, set the DEPLOY_OPTIONAL repository variable to true.'
+          exit 1
 
       - name: Checkout
         if: steps.check.outputs.configured == 'true'
@@ -104,6 +127,20 @@ jobs:
           ssh-keygen -y -f ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.pub
           chmod 644 ~/.ssh/id_ed25519.pub
 
+      # What is serving right now, so the check afterwards can tell a new
+      # release from the old one still being up. Best effort: a site that is
+      # down or does not exist yet records nothing, and the check below then
+      # only asks for a healthy page rather than a changed one.
+      - name: Record the live build
+        id: before
+        if: steps.check.outputs.configured == 'true' && (github.event.inputs.environment || 'production') == 'production'
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://smakelo.stacksjs.com/' }}
+        run: |
+          build=$(curl -fsS --max-time 20 "$SITE_URL" 2>/dev/null | grep -o 'name="stx-build" content="[^"]*"' | head -1 | sed 's/.*content="//; s/"//') || build=
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "Serving before this deploy: ${build:-(nothing reachable)}"
+
       - name: Deploy
         if: steps.check.outputs.configured == 'true'
         run: ./buddy deploy --${{ github.event.inputs.environment == 'staging' && 'staging' || github.event.inputs.environment == 'development' && 'dev' || 'prod' }} --yes
@@ -122,3 +159,40 @@ jobs:
           # macOS resource forks in a tarball built on a developer machine make
           # the extraction on the server noisy and occasionally fatal.
           COPYFILE_DISABLE: '1'
+
+      # A deploy that reports success and leaves the old build serving is the
+      # failure this workflow exists to catch, and `buddy deploy` cannot catch
+      # it: it knows it uploaded and activated a release, not that the public
+      # name now resolves to it through DNS, the proxy and TLS.
+      #
+      # `stx-build` changes on every build, so a value that differs from the
+      # one recorded before is a new release actually being served. Polled
+      # rather than checked once, because the gateway reload and the DNS or
+      # certificate reconciliation above it are not instant.
+      - name: Verify the deploy is live
+        if: steps.check.outputs.configured == 'true' && (github.event.inputs.environment || 'production') == 'production'
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://smakelo.stacksjs.com/' }}
+          BEFORE: ${{ steps.before.outputs.build }}
+        run: |
+          for attempt in $(seq 1 30); do
+            body=$(curl -fsS --max-time 20 "$SITE_URL" 2>/dev/null) || body=
+
+            if [ -n "$body" ]; then
+              now=$(printf '%s' "$body" | grep -o 'name="stx-build" content="[^"]*"' | head -1 | sed 's/.*content="//; s/"//')
+
+              if [ -n "$now" ] && [ "$now" != "$BEFORE" ]; then
+                echo "::notice::$SITE_URL is serving build $now (was ${BEFORE:-nothing})."
+                exit 0
+              fi
+
+              echo "attempt $attempt: still serving ${now:-an unmarked page}"
+            else
+              echo "attempt $attempt: no response"
+            fi
+
+            sleep 10
+          done
+
+          echo "::error::$SITE_URL never began serving a new build after the deploy reported success - it is still on ${BEFORE:-an unknown build}. The release may be uploaded but not activated, or the gateway may still be routing to the previous one."
+          exit 1
