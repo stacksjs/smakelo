@@ -83,7 +83,7 @@ jobs:
 
       - name: Checkout
         if: steps.check.outputs.configured == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # The exact commit CI approved, not whatever main points at now.
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
