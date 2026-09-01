@@ -148,14 +148,37 @@ export function placeHandlers(page: PlaceSignals) {
     return '★'.repeat(value) + '☆'.repeat(5 - value)
   }
 
+  /**
+   * A string in the language the server served.
+   *
+   * The English text is the second argument rather than a fallback to the key,
+   * so a string no holder carries reads as English rather than as its own
+   * name. The holder for this partial is in partials/place-body.stx.
+   */
+  function say(key: string, english: string): string {
+    const smakelo = (globalThis as any).Smakelo
+
+    return smakelo && smakelo.t ? smakelo.t(key, english) : english
+  }
+
   function cadence(value: string): string {
     if (value === 'weekly')
-      return 'Every week'
+      return say('place.cadence_weekly', 'Every week')
 
     if (value === 'biweekly')
-      return 'Every other week'
+      return say('place.cadence_biweekly', 'Every other week')
 
-    return 'Once a month'
+    return say('place.cadence_monthly', 'Once a month')
+  }
+
+  /** How many people found a review useful, with the count where the sentence wants it. */
+  function helpfulCount(count: number): string {
+    return say('review.helpful_count', '{count} found this helpful').replace('{count}', String(count))
+  }
+
+  /** The line that confirms a share, up to the link into /shares. */
+  function joinedLine(date: string): string {
+    return say('place.joined_head', 'You are in. First box on {date}. Manage it at').replace('{date}', String(date))
   }
 
   /** The five-bar rating chart, which one average cannot replace. */
@@ -190,6 +213,9 @@ export function placeHandlers(page: PlaceSignals) {
     stars,
     cadence,
     barsFrom,
+    say,
+    helpfulCount,
+    joinedLine,
     load,
   }
 }

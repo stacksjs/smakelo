@@ -71,7 +71,7 @@ business:
   hours_unknown: Hours not recorded
   listing_only: Listed, not taking orders
   photo_credit: Listing from OpenStreetMap
-
+  save_name: "Save {name}"
 home:
   title: Find the good places near you.
   lede: Restaurants, coffee shops, bakeries and farms. Read what people actually said, then order from the ones that deliver.
@@ -145,6 +145,8 @@ discover:
   highest_price: Highest price tier
   order_results: Order the results
   attribution: Map tiles by CARTO, data from OpenStreetMap contributors.
+  popup_order: Order or read reviews
+  popup_details: See details
 place:
   not_found: Not found
   not_found_body: That place is not listed.
@@ -166,7 +168,16 @@ place:
   your_review: Your review
   how_to_get: How to get it
   back_to_discover: Back to discover
-
+  form_name: Your name
+  form_reply_to: Where to reply
+  form_what_happens: What would you like to happen?
+  form_address: Delivery address
+  joined_head: "You are in. First box on {date}. Manage it at"
+  joined_tail: We will email you the day before each box.
+  your_shares: your shares
+  cadence_weekly: Every week
+  cadence_biweekly: Every other week
+  cadence_monthly: Once a month
 meta:
   home_title: Smakelo - find the good places near you
   home_description: "Find restaurants, coffee shops, bakeries and farms around {region}. Read the reviews, then order delivery, pickup or a weekly farm box."
@@ -176,7 +187,30 @@ meta:
   saved_description: Places you kept.
   orders_title: Your orders - Smakelo
   orders_description: Everything you have ordered from this browser.
-
+  claims_title: Claims - Smakelo
+  claims_description: People asking about their own listing.
+  partner_title: For businesses - Smakelo
+  partner_description: What a business gets from Smakelo, and what is still being built.
+  kitchen_title: Orders - Smakelo
+  kitchen_description: The kitchen board.
+  manage_title: Manage - Smakelo
+  manage_description: Your menu, your hours.
+  courier_title: Courier - Smakelo
+  courier_description: Deliveries, one at a time.
+  earnings_title: Earnings - Smakelo
+  earnings_description: What each order paid, and to whom.
+  admin_title: Operations - Smakelo
+  admin_description: Guard checks and listing curation.
+  shares_title: Shares - Smakelo
+  shares_description: Your farm shares.
+  tab_title: Your table - Smakelo
+  tab_description: Order from your table.
+  account_title: Account - Smakelo
+  account_description: Sign in to keep your saved places across devices.
+  checkout_title: Order - Smakelo
+  checkout_description: Order from a Smakelo partner.
+  track_title: Tracking - Smakelo
+  track_description: Where your order is.
 order:
   add_to_cart: Add
   cart: Cart
@@ -204,7 +238,7 @@ status:
   delivered: Delivered
   cancelled: Cancelled
   ready_for_pickup: Ready for pickup
-
+  shipped: Handed over
 tracking:
   title: Where your order is
   eta: 'Arriving in about {minutes} min'
@@ -212,7 +246,16 @@ tracking:
   courier_nearby: Your courier is nearby
   picked_up: Picked up from the restaurant
   contact_courier: Contact courier
-
+  looking: Looking for that order…
+  not_found: No order with that code.
+  arriving: Arriving
+  courier: Courier
+  to: To
+  total: Total
+  your_address: Your address
+  about_minutes: "about {minutes} min"
+  no_code_prefix: No tracking code. Place an order from
+  no_code_suffix: first.
 review:
   write: Write a review
   rating: Your rating
@@ -222,7 +265,12 @@ review:
   helpful: Helpful
   owner_response: Response from the owner
   verified: Verified order
-
+  untitled: Untitled
+  helpful_yours: You found this helpful
+  helpful_count: "{count} found this helpful"
+  title_placeholder: Sum it up
+  body_placeholder: What was it like?
+  dishes_placeholder: What you ordered (optional)
 saved:
   title: Saved
   lede: Kept in this browser. There are no accounts here, so a different browser is a different list, and clearing your site data clears it.
@@ -260,7 +308,29 @@ partner:
   earnings: Earnings
   payouts: Payouts
   onboarding: Set up payments
-
+  built: Built
+  see_it: See it
+  menu_title: Menu
+  menu_body: Sections, items, and modifier groups that ask the questions an order actually needs answered. Available in the data model and on the customer side today.
+  hours_title: Menu and hours
+  hours_body: Take a dish off when it runs out and it stops being orderable, not just hidden. Change today's hours without editing the week.
+  board_title: Orders board
+  board_body: Incoming orders as they arrive, oldest first, with the modifiers spelled out for the cook and a note when one has been waiting.
+  tables_title: Tables and codes
+  tables_body: A code per table that opens the menu, opens a tab, and takes rounds until someone asks for the bill. Printable.
+  couriers_title: Couriers
+  couriers_body: Platform couriers, or your own staff. Live position, arrival, and the handover.
+  reviews_title: Reviews
+  reviews_body: "Ratings, a distribution rather than one average, and one reply per review. Only the invented partners can be reviewed: the real places listed here agreed to nothing, so nobody gets to publish opinions under their name."
+  ops_title: Operations
+  ops_body: "Whether this site is still keeping its own promises, checked against the database rather than against the code that is supposed to enforce them: sandbox payments, no reviews on real businesses, no orders at them, no contact details stored, noindex, robots.txt. Plus taking a listing down, which removes it from search, the map, its page and ordering."
+  claims_title: Claims
+  claims_body: If you run one of the listed places and would rather not be here, the form says so first. Nothing is emailed to the business, and a claim is read by a person.
+  payouts_title: Payouts
+  payouts_body: "Every order records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. The statement sums those rows, and paying out writes a row of its own rather than clearing a number."
+  headline: The merchant side, honestly.
+  intro: No setup fee, no monthly minimum, and you keep your own prices. Menu, hours, orders, tables and payouts all live in one place, and you can look through every screen of it below before you decide.
+  claim_note: "If you run one of the places listed here and would rather it were not, that is a reasonable thing to want. The listing comes from OpenStreetMap and Foursquare Open Source Places; open it, choose \"This is my business\", and say so - it comes down the same day."
 courier:
   shift_start: Go online
   shift_end: Go offline
@@ -272,7 +342,29 @@ courier:
   picked_up: Picked up
   delivered: Delivered
   earnings: Earnings
-
+  who_are_you: Who are you?
+  no_such_courier: No such courier.
+  on_shift: On shift
+  sharing_position: Sharing your position
+  position_private: Position not shared
+  stop_sharing: Stop sharing
+  share_position: Share position
+  collect_order: Collect the order
+  deliver_order: Deliver the order
+  on_my_way: On my way
+  picked_it_up: Picked it up
+  handed_it_over: Handed it over
+  nothing_assigned: Nothing assigned. Waiting for a job.
+  you_are_offline: You are offline.
+  then: Then
+  collect_from: Collect from
+  deliver_to: Deliver to
+  estimate_only: The customer sees an estimate, not a courier, until you turn this on.
+  reporting_pocket: Reporting, and it keeps reporting with the phone in your pocket.
+  reporting_screen: Reporting while this screen is open. The app keeps going in your pocket; a browser does not.
+  deliveries: Deliveries
+  fees: Fees
+  tips: Tips
 footer:
   tagline: 'Restaurants, coffee shops and farms in {regions}.'
   browse: Browse
@@ -297,3 +389,167 @@ common:
   loading: Loading
   retry: Try again
   error: Something went wrong.
+  saved: Saved
+claims:
+  title: Claims
+  waiting: Waiting
+  nothing_waiting: Nothing waiting.
+  said_nothing: They said nothing else.
+  approve: Approve
+  reject: Reject
+  decided: Decided
+  lede: The listings come from open data, so most people writing in are asking to come off it. That is a reasonable thing to want, and it is the first option here.
+kitchen:
+  loading_board: Loading the board…
+  needs_slug: Add ?business=<slug> to see a board.
+  no_board: No board for that business.
+  orders: Orders
+  orders_word: orders
+  gross: gross
+  yours: yours
+  cooking_now: Cooking now
+  nothing_waiting: Nothing waiting.
+  waiting_handover: Waiting for handover
+  cancel: Cancel
+  done: Done
+  start_cooking: Start cooking
+  ready: Ready
+  table: Table
+  reviews_waiting: Reviews waiting for a reply
+  all_answered: Everything has been answered.
+  untitled: Untitled
+  reply_placeholder: Reply as the owner
+  reply: Reply
+
+manage:
+  title: Manage
+  needs_slug: Add ?business=<slug> to manage a business.
+  table_codes: Table codes
+  hours_to: to
+  how_people_order: How people can order
+
+admin:
+  title: Operations
+  guards: Guards
+  all_holding: All holding
+  something_wrong: Something is wrong
+  checking: Checking…
+  listings: Listings
+  find_listing: Find a listing
+  hidden: Hidden
+  put_back: Put it back
+  take_down: Take it down
+  lede: Whether this site is still keeping its own promises, checked against the database rather than against the code meant to enforce them.
+shares:
+  title: Shares
+  none: You have no shares.
+  see_farms: See what the farms offer
+  paused_until: Paused until
+  next_box: Next box
+  delivered: Delivered
+  collected: Collected from the farm
+  start_again: Start it again
+  pause: Pause
+  leave: Leave the share
+  ended: Ended
+  lede: "A share is a claim on the season rather than an order. Pause it when you are away: a box nobody collects helps neither of you."
+  boxes_so_far: "{count} boxes so far"
+  pause_until: Pause until
+earnings:
+  title: Earnings
+  balances: Balances
+  all_balances: All balances
+  where_from: Where it came from
+  every_row: Every row
+  nothing_yet: Nothing yet.
+  no_statement: No statement for that party.
+  food_and_drink: Food and drink
+  delivery: Delivery
+  tips: Tips
+  sales_tax: Sales tax
+  tax_inside: Tax inside the menu price
+  service_fee: Service fee
+  paid_out: Paid out
+  owed_to: Owed to merchants and couriers
+  kept_by_platform: Kept by the platform
+  sales_tax_held: Sales tax held
+  earned: Earned
+  outstanding: Outstanding
+  pay_out: Pay out
+
+tab:
+  finding_table: Finding your table…
+  scan_to_start: Scan the code on your table to start.
+  code_no_match: That code does not match a table.
+  order_more: Order more
+  see_menu: See the menu
+  your_tab: Your tab
+  tab_total: Tab total
+  ask_for_bill: Ask for the bill
+  split_evenly: Split evenly
+  pay_for_mine: Pay for what I had
+  the_bill: The bill
+  split_ways: Split
+  each_round: Each round billed to whoever ordered it
+  person: Person
+  round: Round
+  total: Total
+  test_mode: Test mode. Nothing was charged.
+
+account:
+  title: Your account
+  make_account: Make an account
+  sign_in: Sign in
+  or_with_email: or with an email
+  your_name: Your name
+  email: Email
+  password: Password
+  one_moment: One moment…
+  make_the_account: Make the account
+  already_have: Already have one?
+  no_account_yet: No account yet?
+  make_one: Make one
+  terms: terms
+  privacy: privacy policy
+  continue_google: Continue with Google
+  continue_apple: Continue with Apple
+  did_not_work: That did not work.
+  agree_prefix: By continuing you agree to the
+  agree_middle: and the
+  agree_suffix: "."
+  intro_head: You do not need one. Everything works from this browser already
+  intro_tail: An account is how that follows you to another device.
+  carries_none: , though there is nothing saved here yet
+  carries_prefix: , with
+  carry_saved: "{count} saved"
+  carry_orders_one: "{count} order"
+  carry_orders_many: "{count} orders"
+  carry_reviews_one: "{count} review"
+  carry_reviews_many: "{count} reviews"
+  carry_shares_one: "{count} share"
+  carry_shares_many: "{count} shares"
+  providers_note: The greyed-out ones are waiting on keys. Email works now.
+checkout:
+  loading_menu: Loading the menu…
+  unavailable: That menu is not available.
+  order_placed: Order placed
+  setting_up: Setting up payment…
+  payment: Payment
+  track_it: Track it
+  order: Order
+  deliver_to: Deliver to
+  street_number: Street and number
+  label_it: Label it (home, work)
+  save_it: Save it
+  your_order: Your order
+  nothing_yet: Nothing yet.
+  remove: Remove
+  service: Service
+  test_mode: Test mode. No card is charged.
+  home: Home
+  none: None
+  could_not_place: That order could not be placed.
+  talking_to_stripe: Talking to Stripe…
+  paid_test_mode: Paid, in test mode. No money moved.
+  pick_a_place_prefix: Pick a place from
+  pick_a_place_suffix: first.

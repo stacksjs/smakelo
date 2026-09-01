@@ -9,6 +9,22 @@
   its setup marker onto the `<body>` of the page it compiles, and with the body
   inside a partial it found none, so no binding on this page ever hydrated. --}}
     <main class="mx-auto px-4 sm:px-8 max-w-7xl" data-stx-content>
+      {{-- What this partial's script writes, already translated. Every place
+        page includes this file, so the strings ride with it rather than being
+        repeated across four hundred generated pages. --}}
+      <div hidden data-i18n-strings="{{ JSON.stringify({
+        'business.save': t('business.save'),
+        'business.saved': t('business.saved'),
+        'review.untitled': t('review.untitled'),
+        'review.helpful': t('review.helpful'),
+        'review.helpful_yours': t('review.helpful_yours'),
+        'review.helpful_count': t('review.helpful_count', { count: '{count}' }),
+        'place.joined_head': t('place.joined_head', { date: '{date}' }),
+        'place.cadence_weekly': t('place.cadence_weekly'),
+        'place.cadence_biweekly': t('place.cadence_biweekly'),
+        'place.cadence_monthly': t('place.cadence_monthly'),
+      }) }}"></div>
+
       <a href="/" class="inline-flex gap-2 items-center pt-10 text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">
         <i class="w-3.5 h-3.5 i-hugeicons-arrow-left-01"></i>
         {{ t('place.back_to_discover') }}
@@ -69,7 +85,7 @@
             :style="saved() ? 'background: var(--accent-soft); color: var(--accent); border: 1px solid transparent' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
           >
             <i class="w-3.5 h-3.5 i-hugeicons-bookmark-02"></i>
-            <span>{{ saved() ? 'Saved' : 'Save' }}</span>
+            <span>{{ saved() ? say('business.saved', 'Saved') : say('business.save', 'Save') }}</span>
           </button>
         </div>
 
@@ -154,7 +170,7 @@
                   </p>
 
                   <input
-                    placeholder="Your name"
+                    placeholder="{{ t('place.form_name') }}"
                     maxlength="120"
                     :value="claim().name"
                     @input="setClaim('name', $event.target.value)"
@@ -163,7 +179,7 @@
                   >
                   <input
                     type="email"
-                    placeholder="Where to reply"
+                    placeholder="{{ t('place.form_reply_to') }}"
                     maxlength="200"
                     :value="claim().email"
                     @input="setClaim('email', $event.target.value)"
@@ -172,7 +188,7 @@
                   >
                   <textarea
                     rows="3"
-                    placeholder="What would you like to happen?"
+                    placeholder="{{ t('place.form_what_happens') }}"
                     maxlength="2000"
                     :value="claim().message"
                     @input="setClaim('message', $event.target.value)"
@@ -231,7 +247,7 @@
               </p>
 
               <input
-                placeholder="Your name"
+                placeholder="{{ t('place.form_name') }}"
                 maxlength="60"
                 :value="share().name"
                 @input="setShare('name', $event.target.value)"
@@ -250,7 +266,7 @@
 
               <input
                 :if="share().fulfilment === 'delivery'"
-                placeholder="Delivery address"
+                placeholder="{{ t('place.form_address') }}"
                 maxlength="255"
                 :value="share().address"
                 @input="setShare('address', $event.target.value)"
@@ -266,9 +282,9 @@
             </div>
 
             <p :if="share().joined" class="p-6 mt-4 text-[14px] leading-relaxed rounded-[1.5rem]" style="background: var(--accent-soft); color: var(--ink)">
-              You are in. First box on {{ share().joined.nextBoxAt }}. Manage it at
-              <a href="/shares" class="underline underline-offset-4">your shares</a>.
-              We will email you the day before each box.
+              {{ joinedLine(share().joined.nextBoxAt) }}
+              <a href="/shares" class="underline underline-offset-4">{{ t('place.your_shares') }}</a>.
+              {{ t('place.joined_tail') }}
             </p>
           </section>
 
@@ -305,7 +321,7 @@
 
                     <div class="flex-1 min-w-0">
                       <div class="flex flex-wrap gap-3 justify-between items-baseline">
-                        <p class="text-[15px] font-semibold">{{ review.title || 'Untitled' }}</p>
+                        <p class="text-[15px] font-semibold">{{ review.title || say('review.untitled', 'Untitled') }}</p>
                         <span class="shrink-0 text-[13px] tracking-[0.1em]" style="color: var(--accent)">{{ stars(review.rating) }}</span>
                       </div>
 
@@ -331,8 +347,8 @@
                       @click="vote(review.id)"
                       class="text-[12px] transition-opacity duration-500 hover:opacity-70"
                       :style="review.votedByMe ? 'color: var(--accent)' : 'color: var(--ink-soft)'"
-                    >{{ review.votedByMe ? 'You found this helpful' : 'Helpful' }}</button>
-                    <span class="text-[12px]" style="color: var(--ink-soft)">{{ review.helpfulCount }} found this helpful</span>
+                    >{{ review.votedByMe ? say('review.helpful_yours', 'You found this helpful') : say('review.helpful', 'Helpful') }}</button>
+                    <span class="text-[12px]" style="color: var(--ink-soft)">{{ helpfulCount(review.helpfulCount) }}</span>
                   </div>
                 </div>
               </article>
@@ -369,7 +385,7 @@
                 </div>
 
                 <input
-                  placeholder="Your name"
+                  placeholder="{{ t('place.form_name') }}"
                   maxlength="60"
                   :value="composer().authorName"
                   @input="setComposer('authorName', $event.target.value)"
@@ -377,7 +393,7 @@
                   style="background: var(--paper); border: 1px solid var(--line)"
                 >
                 <input
-                  placeholder="Sum it up"
+                  placeholder="{{ t('review.title_placeholder') }}"
                   maxlength="120"
                   :value="composer().title"
                   @input="setComposer('title', $event.target.value)"
@@ -386,7 +402,7 @@
                 >
                 <textarea
                   rows="4"
-                  placeholder="What was it like?"
+                  placeholder="{{ t('review.body_placeholder') }}"
                   maxlength="4000"
                   :value="composer().body"
                   @input="setComposer('body', $event.target.value)"
@@ -394,7 +410,7 @@
                   style="background: var(--paper); border: 1px solid var(--line)"
                 ></textarea>
                 <input
-                  placeholder="What you ordered (optional)"
+                  placeholder="{{ t('review.dishes_placeholder') }}"
                   maxlength="200"
                   :value="composer().dishes"
                   @input="setComposer('dishes', $event.target.value)"

@@ -11,8 +11,8 @@
  * listing has an owner; taking orders would mean processing a real payment,
  * which this demo will never do.
  */
-const pageTitle = 'Claims - Smakelo'
-const pageDescription = 'People asking about their own listing.'
+const pageTitle = t('meta.claims_title')
+const pageDescription = t('meta.claims_description')
 const canonicalPath = '/claims'
 </script>
 
@@ -27,18 +27,23 @@ const canonicalPath = '/claims'
 
     <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
       <div class="pt-12 pb-24 sm:pb-40">
-        <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Claims</h1>
+        <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('claims.title') }}</h1>
 
         <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-          The listings come from open data, so most people writing in are asking
-          to come off it. That is a reasonable thing to want, and it is the
-          first option here.
+          {{ t('claims.lede') }}
         </p>
 
-        <section class="mt-10">
-          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Waiting</h2>
+        {{-- The words this page's own script writes, already translated. The
+          shared bundle is in partials/head.stx; this is the handful only the
+          claims screen needs. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'claims.said_nothing': t('claims.said_nothing'),
+        }) }}"></div>
 
-          <p :if="!loading() && pending().length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing waiting.</p>
+        <section class="mt-10">
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('claims.waiting') }}</h2>
+
+          <p :if="!loading() && pending().length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">{{ t('claims.nothing_waiting') }}</p>
 
           <div class="mt-4 space-y-3">
             <div :for="claim in pending()" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
@@ -48,11 +53,11 @@ const canonicalPath = '/claims'
                   <p class="text-[13px]" style="color: var(--ink-soft)">{{ claim.claimantName }} · {{ claim.claimantEmail }}</p>
                 </div>
 
-                <p class="mt-4 text-[15px] leading-relaxed" style="color: var(--ink-soft)">{{ claim.message || 'They said nothing else.' }}</p>
+                <p class="mt-4 text-[15px] leading-relaxed" style="color: var(--ink-soft)">{{ claim.message || say('claims.said_nothing', 'They said nothing else.') }}</p>
 
                 <div class="flex gap-2 mt-6">
-                  <button @click="decide(claim.id, 'approved')" class="px-4 py-2 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Approve</button>
-                  <button @click="decide(claim.id, 'rejected')" class="px-4 py-2 text-[14px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Reject</button>
+                  <button @click="decide(claim.id, 'approved')" class="px-4 py-2 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">{{ t('claims.approve') }}</button>
+                  <button @click="decide(claim.id, 'rejected')" class="px-4 py-2 text-[14px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('claims.reject') }}</button>
                 </div>
 
                 <p :if="error() && erroredOn() === claim.id" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>
@@ -62,7 +67,7 @@ const canonicalPath = '/claims'
         </section>
 
         <section :if="decided().length > 0" class="mt-12">
-          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Decided</h2>
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('claims.decided') }}</h2>
           <ul class="mt-4 space-y-2 text-[14px]">
             <li :for="claim in decided()" class="flex gap-4 justify-between">
               <span>{{ claim.businessName }} <span style="color: var(--ink-soft)">{{ claim.claimantName }}</span></span>
@@ -75,6 +80,17 @@ const canonicalPath = '/claims'
 
     <script client>
       import { send } from '../functions/session'
+
+      /*
+       * A string this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as
+       * `claims.said_nothing`.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const claims = state([])
       const loading = state(true)

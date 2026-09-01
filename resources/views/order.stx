@@ -13,8 +13,8 @@
  * the same `priceOrder` that placement runs, so what the customer is shown and
  * what they are charged cannot drift apart.
  */
-const pageTitle = 'Order - Smakelo'
-const pageDescription = 'Order from a Smakelo partner.'
+const pageTitle = t('meta.checkout_title')
+const pageDescription = t('meta.checkout_description')
 const canonicalPath = '/order'
 </script>
 
@@ -29,31 +29,43 @@ const canonicalPath = '/order'
 
     <main class="mx-auto px-4 sm:px-8 max-w-6xl" data-stx-content>
       <div class="pt-10 pb-24 sm:pb-40">
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading the menu…</p>
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'checkout.home': t('checkout.home'),
+          'checkout.none': t('checkout.none'),
+          'checkout.could_not_place': t('checkout.could_not_place'),
+          'checkout.talking_to_stripe': t('checkout.talking_to_stripe'),
+          'checkout.paid_test_mode': t('checkout.paid_test_mode'),
+          'order.delivery': t('order.delivery'),
+          'order.pickup': t('order.pickup'),
+          'order.dine_in': t('order.dine_in'),
+        }) }}"></div>
+
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('checkout.loading_menu') }}</p>
 
         <p :if="!loading() && !slug()" class="text-[15px]">
-          Pick a place from <a class="underline underline-offset-4" href="/">discover</a> first.
+          {{ t('checkout.pick_a_place_prefix') }} <a class="underline underline-offset-4" href="/discover">{{ t('nav.discover') }}</a> {{ t('checkout.pick_a_place_suffix') }}
         </p>
 
-        <p :if="!loading() && slug() && !menu()" class="text-[15px]">That menu is not available.</p>
+        <p :if="!loading() && slug() && !menu()" class="text-[15px]">{{ t('checkout.unavailable') }}</p>
 
         {{-- After the order is placed. --}}
         <div :if="placed()" class="mx-auto max-w-xl p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
           <div class="p-8 text-center rounded-[calc(2rem-0.375rem)]">
-            <h1 class="text-[26px] font-semibold tracking-[-0.02em]">Order placed</h1>
+            <h1 class="text-[26px] font-semibold tracking-[-0.02em]">{{ t('checkout.order_placed') }}</h1>
             <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
               {{ menu().business.name }} has it, and the kitchen has started. You can follow it from here.
             </p>
 
-            <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">Total</p>
+            <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">{{ t('order.total') }}</p>
             <p class="text-[32px] font-semibold tracking-[-0.03em]">{{ money(placed().pricing.totalCents, currency()) }}</p>
 
-            <p :if="!payment()" class="mt-6 text-[13px]" style="color: var(--ink-soft)">Setting up payment…</p>
+            <p :if="!payment()" class="mt-6 text-[13px]" style="color: var(--ink-soft)">{{ t('checkout.setting_up') }}</p>
 
             {{-- No provider configured: say so rather than show a card form
               that could not work. --}}
             <div :if="payment() && !payment().configured" class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
-              <p class="text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">Payment</p>
+              <p class="text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.payment') }}</p>
               <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ payment().reason }}</p>
             </div>
 
@@ -79,7 +91,7 @@ const canonicalPath = '/order'
               class="inline-flex gap-3 items-center px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
               style="background: var(--ink); color: var(--paper)"
             >
-              <span>Track it</span>
+              <span>{{ t('checkout.track_it') }}</span>
               <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.14)">
                 <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
               </span>
@@ -98,7 +110,7 @@ const canonicalPath = '/order'
 
               <div>
                 <a :href="'/places/' + menu().business.slug" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">{{ menu().business.name }}</a>
-                <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Order</h1>
+                <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('checkout.order') }}</h1>
               </div>
             </div>
 
@@ -118,7 +130,7 @@ const canonicalPath = '/order'
             order is a question with no reason behind it. --}}
           <div :if="fulfilment() === 'delivery'" class="p-1.5 mt-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
             <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Deliver to</p>
+              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.deliver_to') }}</p>
 
               <div :if="addresses().length > 0" class="flex flex-wrap gap-2 mt-3">
                 <button
@@ -130,7 +142,7 @@ const canonicalPath = '/order'
               </div>
 
               <input
-                placeholder="Street and number"
+                placeholder="{{ t('checkout.street_number') }}"
                 maxlength="255"
                 :value="addressLine()"
                 @input="addressLine.set($event.target.value)"
@@ -140,14 +152,14 @@ const canonicalPath = '/order'
 
               <div class="flex flex-wrap gap-2 items-center mt-3">
                 <input
-                  placeholder="Label it (Home, work)"
+                  placeholder="{{ t('checkout.label_it') }}"
                   maxlength="40"
                   :value="addressLabel()"
                   @input="addressLabel.set($event.target.value)"
                   class="px-4 py-2.5 flex-1 min-w-[160px] text-[14px] rounded-full"
                   style="background: var(--paper); border: 1px solid var(--line)"
                 >
-                <button @click="keepAddress()" class="px-4 py-2.5 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Save it</button>
+                <button @click="keepAddress()" class="px-4 py-2.5 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('checkout.save_it') }}</button>
               </div>
 
               <p :if="addressError()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ addressError() }}</p>
@@ -203,9 +215,9 @@ const canonicalPath = '/order'
             <aside class="lg:col-span-5">
               <div class="p-1.5 rounded-[2rem] lg:sticky lg:top-24" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
                 <div class="p-7 rounded-[calc(2rem-0.375rem)]">
-                  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your order</h2>
+                  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.your_order') }}</h2>
 
-                  <p :if="cart().length === 0" class="mt-4 text-[14px]" style="color: var(--ink-soft)">Nothing yet.</p>
+                  <p :if="cart().length === 0" class="mt-4 text-[14px]" style="color: var(--ink-soft)">{{ t('checkout.nothing_yet') }}</p>
 
                   <ul :if="cart().length > 0" class="mt-4 space-y-3">
                     <li :for="line in numberedCart()" class="flex gap-4 justify-between items-start text-[14px]">
@@ -213,12 +225,12 @@ const canonicalPath = '/order'
                         <p>{{ line.quantity }} × {{ line.name }}</p>
                         <p :if="line.labels.length > 0" class="text-[12px]" style="color: var(--ink-soft)">{{ line.labels.join(', ') }}</p>
                       </div>
-                      <button @click="removeLine(line.index)" class="text-[12px] shrink-0 transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">Remove</button>
+                      <button @click="removeLine(line.index)" class="text-[12px] shrink-0 transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">{{ t('checkout.remove') }}</button>
                     </li>
                   </ul>
 
                   <div :if="cart().length > 0" class="pt-5 mt-5 border-t" style="border-color: var(--line)">
-                    <p class="text-[12px] font-medium" style="color: var(--ink-soft)">Tip</p>
+                    <p class="text-[12px] font-medium" style="color: var(--ink-soft)">{{ t('order.tip') }}</p>
                     <div class="flex flex-wrap gap-2 mt-2">
                       <button
                         :for="option in tipOptions()"
@@ -231,27 +243,27 @@ const canonicalPath = '/order'
 
                   <dl :if="quote()" class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
                     <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">Subtotal</dt>
+                      <dt style="color: var(--ink-soft)">{{ t('order.subtotal') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().subtotalCents, currency()) }}</dd>
                     </div>
                     <div :if="quote().deliveryFeeCents" class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">Delivery</dt>
+                      <dt style="color: var(--ink-soft)">{{ t('order.delivery_fee') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().deliveryFeeCents, currency()) }}</dd>
                     </div>
                     <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">Service</dt>
+                      <dt style="color: var(--ink-soft)">{{ t('checkout.service') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().serviceFeeCents, currency()) }}</dd>
                     </div>
                     <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">Tax</dt>
+                      <dt style="color: var(--ink-soft)">{{ t('order.tax') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().taxCents, currency()) }}</dd>
                     </div>
                     <div :if="quote().tipCents" class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">Tip</dt>
+                      <dt style="color: var(--ink-soft)">{{ t('order.tip') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().tipCents, currency()) }}</dd>
                     </div>
                     <div class="flex justify-between pt-2 text-[16px] font-semibold border-t" style="border-color: var(--line)">
-                      <dt>Total</dt>
+                      <dt>{{ t('order.total') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().totalCents, currency()) }}</dd>
                     </div>
                   </dl>
@@ -261,9 +273,9 @@ const canonicalPath = '/order'
                     @click="submit()"
                     class="flex gap-3 justify-center items-center px-5 py-3 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
                     style="background: var(--accent); color: #fff"
-                  >Place order</button>
+                  >{{ t('order.place_order') }}</button>
 
-                  <p :if="quote()" class="mt-3 text-[11px] text-center" style="color: var(--ink-soft)">Test mode. No card is charged.</p>
+                  <p :if="quote()" class="mt-3 text-[11px] text-center" style="color: var(--ink-soft)">{{ t('checkout.test_mode') }}</p>
                 </div>
               </div>
             </aside>
@@ -274,6 +286,18 @@ const canonicalPath = '/order'
 
     <script client>
       import { money, send, visitorToken } from '../functions/session'
+
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const slug = state('')
       const menu = state(null)
@@ -290,7 +314,7 @@ const canonicalPath = '/order'
       const addresses = state([])
       const chosenAddress = state(null)
       const addressLine = state('')
-      const addressLabel = state('Home')
+      const addressLabel = state(say('checkout.home', 'Home'))
       const addressError = state('')
 
       /*
@@ -311,15 +335,15 @@ const canonicalPath = '/order'
           return []
 
         return [
-          business.offersDelivery ? { value: 'delivery', label: 'Delivery' } : null,
-          business.offersPickup ? { value: 'pickup', label: 'Pickup' } : null,
-          business.offersDineIn ? { value: 'dine_in', label: 'Dine in' } : null,
+          business.offersDelivery ? { value: 'delivery', label: say('order.delivery', 'Delivery') } : null,
+          business.offersPickup ? { value: 'pickup', label: say('order.pickup', 'Pickup') } : null,
+          business.offersDineIn ? { value: 'dine_in', label: say('order.dine_in', 'Dine in') } : null,
         ].filter(Boolean)
       })
 
       const tipOptions = derived(() => [0, 200, 400, 600].map(cents => ({
         cents,
-        label: cents === 0 ? 'None' : money(cents, currency()),
+        label: cents === 0 ? say('checkout.none', 'None') : money(cents, currency()),
       })))
 
       // `:for` yields the item, not its index, and removing a line needs the
@@ -544,7 +568,7 @@ const canonicalPath = '/order'
         const payload = await response.json()
 
         if (!response.ok) {
-          error.set(payload.message || 'That order could not be placed.')
+          error.set(payload.message || say('checkout.could_not_place', 'That order could not be placed.'))
           return
         }
 
@@ -615,7 +639,7 @@ const canonicalPath = '/order'
         if (!stripe || !elements)
           return
 
-        payStatus.set('Talking to Stripe…')
+        payStatus.set(say('checkout.talking_to_stripe', 'Talking to Stripe…'))
 
         const result = await stripe.confirmPayment({ elements, redirect: 'if_required' })
 
@@ -628,7 +652,7 @@ const canonicalPath = '/order'
         // money arrived rather than believing this page about it.
         const confirmed = await send('/api/payment/confirm', { transactionId: result.paymentIntent.id })
 
-        payStatus.set(confirmed.ok ? 'Paid, in test mode. No money moved.' : (await confirmed.json()).message)
+        payStatus.set(confirmed.ok ? say('checkout.paid_test_mode', 'Paid, in test mode. No money moved.') : (await confirmed.json()).message)
       }
 
       load()

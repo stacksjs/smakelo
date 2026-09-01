@@ -61,7 +61,7 @@ const canonicalPath = vm.canonicalPath
       const {
         setComposer, setShare, setClaim,
         toggleSave, postReview, vote, joinShare, sendClaim,
-        stars, cadence, barsFrom, load,
+        stars, cadence, barsFrom, say, helpfulCount, joinedLine, load,
       } = placeHandlers({ slug: point.slug || '', saved, reviews, stats, canReview, loadingReviews, composer, plans, share, claim })
 
       placeMap(mapEl, point)

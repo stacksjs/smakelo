@@ -7,8 +7,8 @@
  * delivery service makes for a link somebody opens on a phone without
  * signing in.
  */
-const pageTitle = 'Tracking - Smakelo'
-const pageDescription = 'Where your order is.'
+const pageTitle = t('meta.track_title')
+const pageDescription = t('meta.track_description')
 const canonicalPath = '/track'
 </script>
 
@@ -23,17 +23,27 @@ const canonicalPath = '/track'
 
     <main class="mx-auto px-4 sm:px-8 max-w-4xl" data-stx-content>
       <div class="pt-12 pb-24 sm:pb-40">
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Looking for that order…</p>
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'status.pending': t('status.pending'),
+          'status.processing': t('status.processing'),
+          'status.out_for_delivery': t('status.out_for_delivery'),
+          'status.delivered': t('status.delivered'),
+          'tracking.about_minutes': t('tracking.about_minutes', { minutes: '{minutes}' }),
+          'tracking.your_address': t('tracking.your_address'),
+        }) }}"></div>
+
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('tracking.looking') }}</p>
 
         <p :if="!loading() && !code()" class="text-[15px]">
-          No tracking code. Place an order from <a class="underline underline-offset-4" href="/">discover</a>.
+          {{ t('tracking.no_code_prefix') }} <a class="underline underline-offset-4" href="/discover">{{ t('nav.discover') }}</a> {{ t('tracking.no_code_suffix') }}
         </p>
 
-        <p :if="!loading() && code() && !order()" class="text-[15px]">No order with that code.</p>
+        <p :if="!loading() && code() && !order()" class="text-[15px]">{{ t('tracking.not_found') }}</p>
 
         <div :if="order()">
           <p class="text-[13px]" style="color: var(--ink-soft)">{{ order().business ? order().business.name : '' }}</p>
-          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Where your order is</h1>
+          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('tracking.title') }}</h1>
 
           {{-- The map is set up once and then only moved. It sits outside any
             binding that could re-render it: tearing down a map every five
@@ -56,19 +66,19 @@ const canonicalPath = '/track'
 
           <dl class="pt-6 mt-8 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
             <div class="flex justify-between">
-              <dt style="color: var(--ink-soft)">Arriving</dt>
+              <dt style="color: var(--ink-soft)">{{ t('tracking.arriving') }}</dt>
               <dd>{{ arriving() }}</dd>
             </div>
             <div :if="order().courier" class="flex justify-between">
-              <dt style="color: var(--ink-soft)">Courier</dt>
+              <dt style="color: var(--ink-soft)">{{ t('tracking.courier') }}</dt>
               <dd>{{ order().courier.name }}</dd>
             </div>
             <div :if="order().deliveryAddress" class="flex justify-between">
-              <dt style="color: var(--ink-soft)">To</dt>
+              <dt style="color: var(--ink-soft)">{{ t('tracking.to') }}</dt>
               <dd>{{ order().deliveryAddress }}</dd>
             </div>
             <div class="flex justify-between">
-              <dt style="color: var(--ink-soft)">Total</dt>
+              <dt style="color: var(--ink-soft)">{{ t('tracking.total') }}</dt>
               <dd class="tabular-nums">{{ money(order().totalCents, order().currency) }}</dd>
             </div>
           </dl>
@@ -81,6 +91,18 @@ const canonicalPath = '/track'
       import { basemap, keepSized } from '../functions/map'
       import { money } from '../functions/session'
 
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
+
       const order = state(null)
       const loading = state(true)
       const code = state('')
@@ -89,10 +111,10 @@ const canonicalPath = '/track'
       let courierMarker = null
 
       const STAGES = [
-        { status: 'PENDING', label: 'Order received' },
-        { status: 'PROCESSING', label: 'Being prepared' },
-        { status: 'OUT_FOR_DELIVERY', label: 'On the way' },
-        { status: 'DELIVERED', label: 'Delivered' },
+        { status: 'PENDING', label: say('status.pending', 'Order received') },
+        { status: 'PROCESSING', label: say('status.processing', 'Being prepared') },
+        { status: 'OUT_FOR_DELIVERY', label: say('status.out_for_delivery', 'On the way') },
+        { status: 'DELIVERED', label: say('status.delivered', 'Delivered') },
       ]
 
       const steps = derived(() => {
@@ -109,12 +131,12 @@ const canonicalPath = '/track'
           return ''
 
         if (current.status === 'DELIVERED')
-          return 'Delivered'
+          return say('status.delivered', 'Delivered')
 
         if (current.stop && current.stop.etaAt) {
           const minutes = Math.max(1, Math.round((new Date(current.stop.etaAt) - Date.now()) / 60000))
 
-          return `about ${minutes} min`
+          return say('tracking.about_minutes', 'about {minutes} min').replace('{minutes}', minutes)
         }
 
         return `about ${current.estimatedMinutes} min`
@@ -188,7 +210,7 @@ const canonicalPath = '/track'
           .bindPopup(current.business.name)
 
         if (current.destination)
-          new Marker([current.destination.latitude, current.destination.longitude]).addTo(map).bindPopup('Your address')
+          new Marker([current.destination.latitude, current.destination.longitude]).addTo(map).bindPopup(say('tracking.your_address', 'Your address'))
 
         keepSized(map, el)
       }

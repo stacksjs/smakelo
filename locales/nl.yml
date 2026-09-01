@@ -70,7 +70,7 @@ business:
   hours_unknown: Openingstijden niet bekend
   listing_only: Alleen vermeld, neemt geen bestellingen
   photo_credit: Vermelding uit OpenStreetMap
-
+  save_name: "{name} bewaren"
 home:
   title: Vind de goede plekken bij jou in de buurt.
   lede: Restaurants, koffiezaken, bakkers en boerderijen. Lees wat mensen er echt van vonden, en bestel dan bij de zaken die bezorgen.
@@ -144,6 +144,8 @@ discover:
   highest_price: Hoogste prijsklasse
   order_results: Resultaten sorteren
   attribution: Kaarttegels van CARTO, gegevens van OpenStreetMap-bijdragers.
+  popup_order: Bestellen of reviews lezen
+  popup_details: Details bekijken
 place:
   not_found: Niet gevonden
   not_found_body: Die zaak staat niet in de lijst.
@@ -165,7 +167,16 @@ place:
   your_review: Jouw review
   how_to_get: Hoe je het krijgt
   back_to_discover: Terug naar ontdekken
-
+  form_name: Je naam
+  form_reply_to: Waar we kunnen antwoorden
+  form_what_happens: Wat zou je willen dat er gebeurt?
+  form_address: Bezorgadres
+  joined_head: "Je doet mee. Eerste pakket op {date}. Beheren doe je bij"
+  joined_tail: We mailen je de dag voor elk pakket.
+  your_shares: je aandelen
+  cadence_weekly: Elke week
+  cadence_biweekly: Om de week
+  cadence_monthly: Eén keer per maand
 meta:
   home_title: Smakelo - vind de goede plekken bij jou in de buurt
   home_description: "Restaurants, koffiezaken, bakkers en boerderijen rond {region}. Lees de reviews en bestel dan bezorging, afhalen of een wekelijks groentepakket."
@@ -175,7 +186,30 @@ meta:
   saved_description: Plekken die je hebt bewaard.
   orders_title: Je bestellingen - Smakelo
   orders_description: Alles wat je vanuit deze browser hebt besteld.
-
+  claims_title: Claims - Smakelo
+  claims_description: Mensen die naar hun eigen vermelding vragen.
+  partner_title: Voor zaken - Smakelo
+  partner_description: Wat een zaak aan Smakelo heeft, en wat er nog gebouwd wordt.
+  kitchen_title: Bestellingen - Smakelo
+  kitchen_description: Het keukenbord.
+  manage_title: Beheren - Smakelo
+  manage_description: Je menu, je openingstijden.
+  courier_title: Koerier - Smakelo
+  courier_description: Bezorgingen, een voor een.
+  earnings_title: Inkomsten - Smakelo
+  earnings_description: Wat elke bestelling opleverde, en aan wie.
+  admin_title: Bedrijfsvoering - Smakelo
+  admin_description: Controles en het beheer van vermeldingen.
+  shares_title: Aandelen - Smakelo
+  shares_description: Je boerderijaandelen.
+  tab_title: Je tafel - Smakelo
+  tab_description: Bestel vanaf je tafel.
+  account_title: Account - Smakelo
+  account_description: Log in zodat je bewaarde plekken op al je apparaten blijven.
+  checkout_title: Bestellen - Smakelo
+  checkout_description: Bestel bij een Smakelo-partner.
+  track_title: Volgen - Smakelo
+  track_description: Waar je bestelling is.
 order:
   add_to_cart: Toevoegen
   cart: Winkelmand
@@ -203,7 +237,7 @@ status:
   delivered: Bezorgd
   cancelled: Geannuleerd
   ready_for_pickup: Klaar om af te halen
-
+  shipped: Overgedragen
 tracking:
   title: Waar je bestelling is
   eta: 'Over ongeveer {minutes} min.'
@@ -211,7 +245,16 @@ tracking:
   courier_nearby: Je koerier is vlakbij
   picked_up: Opgehaald bij de zaak
   contact_courier: Koerier bereiken
-
+  looking: Bestelling wordt gezocht…
+  not_found: Bij die code hoort geen bestelling.
+  arriving: Aankomst
+  courier: Koerier
+  to: Naar
+  total: Totaal
+  your_address: Je adres
+  about_minutes: "ongeveer {minutes} min."
+  no_code_prefix: Geen volgcode. Plaats eerst een bestelling via
+  no_code_suffix: .
 review:
   write: Review schrijven
   rating: Jouw beoordeling
@@ -221,7 +264,12 @@ review:
   helpful: Nuttig
   owner_response: Reactie van de zaak
   verified: Bestelling bevestigd
-
+  untitled: Zonder titel
+  helpful_yours: Jij vond dit nuttig
+  helpful_count: "{count} vonden dit nuttig"
+  title_placeholder: Vat het samen
+  body_placeholder: Hoe was het?
+  dishes_placeholder: Wat je besteld hebt (optioneel)
 saved:
   title: Bewaard
   lede: Bewaard in deze browser. Er zijn hier geen accounts, dus een andere browser is een andere lijst - en wie zijn sitegegevens wist, wist hem mee.
@@ -259,7 +307,29 @@ partner:
   earnings: Inkomsten
   payouts: Uitbetalingen
   onboarding: Betalingen instellen
-
+  built: Klaar
+  see_it: Bekijken
+  menu_title: Menu
+  menu_body: Secties, gerechten en optiegroepen die precies de vragen stellen die een bestelling echt beantwoord wil hebben. Vandaag al aanwezig in het datamodel en aan de klantkant.
+  hours_title: Menu en openingstijden
+  hours_body: Haal een gerecht weg als het op is en het is niet meer te bestellen, niet alleen verborgen. Pas de tijden van vandaag aan zonder de hele week te bewerken.
+  board_title: Bestelbord
+  board_body: Binnenkomende bestellingen op volgorde van binnenkomst, oudste eerst, met de opties uitgeschreven voor de keuken en een melding als er een staat te wachten.
+  tables_title: Tafels en codes
+  tables_body: Een code per tafel die het menu opent, een rekening opent en rondes aanneemt tot iemand om de rekening vraagt. Printbaar.
+  couriers_title: Koeriers
+  couriers_body: Koeriers van het platform, of je eigen mensen. Live locatie, aankomst en de overdracht.
+  reviews_title: Reviews
+  reviews_body: "Beoordelingen, als verdeling in plaats van één gemiddelde, en één reactie per review. Alleen de verzonnen partners kunnen worden beoordeeld: de echte zaken die hier staan hebben nergens mee ingestemd, dus niemand publiceert meningen onder hun naam."
+  ops_title: Bedrijfsvoering
+  ops_body: "Of deze site zijn eigen beloften nog nakomt, getoetst aan de database in plaats van aan de code die ze zou moeten afdwingen: sandbox-betalingen, geen reviews bij echte zaken, geen bestellingen bij ze, geen contactgegevens opgeslagen, noindex, robots.txt. Plus een vermelding weghalen, wat hem uit zoeken, de kaart, zijn pagina en het bestellen verwijdert."
+  claims_title: Claims
+  claims_body: Als je een van de vermelde zaken runt en hier liever niet staat, zegt het formulier dat als eerste. Er gaat geen e-mail naar de zaak, en een claim wordt door een mens gelezen.
+  payouts_title: Uitbetalingen
+  payouts_body: "Elke bestelling legt vast wie wat toekomt: het eten aan jou, de bezorgkosten en de hele fooi aan de koerier, de servicekosten aan het platform. De afrekening telt die regels op, en uitbetalen schrijft een eigen regel in plaats van een getal op nul te zetten."
+  headline: De zakelijke kant, eerlijk gezegd.
+  intro: Geen opstartkosten, geen maandelijks minimum, en je houdt je eigen prijzen. Menu, openingstijden, bestellingen, tafels en uitbetalingen zitten op één plek, en je kunt hieronder elk scherm bekijken voordat je beslist.
+  claim_note: "Als je een van de hier vermelde zaken runt en dat liever niet hebt, is dat een redelijke wens. De vermelding komt uit OpenStreetMap en Foursquare Open Source Places; open hem, kies \"Dit is mijn zaak\" en zeg het - hij is dezelfde dag weg."
 courier:
   shift_start: Online gaan
   shift_end: Offline gaan
@@ -271,7 +341,29 @@ courier:
   picked_up: Opgehaald
   delivered: Bezorgd
   earnings: Inkomsten
-
+  who_are_you: Wie ben je?
+  no_such_courier: Die koerier bestaat niet.
+  on_shift: In dienst
+  sharing_position: Locatie wordt gedeeld
+  position_private: Locatie niet gedeeld
+  stop_sharing: Stoppen met delen
+  share_position: Locatie delen
+  collect_order: Bestelling ophalen
+  deliver_order: Bestelling bezorgen
+  on_my_way: Ik ben onderweg
+  picked_it_up: Opgehaald
+  handed_it_over: Overgedragen
+  nothing_assigned: Niets toegewezen. Wachten op een opdracht.
+  you_are_offline: Je bent offline.
+  then: Daarna
+  collect_from: Ophalen bij
+  deliver_to: Bezorgen aan
+  estimate_only: Tot je dit aanzet ziet de klant een schatting in plaats van een koerier.
+  reporting_pocket: Wordt doorgegeven, ook met de telefoon in je zak.
+  reporting_screen: Wordt doorgegeven zolang dit scherm open is. De app gaat door in je zak, een browser niet.
+  deliveries: Bezorgingen
+  fees: Vergoedingen
+  tips: Fooien
 footer:
   tagline: 'Restaurants, koffiezaken en boerderijen in {regions}.'
   browse: Bladeren
@@ -296,3 +388,167 @@ common:
   loading: Laden
   retry: Opnieuw proberen
   error: Er ging iets mis.
+  saved: Opgeslagen
+claims:
+  title: Claims
+  waiting: Openstaand
+  nothing_waiting: Niets openstaand.
+  said_nothing: Verder is er niets gezegd.
+  approve: Goedkeuren
+  reject: Afwijzen
+  decided: Beslist
+  lede: De vermeldingen komen uit open data, dus de meesten die schrijven willen eraf. Dat is een redelijke wens, en het is hier de eerste optie.
+kitchen:
+  loading_board: Bord wordt geladen…
+  needs_slug: Voeg ?business=<slug> toe om een bord te zien.
+  no_board: Voor die zaak is er geen bord.
+  orders: Bestellingen
+  orders_word: bestellingen
+  gross: bruto
+  yours: voor jou
+  cooking_now: Nu in de keuken
+  nothing_waiting: Niets openstaand.
+  waiting_handover: Wacht op overdracht
+  cancel: Annuleren
+  done: Klaar
+  start_cooking: Beginnen met bereiden
+  ready: Klaar
+  table: Tafel
+  reviews_waiting: Reviews die op antwoord wachten
+  all_answered: Alles is beantwoord.
+  untitled: Zonder titel
+  reply_placeholder: Antwoord namens de zaak
+  reply: Antwoorden
+
+manage:
+  title: Beheren
+  needs_slug: Voeg ?business=<slug> toe om een zaak te beheren.
+  table_codes: Tafelcodes
+  hours_to: tot
+  how_people_order: Hoe mensen kunnen bestellen
+
+admin:
+  title: Bedrijfsvoering
+  guards: Controles
+  all_holding: Alles houdt stand
+  something_wrong: Er is iets mis
+  checking: Wordt gecontroleerd…
+  listings: Vermeldingen
+  find_listing: Vermelding zoeken
+  hidden: Verborgen
+  put_back: Terugzetten
+  take_down: Weghalen
+  lede: Of deze site zijn eigen beloften nog nakomt, getoetst aan de database in plaats van aan de code die ze zou moeten afdwingen.
+shares:
+  title: Aandelen
+  none: Je hebt geen aandelen.
+  see_farms: Bekijk wat de boerderijen aanbieden
+  paused_until: Gepauzeerd tot
+  next_box: Volgend pakket
+  delivered: Bezorgd
+  collected: Afhalen bij de boerderij
+  start_again: Weer starten
+  pause: Pauzeren
+  leave: Aandeel opzeggen
+  ended: Beëindigd
+  lede: "Een aandeel is een aanspraak op het seizoen, geen bestelling. Pauzeer het als je weg bent: een pakket dat niemand ophaalt helpt geen van beiden."
+  boxes_so_far: "{count} pakketten tot nu toe"
+  pause_until: Pauzeren tot
+earnings:
+  title: Inkomsten
+  balances: Saldi
+  all_balances: Alle saldi
+  where_from: Waar het vandaan kwam
+  every_row: Elke regel
+  nothing_yet: Nog niets.
+  no_statement: Voor die partij is er geen afrekening.
+  food_and_drink: Eten en drinken
+  delivery: Bezorging
+  tips: Fooien
+  sales_tax: Omzetbelasting
+  tax_inside: Belasting in de menuprijs
+  service_fee: Servicekosten
+  paid_out: Uitbetaald
+  owed_to: Verschuldigd aan zaken en koeriers
+  kept_by_platform: Gehouden door het platform
+  sales_tax_held: Ingehouden omzetbelasting
+  earned: Verdiend
+  outstanding: Openstaand
+  pay_out: Uitbetalen
+
+tab:
+  finding_table: Je tafel wordt gezocht…
+  scan_to_start: Scan de code op je tafel om te beginnen.
+  code_no_match: Bij die code hoort geen tafel.
+  order_more: Meer bestellen
+  see_menu: Menu bekijken
+  your_tab: Je rekening
+  tab_total: Rekeningtotaal
+  ask_for_bill: Om de rekening vragen
+  split_evenly: Gelijk verdelen
+  pay_for_mine: Ik betaal wat ik had
+  the_bill: De rekening
+  split_ways: Gedeeld door
+  each_round: Elke ronde op naam van wie hem bestelde
+  person: Persoon
+  round: Ronde
+  total: Totaal
+  test_mode: Testmodus. Er is niets afgeschreven.
+
+account:
+  title: Je account
+  make_account: Account maken
+  sign_in: Inloggen
+  or_with_email: of met een e-mailadres
+  your_name: Je naam
+  email: E-mail
+  password: Wachtwoord
+  one_moment: Momentje…
+  make_the_account: Account aanmaken
+  already_have: Heb je er al een?
+  no_account_yet: Nog geen account?
+  make_one: Er een maken
+  terms: voorwaarden
+  privacy: privacyverklaring
+  continue_google: Doorgaan met Google
+  continue_apple: Doorgaan met Apple
+  did_not_work: Dat is niet gelukt.
+  agree_prefix: Door verder te gaan ga je akkoord met de
+  agree_middle: en het
+  agree_suffix: "."
+  intro_head: Je hebt er geen nodig. Vanuit deze browser werkt alles al
+  intro_tail: Met een account gaat dat mee naar een ander apparaat.
+  carries_none: , al is hier nog niets bewaard
+  carries_prefix: , met
+  carry_saved: "{count} bewaard"
+  carry_orders_one: "{count} bestelling"
+  carry_orders_many: "{count} bestellingen"
+  carry_reviews_one: "{count} review"
+  carry_reviews_many: "{count} reviews"
+  carry_shares_one: "{count} aandeel"
+  carry_shares_many: "{count} aandelen"
+  providers_note: De grijze wachten nog op sleutels. E-mail werkt nu al.
+checkout:
+  loading_menu: Menu wordt geladen…
+  unavailable: Dat menu is niet beschikbaar.
+  order_placed: Bestelling geplaatst
+  setting_up: Betaling wordt klaargezet…
+  payment: Betaling
+  track_it: Volgen
+  order: Bestelling
+  deliver_to: Bezorgen aan
+  street_number: Straat en huisnummer
+  label_it: Geef het een naam (thuis, werk)
+  save_it: Opslaan
+  your_order: Je bestelling
+  nothing_yet: Nog niets.
+  remove: Verwijderen
+  service: Service
+  test_mode: Testmodus. Er wordt geen kaart belast.
+  home: Thuis
+  none: Geen
+  could_not_place: Die bestelling kon niet worden geplaatst.
+  talking_to_stripe: Verbinden met Stripe…
+  paid_test_mode: Betaald, in testmodus. Er is geen geld verplaatst.
+  pick_a_place_prefix: Kies eerst een zaak via
+  pick_a_place_suffix: .

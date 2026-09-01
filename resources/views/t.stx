@@ -10,8 +10,8 @@
  * the code off the URL, which puts it on the per-request render path where stx
  * drops awaited values (stacksjs/stacks#2390).
  */
-const pageTitle = 'Your table - Smakelo'
-const pageDescription = 'Order from your table.'
+const pageTitle = t('meta.tab_title')
+const pageDescription = t('meta.tab_description')
 const canonicalPath = '/t'
 </script>
 
@@ -26,16 +26,26 @@ const canonicalPath = '/t'
 
     <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
       <div class="pt-10 pb-24 sm:pb-40">
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Finding your table…</p>
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'tab.order_more': t('tab.order_more'),
+          'tab.see_menu': t('tab.see_menu'),
+          'tab.split_ways': t('tab.split_ways'),
+          'tab.each_round': t('tab.each_round'),
+          'tab.person': t('tab.person'),
+          'tab.round': t('tab.round'),
+        }) }}"></div>
 
-        <p :if="!loading() && !token()" class="text-[15px]">Scan the code on your table to start.</p>
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('tab.finding_table') }}</p>
 
-        <p :if="!loading() && token() && !session()" class="text-[15px]">That code does not match a table.</p>
+        <p :if="!loading() && !token()" class="text-[15px]">{{ t('tab.scan_to_start') }}</p>
+
+        <p :if="!loading() && token() && !session()" class="text-[15px]">{{ t('tab.code_no_match') }}</p>
 
         {{-- The tab, while it is open. --}}
         <div :if="session() && !bill()">
           <p class="text-[13px]" style="color: var(--ink-soft)">{{ session().business.name }}</p>
-          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Table {{ session().table.label }}</h1>
+          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('kitchen.table') }} {{ session().table.label }}</h1>
           <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
             Your tab is open. Order a round, then order another when you are ready.
           </p>
@@ -45,14 +55,14 @@ const canonicalPath = '/t'
             class="inline-flex gap-3 items-center px-5 py-3 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
             style="background: var(--accent); color: #fff"
           >
-            <span>{{ session().rounds.length > 0 ? 'Order more' : 'See the menu' }}</span>
+            <span>{{ session().rounds.length > 0 ? say('tab.order_more', 'Order more') : say('tab.see_menu', 'See the menu') }}</span>
             <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.2)">
               <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
             </span>
           </a>
 
           <section :if="session().rounds.length > 0" class="mt-12">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Your tab</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('tab.your_tab') }}</h2>
 
             <div class="mt-4 space-y-3">
               <div :for="round in numberedRounds()" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
@@ -74,15 +84,15 @@ const canonicalPath = '/t'
             <div class="p-1.5 mt-6 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 16px 32px -22px rgba(20,17,15,0.12)">
               <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
                 <div class="flex justify-between text-[17px] font-semibold">
-                  <span>Tab total</span>
+                  <span>{{ t('tab.tab_total') }}</span>
                   <span class="tabular-nums">{{ money(tabTotal(), currency()) }}</span>
                 </div>
 
-                <p class="mt-4 text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">Ask for the bill</p>
+                <p class="mt-4 text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">{{ t('tab.ask_for_bill') }}</p>
 
                 <div class="flex flex-wrap gap-2 mt-3">
-                  <button @click="close('even')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">Split evenly</button>
-                  <button @click="close('by_item')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">Pay for what I had</button>
+                  <button @click="close('even')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">{{ t('tab.split_evenly') }}</button>
+                  <button @click="close('by_item')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line)">{{ t('tab.pay_for_mine') }}</button>
                 </div>
               </div>
             </div>
@@ -92,24 +102,24 @@ const canonicalPath = '/t'
         {{-- The bill, once somebody has asked for it. --}}
         <div :if="bill()" class="mx-auto max-w-lg p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
           <div class="p-8 rounded-[calc(2rem-0.375rem)]">
-            <h1 class="text-[24px] font-semibold tracking-[-0.02em]">The bill</h1>
+            <h1 class="text-[24px] font-semibold tracking-[-0.02em]">{{ t('tab.the_bill') }}</h1>
             <p class="mt-2 text-[14px]" style="color: var(--ink-soft)">
-              {{ splitMode() === 'even' ? 'Split ' + bill().shares.length + ' ways' : 'Each round billed to whoever ordered it' }}
+              {{ splitMode() === 'even' ? say('tab.split_ways', 'Split') + ' ' + bill().shares.length : say('tab.each_round', 'Each round billed to whoever ordered it') }}
             </p>
 
             <ul class="mt-6 space-y-2 text-[15px]">
               <li :for="share in numberedShares()" class="flex justify-between">
-                <span style="color: var(--ink-soft)">{{ splitMode() === 'even' ? 'Person ' + share.number : 'Round ' + share.number }}</span>
+                <span style="color: var(--ink-soft)">{{ (splitMode() === 'even' ? say('tab.person', 'Person') : say('tab.round', 'Round')) + ' ' + share.number }}</span>
                 <span class="tabular-nums">{{ money(share.cents, currency()) }}</span>
               </li>
             </ul>
 
             <div class="flex justify-between pt-4 mt-4 text-[17px] font-semibold border-t" style="border-color: var(--line)">
-              <span>Total</span>
+              <span>{{ t('tab.total') }}</span>
               <span class="tabular-nums">{{ money(bill().totalCents, currency()) }}</span>
             </div>
 
-            <p class="mt-6 text-[12px]" style="color: var(--ink-soft)">Test mode. Nothing was charged.</p>
+            <p class="mt-6 text-[12px]" style="color: var(--ink-soft)">{{ t('tab.test_mode') }}</p>
           </div>
         </div>
       </div>
@@ -117,6 +127,18 @@ const canonicalPath = '/t'
 
     <script client>
       import { money, send } from '../functions/session'
+
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const session = state(null)
       const bill = state(null)

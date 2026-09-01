@@ -11,8 +11,8 @@
  * Reached as `/earnings?party=business:3`, or with no party for the operator's
  * overview of every balance.
  */
-const pageTitle = 'Earnings - Smakelo'
-const pageDescription = 'What each order paid, and to whom.'
+const pageTitle = t('meta.earnings_title')
+const pageDescription = t('meta.earnings_description')
 const canonicalPath = '/earnings'
 </script>
 
@@ -27,11 +27,27 @@ const canonicalPath = '/earnings'
 
     <main class="mx-auto px-4 sm:px-8 max-w-4xl" data-stx-content>
       <div class="pt-10 pb-24 sm:pb-40">
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'earnings.food_and_drink': t('earnings.food_and_drink'),
+          'earnings.delivery': t('earnings.delivery'),
+          'earnings.tips': t('earnings.tips'),
+          'earnings.sales_tax': t('earnings.sales_tax'),
+          'earnings.tax_inside': t('earnings.tax_inside'),
+          'earnings.service_fee': t('earnings.service_fee'),
+          'earnings.paid_out': t('earnings.paid_out'),
+          'earnings.owed_to': t('earnings.owed_to'),
+          'earnings.kept_by_platform': t('earnings.kept_by_platform'),
+          'earnings.sales_tax_held': t('earnings.sales_tax_held'),
+          'earnings.earned': t('earnings.earned'),
+          'earnings.outstanding': t('earnings.outstanding'),
+        }) }}"></div>
+
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
         {{-- Everyone's balance, for the operator. --}}
         <div :if="!loading() && !party()">
-          <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Balances</h1>
+          <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('earnings.balances') }}</h1>
 
           <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
             Every order writes one row per party: the food to the merchant, the
@@ -74,7 +90,7 @@ const canonicalPath = '/earnings'
 
         {{-- One party's statement. --}}
         <div :if="!loading() && party() && statement()">
-          <a href="/earnings" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">← All balances</a>
+          <a href="/earnings" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">← {{ t('earnings.all_balances') }}</a>
 
           <h1 class="mt-4 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ statement().party.name }}</h1>
           <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ statement().party.type }}</p>
@@ -87,7 +103,7 @@ const canonicalPath = '/earnings'
           </div>
 
           <section :if="earned().length > 0" class="mt-10">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Where it came from</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('earnings.where_from') }}</h2>
             <ul class="mt-4 space-y-2 text-[15px]">
               <li :for="row in earned()" class="flex gap-4 justify-between">
                 <span>{{ label(row.kind) }}</span>
@@ -103,15 +119,15 @@ const canonicalPath = '/earnings'
               moves here: these accounts belong to invented businesses.
             </p>
             <button @click="payOut()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--accent); color: #fff">
-              Pay out {{ money(statement().outstandingCents, statement().currency) }}
+              {{ t('earnings.pay_out') }} {{ money(statement().outstandingCents, statement().currency) }}
             </button>
             <p :if="error()" class="mt-3 text-[13px]" style="color: var(--ink)">{{ error() }}</p>
           </div>
 
           <section class="mt-10">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Every row</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('earnings.every_row') }}</h2>
 
-            <p :if="statement().lines.length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Nothing yet.</p>
+            <p :if="statement().lines.length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">{{ t('earnings.nothing_yet') }}</p>
 
             <ul class="mt-4 space-y-2 text-[14px]">
               <li :for="line in statement().lines" class="flex gap-4 justify-between py-2 border-b" style="border-color: var(--line)">
@@ -127,12 +143,24 @@ const canonicalPath = '/earnings'
           </section>
         </div>
 
-        <p :if="!loading() && party() && !statement()" class="text-[15px]">No statement for that party.</p>
+        <p :if="!loading() && party() && !statement()" class="text-[15px]">{{ t('earnings.no_statement') }}</p>
       </div>
     </main>
 
     <script client>
       import { money, send } from '../functions/session'
+
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const party = state('')
       const balances = state([])
@@ -141,13 +169,13 @@ const canonicalPath = '/earnings'
       const error = state('')
 
       const LABELS = {
-        order_revenue: 'Food and drink',
-        delivery_fee: 'Delivery',
-        tip: 'Tips',
-        tax_collected: 'Sales tax',
-        tax_withheld: 'Tax inside the menu price',
-        service_fee: 'Service fee',
-        payout: 'Paid out',
+        order_revenue: say('earnings.food_and_drink', 'Food and drink'),
+        delivery_fee: say('earnings.delivery', 'Delivery'),
+        tip: say('earnings.tips', 'Tips'),
+        tax_collected: say('earnings.sales_tax', 'Sales tax'),
+        tax_withheld: say('earnings.tax_inside', 'Tax inside the menu price'),
+        service_fee: say('earnings.service_fee', 'Service fee'),
+        payout: say('earnings.paid_out', 'Paid out'),
       }
 
       function partyIcon(type) {
@@ -168,9 +196,9 @@ const canonicalPath = '/earnings'
         .reduce((total, row) => total + row.balanceCents, 0)
 
       const tiles = derived(() => [
-        { label: 'Owed to merchants and couriers', cents: sumOf(['business', 'courier']), icon: 'i-hugeicons-delivery-truck-01' },
-        { label: 'Kept by the platform', cents: sumOf(['platform']), icon: 'i-hugeicons-money-bag-02' },
-        { label: 'Sales tax held', cents: sumOf(['tax']), icon: 'i-hugeicons-checkmark-circle-02' },
+        { label: say('earnings.owed_to', 'Owed to merchants and couriers'), cents: sumOf(['business', 'courier']), icon: 'i-hugeicons-delivery-truck-01' },
+        { label: say('earnings.kept_by_platform', 'Kept by the platform'), cents: sumOf(['platform']), icon: 'i-hugeicons-money-bag-02' },
+        { label: say('earnings.sales_tax_held', 'Sales tax held'), cents: sumOf(['tax']), icon: 'i-hugeicons-checkmark-circle-02' },
       ])
 
       // Everything except payouts, which are money leaving rather than earned.
@@ -192,9 +220,9 @@ const canonicalPath = '/earnings'
           return []
 
         return [
-          { label: 'Earned', cents: earned().reduce((total, row) => total + row.cents, 0) },
-          { label: 'Paid out', cents: current.paidOutCents },
-          { label: 'Outstanding', cents: current.outstandingCents },
+          { label: say('earnings.earned', 'Earned'), cents: earned().reduce((total, row) => total + row.cents, 0) },
+          { label: say('earnings.paid_out', 'Paid out'), cents: current.paidOutCents },
+          { label: say('earnings.outstanding', 'Outstanding'), cents: current.outstandingCents },
         ]
       })
 

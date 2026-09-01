@@ -8,8 +8,8 @@
  * listing down, because the most likely message this demo will ever receive is
  * a restaurant asking why it is here.
  */
-const pageTitle = 'Operations - Smakelo'
-const pageDescription = 'Guard checks and listing curation.'
+const pageTitle = t('meta.admin_title')
+const pageDescription = t('meta.admin_description')
 const canonicalPath = '/admin'
 </script>
 
@@ -24,7 +24,15 @@ const canonicalPath = '/admin'
 
     <main class="mx-auto px-4 sm:px-8 max-w-4xl" data-stx-content>
       <div class="pt-12 pb-24 sm:pb-40">
-        <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">Operations</h1>
+        <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('admin.title') }}</h1>
+
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'admin.all_holding': t('admin.all_holding'),
+          'admin.something_wrong': t('admin.something_wrong'),
+          'admin.put_back': t('admin.put_back'),
+          'admin.take_down': t('admin.take_down'),
+        }) }}"></div>
 
         <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
           What this site promises about itself, checked against what is actually
@@ -34,13 +42,13 @@ const canonicalPath = '/admin'
 
         <section class="mt-10">
           <div class="flex flex-wrap gap-4 justify-between items-baseline">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Guards</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('admin.guards') }}</h2>
             <p :if="guards()" class="text-[13px]" :style="allPassed() ? 'color: var(--ink-soft)' : 'color: var(--accent); font-weight: 600'">
-              {{ allPassed() ? 'All holding' : 'Something is wrong' }}
+              {{ allPassed() ? say('admin.all_holding', 'All holding') : say('admin.something_wrong', 'Something is wrong') }}
             </p>
           </div>
 
-          <p :if="loading()" class="mt-4 text-[15px]" style="color: var(--ink-soft)">Checking…</p>
+          <p :if="loading()" class="mt-4 text-[15px]" style="color: var(--ink-soft)">{{ t('admin.checking') }}</p>
 
           <div class="mt-4 space-y-2">
             <div :for="guard in guards()" class="p-1.5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
@@ -61,7 +69,7 @@ const canonicalPath = '/admin'
         </section>
 
         <section class="mt-12">
-          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Listings</h2>
+          <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('admin.listings') }}</h2>
 
           <p class="mt-3 max-w-xl text-[14px] leading-relaxed" style="color: var(--ink-soft)">
             Hiding a listing takes it off the discover page, the search, the map
@@ -72,7 +80,7 @@ const canonicalPath = '/admin'
 
           <input
             type="search"
-            placeholder="Find a listing"
+            placeholder="{{ t('admin.find_listing') }}"
             :value="query()"
             @input="onQuery($event.target.value)"
             class="px-4 py-3 mt-5 w-full text-[15px] rounded-full"
@@ -90,13 +98,13 @@ const canonicalPath = '/admin'
                 </p>
               </div>
 
-              <span :if="row.hidden" class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">Hidden</span>
+              <span :if="row.hidden" class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('admin.hidden') }}</span>
 
               <button
                 @click="setHidden(row.slug, !row.hidden)"
                 class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
                 :style="row.hidden ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-              >{{ row.hidden ? 'Put it back' : 'Take it down' }}</button>
+              >{{ row.hidden ? say('admin.put_back', 'Put it back') : say('admin.take_down', 'Take it down') }}</button>
             </div>
           </div>
         </section>
@@ -105,6 +113,18 @@ const canonicalPath = '/admin'
 
     <script client>
       import { send } from '../functions/session'
+
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const guards = state([])
       const allPassed = state(true)

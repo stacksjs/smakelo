@@ -591,7 +591,7 @@ function openLabel(business) {
                     type="button"
                     class="save"
                     :aria-pressed="saved().includes(card.slug) ? 'true' : 'false'"
-                    :aria-label="saved().includes(card.slug) ? 'Saved' : 'Save ' + card.name"
+                    :aria-label="saved().includes(card.slug) ? say('business.saved', 'Saved') : say('business.save_name', 'Save {name}').replace('{name}', card.name)"
                     @click="toggleSaved(card.slug, $event)"
                   >
                     <i class="w-3.5 h-3.5 i-hugeicons-favourite"></i>
@@ -722,7 +722,7 @@ function openLabel(business) {
         const address = subscribeEmail().trim()
 
         if (!/^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(address)) {
-          subscribeError.set('That does not look like an email address.')
+          subscribeError.set(say('home.subscribe_bad_email', 'That does not look like an email address.'))
           return
         }
 
@@ -734,7 +734,7 @@ function openLabel(business) {
         subscribeBusy.set(false)
 
         if (!answer || !answer.ok) {
-          subscribeError.set('That did not send. Try again in a moment.')
+          subscribeError.set(say('home.subscribe_failed', 'That did not send. Try again in a moment.'))
           return
         }
 
@@ -1189,7 +1189,7 @@ function openLabel(business) {
         const link = document.createElement('a')
         link.className = 'map-card-link'
         link.href = `/places/${pin.slug}`
-        link.textContent = pin.partner ? 'Order or read reviews' : 'See details'
+        link.textContent = pin.partner ? say('discover.popup_order', 'Order or read reviews') : say('discover.popup_details', 'See details')
         body.append(link)
 
         root.append(body)

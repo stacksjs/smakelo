@@ -842,6 +842,13 @@
   browser as the four literal characters. Every other server-to-client handoff
   in this app goes through a data attribute for the same reason.
 
+  This holder carries the strings every page needs. A page with a vocabulary
+  of its own - the kitchen board, the courier screen, the checkout - adds a
+  second holder of its own with `data-i18n-strings`, and the lookup below
+  merges them. Shipping every operator screen's wording to every visitor's
+  home page would be a few kilobytes spent on words that page will never
+  show.
+
   The interface is translated. The invented restaurant descriptions, menus and
   reviews are not: they are content, and machine-translating a menu is how a
   demonstration starts lying about what a kitchen serves. --}}
@@ -849,7 +856,7 @@
   id="smakelo-i18n"
   hidden
   data-locale="{{ locale }}"
-  data-strings="{{ JSON.stringify({
+  data-i18n-strings="{{ JSON.stringify({
     'search.open_now': t('search.open_now'),
     'search.takes_orders': t('search.takes_orders'),
     'search.no_results': t('search.no_results'),
@@ -885,36 +892,71 @@
     'discover.more_filters': t('discover.more_filters'),
     'discover.fewer_filters': t('discover.fewer_filters'),
     'discover.show_closed': t('discover.show_closed', { count: '{count}' }),
+    'discover.popup_order': t('discover.popup_order'),
+    'discover.popup_details': t('discover.popup_details'),
+    'business.save_name': t('business.save_name', { name: '{name}' }),
   }) }}"
 ></div>
 
 <script>
   ;(function () {
-    var holder = document.getElementById('smakelo-i18n')
-    var strings = {}
-
-    try {
-      strings = JSON.parse(holder && holder.dataset.strings ? holder.dataset.strings : '{}')
-    }
-    catch (error) {
-      // An unparseable blob leaves every lookup on its English fallback, which
-      // is a page in one language rather than a page of key names.
-    }
-
     window.Smakelo = window.Smakelo || {}
-    window.Smakelo.locale = (holder && holder.dataset.locale) || 'en'
-    window.Smakelo.strings = strings
+    window.Smakelo.locale = (document.getElementById('smakelo-i18n') || {}).dataset?.locale || 'en'
+
+    var strings = null
+
+    /*
+     * Every holder on the page, merged.
+     *
+     * Collected on demand rather than here, because this script runs in the
+     * <head> and a page's own holder is further down the document - at the
+     * moment this line executes it does not exist yet. Nothing asks for a
+     * string before the client scripts run, which is well after the body has
+     * been parsed.
+     */
+    function collect() {
+      var merged = {}
+      var holders = document.querySelectorAll('[data-i18n-strings]')
+
+      for (var i = 0; i < holders.length; i++) {
+        try {
+          var parsed = JSON.parse(holders[i].dataset.i18nStrings || '{}')
+
+          for (var key in parsed)
+            merged[key] = parsed[key]
+        }
+        catch (error) {
+          // An unparseable holder leaves its keys on their English fallbacks,
+          // which is a page in one language rather than a page of key names.
+        }
+      }
+
+      strings = merged
+      window.Smakelo.strings = merged
+
+      return merged
+    }
 
     /*
      * The lookup a client script calls.
      *
      * Takes the English text as its second argument rather than falling back
-     * to the key, so a string this list has not been told about renders as
-     * English rather than as `search.open_now`. A page in the wrong language
-     * is a bug; a page showing its own key names is a broken page.
+     * to the key, so a string no holder carries renders as English rather
+     * than as `search.open_now`. A page in the wrong language is a bug; a
+     * page showing its own key names is a broken page.
      */
     window.Smakelo.t = function (key, english) {
-      return window.Smakelo.strings[key] || english || key
+      var table = strings || collect()
+
+      return table[key] || english || key
     }
+
+    // A client-side hop swaps the body, and with it the page's own holder.
+    function forget() {
+      strings = null
+    }
+
+    window.addEventListener('stx:navigate', forget)
+    window.addEventListener('popstate', forget)
   })()
 </script>

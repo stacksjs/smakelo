@@ -8,72 +8,72 @@
  * business owner would land on - which is why there is no sign-up form
  * collecting their details for a demo that will never call them back.
  */
-const pageTitle = 'For businesses - Smakelo'
-const pageDescription = 'What a business gets from Smakelo, and what is still being built.'
+const pageTitle = t('meta.partner_title')
+const pageDescription = t('meta.partner_description')
 const canonicalPath = '/partner'
 
 const surfaces = [
   {
-    name: 'Menu',
+    name: t('partner.menu_title'),
     icon: 'i-hugeicons-menu-restaurant',
-    detail: 'Sections, items, and modifier groups that ask the questions an order actually needs answered. Available in the data model and on the customer side today.',
-    state: 'Built',
+    detail: t('partner.menu_body'),
+    state: t('partner.built'),
     href: '/order?business=marisol-cocina',
   },
   {
-    name: 'Menu and hours',
+    name: t('partner.hours_title'),
     icon: 'i-hugeicons-clock-01',
-    detail: 'Take a dish off when it runs out and it stops being orderable, not just hidden. Change today\'s hours from the same screen. These are the two edits that matter during service, so they are one tap from the top.',
-    state: 'Built',
+    detail: t('partner.hours_body'),
+    state: t('partner.built'),
     href: '/manage?business=nonna-pia',
   },
   {
-    name: 'Orders board',
+    name: t('partner.board_title'),
     icon: 'i-hugeicons-chef-hat',
-    detail: 'Incoming orders as they arrive, oldest first, with the modifiers spelled out for the cook and a note when one has been waiting.',
-    state: 'Built',
+    detail: t('partner.board_body'),
+    state: t('partner.built'),
     href: '/kitchen?business=marisol-cocina',
   },
   {
-    name: 'Tables and codes',
+    name: t('partner.tables_title'),
     icon: 'i-hugeicons-bar-code-01',
-    detail: 'A code per table that opens the menu, opens a tab, and takes rounds until someone asks for the bill. Printable.',
-    state: 'Built',
+    detail: t('partner.tables_body'),
+    state: t('partner.built'),
     href: '/codes/marisol-cocina',
   },
   {
-    name: 'Couriers',
+    name: t('partner.couriers_title'),
     icon: 'i-hugeicons-delivery-truck-01',
-    detail: 'Platform couriers, or your own staff. Live position, arrival, and the handover.',
-    state: 'Built',
+    detail: t('partner.couriers_body'),
+    state: t('partner.built'),
     href: '/track',
   },
   {
-    name: 'Reviews',
+    name: t('partner.reviews_title'),
     icon: 'i-hugeicons-star',
-    detail: 'Ratings, a distribution rather than one average, and one reply per review. Only the invented partners can be reviewed: the real places listed here agreed to nothing, so nobody gets to publish opinions under their name.',
-    state: 'Built',
+    detail: t('partner.reviews_body'),
+    state: t('partner.built'),
     href: '/places/nonna-pia',
   },
   {
-    name: 'Operations',
+    name: t('partner.ops_title'),
     icon: 'i-hugeicons-checkmark-circle-02',
-    detail: 'Whether this site is still keeping its own promises, checked against the database rather than against the code that is supposed to enforce them: sandbox payments, no reviews on real businesses, no orders at them, no contact details stored, noindex, robots.txt. Plus taking a listing down, which removes it from search, the map, its page and ordering.',
-    state: 'Built',
+    detail: t('partner.ops_body'),
+    state: t('partner.built'),
     href: '/admin',
   },
   {
-    name: 'Claims',
+    name: t('partner.claims_title'),
     icon: 'i-hugeicons-mail-01',
-    detail: 'If you run one of the listed places and would rather not be here, the form says so first. Nothing is emailed to the business, and a claim is read by a person.',
-    state: 'Built',
+    detail: t('partner.claims_body'),
+    state: t('partner.built'),
     href: '/claims',
   },
   {
-    name: 'Payouts',
+    name: t('partner.payouts_title'),
     icon: 'i-hugeicons-money-bag-02',
-    detail: 'Every order records who is owed what: the food to you, the delivery fee and the whole tip to the courier, the service fee to the platform. The statement sums those rows, and paying out writes a row of its own rather than clearing a number.',
-    state: 'Built',
+    detail: t('partner.payouts_body'),
+    state: t('partner.built'),
     href: '/earnings',
   },
 ]
@@ -91,17 +91,15 @@ const surfaces = [
     <main class="mx-auto px-4 sm:px-8 max-w-4xl">
       <section class="pt-16 pb-16 sm:pt-24">
         <span class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-          For businesses
+          {{ t('nav.partner') }}
         </span>
 
         <h1 class="mt-6 text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-balance">
-          The merchant side, honestly.
+          {{ t('partner.headline') }}
         </h1>
 
         <p class="mt-6 max-w-2xl text-[17px] leading-relaxed" style="color: var(--ink-soft)">
-          No setup fee, no monthly minimum, and you keep your own prices. Menu,
-          hours, orders, tables and payouts all live in one place, and you can
-          look through every screen of it below before you decide.
+          {{ t('partner.intro') }}
         </p>
       </section>
 
@@ -122,7 +120,7 @@ const surfaces = [
                 </div>
                 <div class="flex gap-2 items-center shrink-0">
                   @if (surface.href)
-                    <a href="{{ surface.href }}" class="px-3 py-1 text-[11px] rounded-full transition-opacity duration-500 hover:opacity-70" style="background: var(--accent-soft); color: var(--accent)">See it</a>
+                    <a href="{{ surface.href }}" class="px-3 py-1 text-[11px] rounded-full transition-opacity duration-500 hover:opacity-70" style="background: var(--accent-soft); color: var(--accent)">{{ t('partner.see_it') }}</a>
                   @endif
                   <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">
                     {{ surface.state }}
@@ -134,10 +132,7 @@ const surfaces = [
         </div>
 
         <p class="mt-10 text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-          If you run one of the places listed here and would rather it were not,
-          that is a reasonable thing to want. The listing comes from OpenStreetMap
-          and Foursquare Open Source Places; open it, choose "This is my business",
-          and say so - it comes down the same day.
+          {{ t('partner.claim_note') }}
         </p>
       </section>
     </main>

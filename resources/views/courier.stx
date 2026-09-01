@@ -11,8 +11,8 @@
  * deployment resolves the courier from the session, which is what the
  * framework's own ping and stop endpoints already do.
  */
-const pageTitle = 'Courier - Smakelo'
-const pageDescription = 'Deliveries, one at a time.'
+const pageTitle = t('meta.courier_title')
+const pageDescription = t('meta.courier_description')
 const canonicalPath = '/courier'
 </script>
 
@@ -27,11 +27,35 @@ const canonicalPath = '/courier'
 
     <main class="mx-auto px-4 sm:px-8 max-w-2xl" data-stx-content>
       <div class="pt-10 pb-24">
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'courier.on_shift': t('courier.on_shift'),
+          'courier.shift_start': t('courier.shift_start'),
+          'courier.sharing_position': t('courier.sharing_position'),
+          'courier.position_private': t('courier.position_private'),
+          'courier.stop_sharing': t('courier.stop_sharing'),
+          'courier.share_position': t('courier.share_position'),
+          'courier.collect_order': t('courier.collect_order'),
+          'courier.deliver_order': t('courier.deliver_order'),
+          'courier.picked_it_up': t('courier.picked_it_up'),
+          'courier.handed_it_over': t('courier.handed_it_over'),
+          'courier.nothing_assigned': t('courier.nothing_assigned'),
+          'courier.you_are_offline': t('courier.you_are_offline'),
+          'courier.collect_from': t('courier.collect_from'),
+          'courier.deliver_to': t('courier.deliver_to'),
+          'courier.estimate_only': t('courier.estimate_only'),
+          'courier.reporting_pocket': t('courier.reporting_pocket'),
+          'courier.reporting_screen': t('courier.reporting_screen'),
+          'courier.deliveries': t('courier.deliveries'),
+          'courier.fees': t('courier.fees'),
+          'courier.tips': t('courier.tips'),
+        }) }}"></div>
+
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
         {{-- No courier chosen: pick one, since these people are invented. --}}
         <div :if="!loading() && !courierId()">
-          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">Who are you?</h1>
+          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">{{ t('courier.who_are_you') }}</h1>
           <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
             The couriers here are invented, so pick one. A real app would know.
           </p>
@@ -49,7 +73,7 @@ const canonicalPath = '/courier'
           </div>
         </div>
 
-        <p :if="!loading() && courierId() && !view()" class="text-[15px]">No such courier.</p>
+        <p :if="!loading() && courierId() && !view()" class="text-[15px]">{{ t('courier.no_such_courier') }}</p>
 
         {{-- On shift. --}}
         <div :if="view()">
@@ -63,7 +87,7 @@ const canonicalPath = '/courier'
               @click="toggleShift()"
               class="px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
               :style="online() ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-            >{{ online() ? 'On shift' : 'Go online' }}</button>
+            >{{ online() ? say('courier.on_shift', 'On shift') : say('courier.shift_start', 'Go online') }}</button>
           </div>
 
           <p :if="error()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>
@@ -74,7 +98,7 @@ const canonicalPath = '/courier'
             eventually turns off. --}}
           <div class="flex flex-wrap gap-3 items-center p-4 mt-6 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
             <div class="flex-1 min-w-[200px]">
-              <p class="text-[14px] font-medium">{{ sharing() ? 'Sharing your position' : 'Position not shared' }}</p>
+              <p class="text-[14px] font-medium">{{ sharing() ? say('courier.sharing_position', 'Sharing your position') : say('courier.position_private', 'Position not shared') }}</p>
               <p class="mt-1 text-[12px] leading-relaxed" style="color: var(--ink-soft)">{{ trackingNote() }}</p>
             </div>
 
@@ -82,7 +106,7 @@ const canonicalPath = '/courier'
               @click="toggleTracking()"
               class="px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
               :style="sharing() ? 'background: var(--accent-soft); color: var(--accent)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-            >{{ sharing() ? 'Stop sharing' : 'Share position' }}</button>
+            >{{ sharing() ? say('courier.stop_sharing', 'Stop sharing') : say('courier.share_position', 'Share position') }}</button>
           </div>
 
           <a :href="'/earnings?party=courier:' + courierId()" class="grid grid-cols-3 gap-3 mt-8 transition-transform duration-500 hover:-translate-y-0.5">
@@ -96,7 +120,7 @@ const canonicalPath = '/courier'
           <div :if="view().current" class="p-1.5 mt-8 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
             <div class="p-6 rounded-[calc(1.75rem-0.375rem)]">
               <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--accent)">
-                {{ view().current.type === 'pickup' ? 'Collect the order' : 'Deliver the order' }}
+                {{ view().current.type === 'pickup' ? say('courier.collect_order', 'Collect the order') : say('courier.deliver_order', 'Deliver the order') }}
               </p>
               <p class="mt-2 text-[20px] font-semibold tracking-[-0.02em]">
                 {{ view().current.type === 'pickup' ? view().current.businessName : view().current.recipientName }}
@@ -117,36 +141,36 @@ const canonicalPath = '/courier'
                   rel="noopener"
                   class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500"
                   style="border: 1px solid var(--line)"
-                >Navigate</a>
+                >{{ t('courier.navigate') }}</a>
 
                 <button
                   :if="view().current.status === 'pending'"
                   @click="advance(view().current.stopId, 'start')"
                   class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
                   style="background: var(--ink); color: var(--paper)"
-                >On my way</button>
+                >{{ t('courier.on_my_way') }}</button>
 
                 <button
                   :if="view().current.status !== 'pending'"
                   @click="advance(view().current.stopId, 'complete')"
                   class="flex justify-center items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
                   style="background: var(--accent); color: #fff"
-                >{{ view().current.type === 'pickup' ? 'Picked it up' : 'Handed it over' }}</button>
+                >{{ view().current.type === 'pickup' ? say('courier.picked_it_up', 'Picked it up') : say('courier.handed_it_over', 'Handed it over') }}</button>
               </div>
             </div>
           </div>
 
           <div :if="!view().current" class="p-8 mt-8 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
             <p class="text-[15px]" style="color: var(--ink-soft)">
-              {{ online() ? 'Nothing assigned. Waiting for a job.' : 'You are offline.' }}
+              {{ online() ? say('courier.nothing_assigned', 'Nothing assigned. Waiting for a job.') : say('courier.you_are_offline', 'You are offline.') }}
             </p>
           </div>
 
           <section :if="view().remaining.length > 0" class="mt-8">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Then</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('courier.then') }}</h2>
             <ul class="mt-3 space-y-2 text-[14px]">
               <li :for="stop in view().remaining" class="flex gap-4 justify-between">
-                <span>{{ stop.type === 'pickup' ? 'Collect from' : 'Deliver to' }} {{ stop.address }}</span>
+                <span>{{ stop.type === 'pickup' ? say('courier.collect_from', 'Collect from') : say('courier.deliver_to', 'Deliver to') }} {{ stop.address }}</span>
                 <span :if="stop.distanceMeters !== null" class="tabular-nums shrink-0" style="color: var(--ink-soft)">{{ km(stop.distanceMeters) }}</span>
               </li>
             </ul>
@@ -158,6 +182,18 @@ const canonicalPath = '/courier'
     <script client>
       import { startTracking } from '../functions/courier-tracking'
       import { money, send } from '../functions/session'
+
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const courierId = state(0)
       const roster = state([])
@@ -172,11 +208,11 @@ const canonicalPath = '/courier'
 
       const trackingNote = derived(() => {
         if (!sharing())
-          return 'The customer sees an estimate, not a courier, until you turn this on.'
+          return say('courier.estimate_only', 'The customer sees an estimate, not a courier, until you turn this on.')
 
         return nativeTracking()
-          ? 'Reporting, and it keeps reporting with the phone in your pocket.'
-          : 'Reporting while this screen is open. The app keeps going in your pocket; a browser does not.'
+          ? say('courier.reporting_pocket', 'Reporting, and it keeps reporting with the phone in your pocket.')
+          : say('courier.reporting_screen', 'Reporting while this screen is open. The app keeps going in your pocket; a browser does not.')
       })
 
       let tracker = null
@@ -207,9 +243,9 @@ const canonicalPath = '/courier'
           return []
 
         return [
-          { label: 'Deliveries', value: String(current.earnings.deliveries) },
-          { label: 'Fees', value: money(current.earnings.feeCents) },
-          { label: 'Tips', value: money(current.earnings.tipCents) },
+          { label: say('courier.deliveries', 'Deliveries'), value: String(current.earnings.deliveries) },
+          { label: say('courier.fees', 'Fees'), value: money(current.earnings.feeCents) },
+          { label: say('courier.tips', 'Tips'), value: money(current.earnings.tipCents) },
         ]
       })
 

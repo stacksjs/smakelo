@@ -10,8 +10,8 @@
  *
  * Reached as `/manage?business=<slug>`.
  */
-const pageTitle = 'Manage - Smakelo'
-const pageDescription = 'Your menu, your hours.'
+const pageTitle = t('meta.manage_title')
+const pageDescription = t('meta.manage_description')
 const canonicalPath = '/manage'
 </script>
 
@@ -26,9 +26,20 @@ const canonicalPath = '/manage'
 
     <main class="mx-auto px-4 sm:px-8 max-w-5xl" data-stx-content>
       <div class="pt-10 pb-24 sm:pb-40">
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">Loading…</p>
+        {{-- What this page's own script writes, already translated. --}}
+        <div hidden data-i18n-strings="{{ JSON.stringify({
+          'common.save': t('common.save'),
+          'common.saved': t('common.saved'),
+          'business.open': t('business.open'),
+          'business.closed': t('business.closed'),
+          'order.delivery': t('order.delivery'),
+          'order.pickup': t('order.pickup'),
+          'order.dine_in': t('order.dine_in'),
+        }) }}"></div>
 
-        <p :if="!loading() && !slug()" class="text-[15px]">Add ?business=&lt;slug&gt; to manage a business.</p>
+        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
+
+        <p :if="!loading() && !slug()" class="text-[15px]">{{ t('manage.needs_slug') }}</p>
 
         <p :if="!loading() && slug() && !view()" class="text-[15px]">
           Nothing to manage there. Only the partner businesses have a menu.
@@ -38,21 +49,21 @@ const canonicalPath = '/manage'
           <div class="flex flex-wrap gap-4 justify-between items-baseline">
             <div>
               <p class="text-[13px]" style="color: var(--ink-soft)">{{ view().business.name }}</p>
-              <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">Manage</h1>
+              <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('manage.title') }}</h1>
             </div>
 
             <div class="flex flex-wrap gap-2 text-[13px]">
               <a :href="'/kitchen?business=' + view().business.slug" class="px-4 py-2 rounded-full transition-all duration-500" style="background: var(--ink); color: var(--paper)">
                 Orders{{ view().counts.openOrders > 0 ? ' (' + view().counts.openOrders + ')' : '' }}
               </a>
-              <a :href="'/codes/' + view().business.slug" class="px-4 py-2 rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Table codes</a>
-              <a :href="'/earnings?party=business:' + view().business.id" class="px-4 py-2 rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">Earnings</a>
+              <a :href="'/codes/' + view().business.slug" class="px-4 py-2 rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('manage.table_codes') }}</a>
+              <a :href="'/earnings?party=business:' + view().business.id" class="px-4 py-2 rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('earnings.title') }}</a>
             </div>
           </div>
 
           <section class="mt-10">
             <div class="flex flex-wrap gap-4 justify-between items-baseline">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Menu</h2>
+              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('business.menu') }}</h2>
               <p :if="view().counts.unavailable > 0" class="text-[13px]" style="color: var(--accent)">{{ view().counts.unavailable }} off the menu</p>
             </div>
 
@@ -78,7 +89,7 @@ const canonicalPath = '/manage'
                   </label>
 
                   <button @click="savePrice(item)" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">
-                    {{ savedId() === item.id ? 'Saved' : 'Save' }}
+                    {{ savedId() === item.id ? say('common.saved', 'Saved') : say('common.save', 'Save') }}
                   </button>
 
                   <button
@@ -94,7 +105,7 @@ const canonicalPath = '/manage'
           </section>
 
           <section class="mt-12">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Hours</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('business.hours') }}</h2>
 
             <div class="mt-4 space-y-2">
               <div :for="hour in view().hours" class="flex flex-wrap gap-3 items-center p-4 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
@@ -108,7 +119,7 @@ const canonicalPath = '/manage'
                   class="px-3 py-1.5 text-[14px] rounded-full"
                   style="background: var(--paper); border: 1px solid var(--line)"
                 >
-                <span class="text-[13px]" style="color: var(--ink-soft)">to</span>
+                <span class="text-[13px]" style="color: var(--ink-soft)">{{ t('manage.hours_to') }}</span>
                 <input
                   type="time"
                   :value="clock(hour.closesAt)"
@@ -122,10 +133,10 @@ const canonicalPath = '/manage'
                   @click="setClosed(hour, !hour.isClosed)"
                   class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
                   :style="hour.isClosed ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-                >{{ hour.isClosed ? 'Closed' : 'Open' }}</button>
+                >{{ hour.isClosed ? say('business.closed', 'Closed') : say('business.open', 'Open') }}</button>
 
                 <button @click="saveHours(hour)" class="px-4 py-2 ml-auto text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">
-                  {{ savedDay() === hour.dayOfWeek ? 'Saved' : 'Save' }}
+                  {{ savedDay() === hour.dayOfWeek ? say('common.saved', 'Saved') : say('common.save', 'Save') }}
                 </button>
 
                 <p :if="hourError() && erroredDay() === hour.dayOfWeek" class="w-full text-[13px]" style="color: var(--accent)">{{ hourError() }}</p>
@@ -134,7 +145,7 @@ const canonicalPath = '/manage'
           </section>
 
           <section class="mt-12">
-            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">How people can order</h2>
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('manage.how_people_order') }}</h2>
 
             <div class="flex flex-wrap gap-2 mt-4">
               <button
@@ -153,6 +164,18 @@ const canonicalPath = '/manage'
 
     <script client>
       import { send } from '../functions/session'
+
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
 
       const slug = state('')
       const view = state(null)
@@ -179,9 +202,9 @@ const canonicalPath = '/manage'
           return []
 
         return [
-          { key: 'delivery', label: 'Delivery', on: current.business.offersDelivery },
-          { key: 'pickup', label: 'Pickup', on: current.business.offersPickup },
-          { key: 'dineIn', label: 'Dine in', on: current.business.offersDineIn },
+          { key: 'delivery', label: say('order.delivery', 'Delivery'), on: current.business.offersDelivery },
+          { key: 'pickup', label: say('order.pickup', 'Pickup'), on: current.business.offersPickup },
+          { key: 'dineIn', label: say('order.dine_in', 'Dine in'), on: current.business.offersDineIn },
         ]
       })
 

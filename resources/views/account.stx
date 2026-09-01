@@ -11,8 +11,8 @@
  * account should not have to guess which page to be on, and the difference
  * between the two forms is one field.
  */
-const pageTitle = 'Account - Smakelo'
-const pageDescription = 'Sign in to keep your saved places across devices.'
+const pageTitle = t('meta.account_title')
+const pageDescription = t('meta.account_description')
 const canonicalPath = '/account'
 </script>
 
@@ -26,6 +26,29 @@ const canonicalPath = '/account'
     @include('chrome')
 
     <main class="mx-auto px-4 sm:px-8 max-w-lg" data-stx-content>
+      {{-- What this page's own script writes, already translated. --}}
+      <div hidden data-i18n-strings="{{ JSON.stringify({
+        'account.title': t('account.title'),
+        'account.make_account': t('account.make_account'),
+        'account.sign_in': t('account.sign_in'),
+        'account.one_moment': t('account.one_moment'),
+        'account.make_the_account': t('account.make_the_account'),
+        'account.already_have': t('account.already_have'),
+        'account.no_account_yet': t('account.no_account_yet'),
+        'account.make_one': t('account.make_one'),
+        'account.continue_google': t('account.continue_google'),
+        'account.continue_apple': t('account.continue_apple'),
+        'account.did_not_work': t('account.did_not_work'),
+        'account.carries_none': t('account.carries_none'),
+        'account.carries_prefix': t('account.carries_prefix'),
+        'account.carry_saved': t('account.carry_saved', { count: '{count}' }),
+        'account.carry_orders_one': t('account.carry_orders_one', { count: '{count}' }),
+        'account.carry_orders_many': t('account.carry_orders_many', { count: '{count}' }),
+        'account.carry_reviews_one': t('account.carry_reviews_one', { count: '{count}' }),
+        'account.carry_reviews_many': t('account.carry_reviews_many', { count: '{count}' }),
+        'account.carry_shares_one': t('account.carry_shares_one', { count: '{count}' }),
+        'account.carry_shares_many': t('account.carry_shares_many', { count: '{count}' }),
+      }) }}"></div>
       <div class="pt-14 pb-24 sm:pb-40">
         {{-- Signed in. --}}
         <div :if="user()">
@@ -33,7 +56,7 @@ const canonicalPath = '/account'
             <span class="cover-mark text-[24px] font-semibold">{{ initials() }}</span>
           </div>
 
-          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">{{ user().name || 'Your account' }}</h1>
+          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">{{ user().name || say('account.title', 'Your account') }}</h1>
           <p class="mt-2 text-[15px]" style="color: var(--ink-soft)">{{ user().email }}</p>
 
           <div class="grid grid-cols-2 gap-3 mt-8 sm:grid-cols-4">
@@ -52,12 +75,12 @@ const canonicalPath = '/account'
         {{-- Signed out. --}}
         <div :if="!user()">
           <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">
-            {{ mode() === 'register' ? 'Make an account' : 'Sign in' }}
+            {{ mode() === 'register' ? say('account.make_account', 'Make an account') : say('account.sign_in', 'Sign in') }}
           </h1>
 
           <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-            You do not need one. Everything works from this browser already{{ carriesLine() }}.
-            An account is how that follows you to another device.
+            {{ t('account.intro_head') }}{{ carriesLine() }}.
+            {{ t('account.intro_tail') }}
           </p>
 
           {{-- Both buttons, always. Which providers a site offers is a fact
@@ -93,18 +116,18 @@ const canonicalPath = '/account'
           </div>
 
           <p :if="providers().some(entry => !entry.configured)" class="mt-3 text-[12px] leading-relaxed" style="color: var(--ink-soft)">
-            The greyed-out ones are waiting on keys. Email works now.
+            {{ t('account.providers_note') }}
           </p>
 
           <div class="flex gap-4 items-center my-8">
             <span class="flex-1 h-px" style="background: var(--line)"></span>
-            <span class="text-[12px]" style="color: var(--ink-soft)">or with an email</span>
+            <span class="text-[12px]" style="color: var(--ink-soft)">{{ t('account.or_with_email') }}</span>
             <span class="flex-1 h-px" style="background: var(--line)"></span>
           </div>
 
           <div class="mt-6 space-y-3">
             <label :if="mode() === 'register'" class="block">
-              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">Your name</span>
+              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">{{ t('account.your_name') }}</span>
               <input
                 :value="name()"
                 @input="name.set($event.target.value)"
@@ -115,7 +138,7 @@ const canonicalPath = '/account'
             </label>
 
             <label class="block">
-              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">Email</span>
+              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">{{ t('account.email') }}</span>
               <input
                 type="email"
                 autocomplete="email"
@@ -128,7 +151,7 @@ const canonicalPath = '/account'
             </label>
 
             <label class="block">
-              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">Password</span>
+              <span class="text-[12px] font-medium" style="color: var(--ink-soft)">{{ t('account.password') }}</span>
               <input
                 type="password"
                 :autocomplete="mode() === 'register' ? 'new-password' : 'current-password'"
@@ -148,19 +171,19 @@ const canonicalPath = '/account'
             class="flex gap-3 justify-center items-center px-5 py-3.5 mt-6 w-full text-[15px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99]"
             style="background: var(--ink); color: var(--paper)"
           >
-            {{ busy() ? 'One moment…' : (mode() === 'register' ? 'Make the account' : 'Sign in') }}
+            {{ busy() ? say('account.one_moment', 'One moment…') : (mode() === 'register' ? say('account.make_the_account', 'Make the account') : say('account.sign_in', 'Sign in')) }}
           </button>
 
           <p class="mt-5 text-[14px] text-center" style="color: var(--ink-soft)">
-            {{ mode() === 'register' ? 'Already have one?' : 'No account yet?' }}
+            {{ mode() === 'register' ? say('account.already_have', 'Already have one?') : say('account.no_account_yet', 'No account yet?') }}
             <button @click="toggleMode()" class="underline underline-offset-4" style="color: var(--ink)">
-              {{ mode() === 'register' ? 'Sign in' : 'Make one' }}
+              {{ mode() === 'register' ? say('account.sign_in', 'Sign in') : say('account.make_one', 'Make one') }}
             </button>
           </p>
 
           <p class="mt-8 text-[12px] leading-relaxed" style="color: var(--ink-soft)">
-            By continuing you agree to the <a href="/terms" class="underline underline-offset-4">terms</a>
-            and the <a href="/privacy" class="underline underline-offset-4">privacy policy</a>.
+            {{ t('account.agree_prefix') }} <a href="/terms" class="underline underline-offset-4">{{ t('account.terms') }}</a>
+            {{ t('account.agree_middle') }} <a href="/privacy" class="underline underline-offset-4">{{ t('account.privacy') }}</a>{{ t('account.agree_suffix') }}
           </p>
         </div>
       </div>
@@ -169,13 +192,25 @@ const canonicalPath = '/account'
     <script client>
       import { authToken, clearAuthToken, send, setAuthToken, visitorToken } from '../functions/session'
 
+      /*
+       * The words this script writes, in the language the server served.
+       *
+       * The English text is the second argument rather than a fallback to the
+       * key, so a string no holder carries reads as English rather than as its
+       * own name. The page's holder is in the markup above; the shared bundle
+       * is in partials/head.stx.
+       */
+      function say(key, english) {
+        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
+
       const user = state(null)
       /* Seeded rather than empty, so the two buttons are on the page at first
          paint instead of appearing a round trip later. The fetch below only
          corrects which of them can actually be completed. */
       const providers = state([
-        { name: 'google', label: 'Continue with Google', icon: 'i-hugeicons-google', configured: false },
-        { name: 'apple', label: 'Continue with Apple', icon: 'i-hugeicons-apple', configured: false },
+        { name: 'google', label: say('account.continue_google', 'Continue with Google'), icon: 'i-hugeicons-google', configured: false },
+        { name: 'apple', label: say('account.continue_apple', 'Continue with Apple'), icon: 'i-hugeicons-apple', configured: false },
       ])
       const carries = state({ saved: 0, orders: 0, reviews: 0, shares: 0 })
       const mode = state('login')
@@ -213,27 +248,35 @@ const canonicalPath = '/account'
         const total = carries().saved + carries().orders + carries().reviews + carries().shares
 
         if (total === 0)
-          return ', though there is nothing saved here yet'
+          return say('account.carries_none', ', though there is nothing saved here yet')
 
-        // Counted properly: "1 reviews" is the tell of a number pushed through
-        // a template that never looked at it.
-        const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
+        /*
+         * Counted properly: "1 reviews" is the tell of a number pushed through
+         * a template that never looked at it. The singular and the plural are
+         * separate keys rather than an English rule applied to three
+         * languages, because "1 Bewertung" and "2 Bewertungen" do not differ
+         * by an s the way the English pair happens to.
+         */
+        const plural = (count, key, english) => say(
+          `account.${key}_${count === 1 ? 'one' : 'many'}`,
+          `{count} ${count === 1 ? english[0] : english[1]}`,
+        ).replace('{count}', count)
 
         const parts = []
 
         if (carries().saved > 0)
-          parts.push(`${carries().saved} saved`)
+          parts.push(say('account.carry_saved', '{count} saved').replace('{count}', carries().saved))
 
         if (carries().orders > 0)
-          parts.push(plural(carries().orders, 'order', 'orders'))
+          parts.push(plural(carries().orders, 'carry_orders', ['order', 'orders']))
 
         if (carries().reviews > 0)
-          parts.push(plural(carries().reviews, 'review', 'reviews'))
+          parts.push(plural(carries().reviews, 'carry_reviews', ['review', 'reviews']))
 
         if (carries().shares > 0)
-          parts.push(plural(carries().shares, 'share', 'shares'))
+          parts.push(plural(carries().shares, 'carry_shares', ['share', 'shares']))
 
-        return `, with ${parts.join(', ')}`
+        return `${say('account.carries_prefix', ', with')} ${parts.join(', ')}`
       })
 
       function toggleMode() {
@@ -280,7 +323,7 @@ const canonicalPath = '/account'
         busy.set(false)
 
         if (!response.ok) {
-          error.set(payload.message || 'That did not work.')
+          error.set(payload.message || say('account.did_not_work', 'That did not work.'))
           return
         }
 

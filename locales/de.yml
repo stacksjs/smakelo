@@ -70,7 +70,7 @@ business:
   hours_unknown: Öffnungszeiten nicht hinterlegt
   listing_only: Nur gelistet, nimmt keine Bestellungen
   photo_credit: Eintrag aus OpenStreetMap
-
+  save_name: "{name} merken"
 home:
   title: Finde die guten Orte in deiner Nähe.
   lede: Restaurants, Cafés, Bäckereien und Höfe. Lies, was Leute wirklich gesagt haben, und bestelle dann bei denen, die liefern.
@@ -144,6 +144,8 @@ discover:
   highest_price: Höchste Preisstufe
   order_results: Ergebnisse sortieren
   attribution: Kartenkacheln von CARTO, Daten von OpenStreetMap-Mitwirkenden.
+  popup_order: Bestellen oder Bewertungen lesen
+  popup_details: Details ansehen
 place:
   not_found: Nicht gefunden
   not_found_body: Dieser Ort ist nicht gelistet.
@@ -165,7 +167,16 @@ place:
   your_review: Deine Bewertung
   how_to_get: So bekommst du es
   back_to_discover: Zurück zum Entdecken
-
+  form_name: Dein Name
+  form_reply_to: Wohin wir antworten
+  form_what_happens: Was soll geschehen?
+  form_address: Lieferadresse
+  joined_head: "Du bist dabei. Erste Kiste am {date}. Verwalten kannst du das unter"
+  joined_tail: Wir schreiben dir am Tag vor jeder Kiste.
+  your_shares: deinen Anteilen
+  cadence_weekly: Jede Woche
+  cadence_biweekly: Alle zwei Wochen
+  cadence_monthly: Einmal im Monat
 meta:
   home_title: Smakelo - finde die guten Orte in deiner Nähe
   home_description: "Restaurants, Cafés, Bäckereien und Höfe rund um {region}. Lies die Bewertungen und bestelle dann Lieferung, Abholung oder eine wöchentliche Gemüsekiste."
@@ -175,7 +186,30 @@ meta:
   saved_description: Orte, die du dir gemerkt hast.
   orders_title: Deine Bestellungen - Smakelo
   orders_description: Alles, was du aus diesem Browser bestellt hast.
-
+  claims_title: Ansprüche - Smakelo
+  claims_description: Menschen, die nach ihrem eigenen Eintrag fragen.
+  partner_title: Für Betriebe - Smakelo
+  partner_description: Was ein Betrieb von Smakelo bekommt und was noch gebaut wird.
+  kitchen_title: Bestellungen - Smakelo
+  kitchen_description: Das Küchenboard.
+  manage_title: Verwalten - Smakelo
+  manage_description: Deine Speisekarte, deine Öffnungszeiten.
+  courier_title: Kurier - Smakelo
+  courier_description: Lieferungen, eine nach der anderen.
+  earnings_title: Einnahmen - Smakelo
+  earnings_description: Was jede Bestellung eingebracht hat, und wem.
+  admin_title: Betrieb - Smakelo
+  admin_description: Prüfungen und Pflege der Einträge.
+  shares_title: Anteile - Smakelo
+  shares_description: Deine Hofanteile.
+  tab_title: Dein Tisch - Smakelo
+  tab_description: Vom Tisch aus bestellen.
+  account_title: Konto - Smakelo
+  account_description: Melde dich an, damit deine gemerkten Orte auf allen Geräten bleiben.
+  checkout_title: Bestellen - Smakelo
+  checkout_description: Bei einem Smakelo-Partner bestellen.
+  track_title: Verfolgen - Smakelo
+  track_description: Wo deine Bestellung ist.
 order:
   add_to_cart: Hinzufügen
   cart: Warenkorb
@@ -203,7 +237,7 @@ status:
   delivered: Geliefert
   cancelled: Storniert
   ready_for_pickup: Zur Abholung bereit
-
+  shipped: Übergeben
 tracking:
   title: Wo deine Bestellung ist
   eta: 'Ankunft in etwa {minutes} Min.'
@@ -211,7 +245,16 @@ tracking:
   courier_nearby: Dein Kurier ist gleich da
   picked_up: Im Restaurant abgeholt
   contact_courier: Kurier kontaktieren
-
+  looking: Bestellung wird gesucht…
+  not_found: Zu diesem Code gibt es keine Bestellung.
+  arriving: Ankunft
+  courier: Kurier
+  to: An
+  total: Gesamt
+  your_address: Deine Adresse
+  about_minutes: "etwa {minutes} Min."
+  no_code_prefix: Kein Verfolgungscode. Gib zuerst eine Bestellung über
+  no_code_suffix: auf.
 review:
   write: Bewertung schreiben
   rating: Deine Bewertung
@@ -221,7 +264,12 @@ review:
   helpful: Hilfreich
   owner_response: Antwort des Betriebs
   verified: Bestellung bestätigt
-
+  untitled: Ohne Titel
+  helpful_yours: Du fandest das hilfreich
+  helpful_count: "{count} fanden das hilfreich"
+  title_placeholder: In einem Satz
+  body_placeholder: Wie war es?
+  dishes_placeholder: Was du bestellt hast (optional)
 saved:
   title: Gemerkt
   lede: In diesem Browser gespeichert. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste - und wer die Websitedaten löscht, löscht sie mit.
@@ -259,7 +307,29 @@ partner:
   earnings: Einnahmen
   payouts: Auszahlungen
   onboarding: Zahlungen einrichten
-
+  built: Fertig
+  see_it: Ansehen
+  menu_title: Speisekarte
+  menu_body: Abschnitte, Gerichte und Optionsgruppen, die genau die Fragen stellen, die eine Bestellung wirklich beantwortet braucht. Im Datenmodell und auf der Kundenseite bereits vorhanden.
+  hours_title: Speisekarte und Öffnungszeiten
+  hours_body: Nimm ein Gericht heraus, wenn es aus ist, und es ist nicht mehr bestellbar - nicht nur ausgeblendet. Ändere die heutigen Zeiten, ohne die Woche anzufassen.
+  board_title: Bestellboard
+  board_body: Eingehende Bestellungen in der Reihenfolge ihres Eintreffens, älteste zuerst, mit ausgeschriebenen Optionen für die Küche und einem Hinweis, wenn eine schon wartet.
+  tables_title: Tische und Codes
+  tables_body: Ein Code pro Tisch, der die Speisekarte öffnet, eine Rechnung eröffnet und Runden aufnimmt, bis jemand die Rechnung verlangt. Druckbar.
+  couriers_title: Kuriere
+  couriers_body: Kuriere der Plattform oder dein eigenes Personal. Live-Standort, Ankunft und Übergabe.
+  reviews_title: Bewertungen
+  reviews_body: "Bewertungen, als Verteilung statt als ein Durchschnitt, und eine Antwort pro Bewertung. Bewertet werden können nur die erfundenen Partner: die hier gelisteten echten Orte haben nichts zugestimmt, also veröffentlicht niemand Meinungen unter ihrem Namen."
+  ops_title: Betrieb
+  ops_body: "Ob diese Seite ihre eigenen Zusagen noch einhält, geprüft an der Datenbank statt an dem Code, der sie durchsetzen soll: Sandbox-Zahlungen, keine Bewertungen bei echten Betrieben, keine Bestellungen bei ihnen, keine gespeicherten Kontaktdaten, noindex, robots.txt. Dazu das Ausblenden eines Eintrags, das ihn aus Suche, Karte, seiner Seite und dem Bestellen entfernt."
+  claims_title: Ansprüche
+  claims_body: Wenn du einen der gelisteten Orte führst und lieber nicht hier stehen möchtest, sagt das Formular das als Erstes. An den Betrieb geht keine E-Mail, und ein Anspruch wird von einem Menschen gelesen.
+  payouts_title: Auszahlungen
+  payouts_body: "Jede Bestellung hält fest, wem was zusteht: das Essen dir, die Liefergebühr und das gesamte Trinkgeld dem Kurier, die Servicegebühr der Plattform. Die Abrechnung summiert diese Zeilen, und eine Auszahlung schreibt eine eigene Zeile, statt eine Zahl zurückzusetzen."
+  headline: Die Betriebsseite, ehrlich gesagt.
+  intro: Keine Einrichtungsgebühr, kein monatlicher Mindestumsatz, und du behältst deine eigenen Preise. Speisekarte, Öffnungszeiten, Bestellungen, Tische und Auszahlungen liegen an einer Stelle, und du kannst dir unten jeden Bildschirm ansehen, bevor du dich entscheidest.
+  claim_note: "Wenn du einen der hier gelisteten Orte führst und das lieber nicht möchtest, ist das ein vernünftiger Wunsch. Der Eintrag stammt aus OpenStreetMap und Foursquare Open Source Places; öffne ihn, wähle \"Das ist mein Betrieb\" und sag Bescheid - er verschwindet noch am selben Tag."
 courier:
   shift_start: Online gehen
   shift_end: Offline gehen
@@ -271,7 +341,29 @@ courier:
   picked_up: Abgeholt
   delivered: Geliefert
   earnings: Einnahmen
-
+  who_are_you: Wer bist du?
+  no_such_courier: Diesen Kurier gibt es nicht.
+  on_shift: Im Dienst
+  sharing_position: Standort wird geteilt
+  position_private: Standort nicht geteilt
+  stop_sharing: Nicht mehr teilen
+  share_position: Standort teilen
+  collect_order: Bestellung abholen
+  deliver_order: Bestellung ausliefern
+  on_my_way: Ich bin unterwegs
+  picked_it_up: Abgeholt
+  handed_it_over: Übergeben
+  nothing_assigned: Nichts zugewiesen. Warte auf einen Auftrag.
+  you_are_offline: Du bist offline.
+  then: Danach
+  collect_from: Abholen bei
+  deliver_to: Liefern an
+  estimate_only: Bis du das einschaltest, sieht die Kundschaft eine Schätzung statt eines Kuriers.
+  reporting_pocket: Wird gesendet, auch mit dem Handy in der Tasche.
+  reporting_screen: Wird gesendet, solange dieser Bildschirm offen ist. Die App macht in der Tasche weiter, ein Browser nicht.
+  deliveries: Lieferungen
+  fees: Gebühren
+  tips: Trinkgeld
 footer:
   tagline: 'Restaurants, Cafés und Höfe in {regions}.'
   browse: Stöbern
@@ -296,3 +388,167 @@ common:
   loading: Lädt
   retry: Erneut versuchen
   error: Etwas ist schiefgelaufen.
+  saved: Gespeichert
+claims:
+  title: Ansprüche
+  waiting: Offen
+  nothing_waiting: Nichts offen.
+  said_nothing: Mehr wurde nicht gesagt.
+  approve: Annehmen
+  reject: Ablehnen
+  decided: Entschieden
+  lede: Die Einträge stammen aus offenen Daten, deshalb schreiben die meisten, weil sie herauswollen. Das ist ein vernünftiger Wunsch, und er steht hier an erster Stelle.
+kitchen:
+  loading_board: Board wird geladen…
+  needs_slug: Hänge ?business=<slug> an, um ein Board zu sehen.
+  no_board: Für diesen Betrieb gibt es kein Board.
+  orders: Bestellungen
+  orders_word: Bestellungen
+  gross: brutto
+  yours: für dich
+  cooking_now: Wird gerade gekocht
+  nothing_waiting: Nichts offen.
+  waiting_handover: Wartet auf Übergabe
+  cancel: Stornieren
+  done: Fertig
+  start_cooking: Zubereitung starten
+  ready: Fertig
+  table: Tisch
+  reviews_waiting: Bewertungen, die auf Antwort warten
+  all_answered: Alles ist beantwortet.
+  untitled: Ohne Titel
+  reply_placeholder: Als Betrieb antworten
+  reply: Antworten
+
+manage:
+  title: Verwalten
+  needs_slug: Hänge ?business=<slug> an, um einen Betrieb zu verwalten.
+  table_codes: Tischcodes
+  hours_to: bis
+  how_people_order: Wie bestellt werden kann
+
+admin:
+  title: Betrieb
+  guards: Prüfungen
+  all_holding: Alles hält
+  something_wrong: Etwas stimmt nicht
+  checking: Wird geprüft…
+  listings: Einträge
+  find_listing: Eintrag suchen
+  hidden: Ausgeblendet
+  put_back: Wieder einblenden
+  take_down: Ausblenden
+  lede: Ob diese Seite ihre eigenen Zusagen noch einhält, geprüft an der Datenbank statt an dem Code, der sie durchsetzen soll.
+shares:
+  title: Anteile
+  none: Du hast keine Anteile.
+  see_farms: Sieh, was die Höfe anbieten
+  paused_until: Pausiert bis
+  next_box: Nächste Kiste
+  delivered: Geliefert
+  collected: Abholung am Hof
+  start_again: Wieder starten
+  pause: Pausieren
+  leave: Anteil beenden
+  ended: Beendet
+  lede: "Ein Anteil ist ein Anspruch auf die Saison, keine Bestellung. Pausiere ihn, wenn du weg bist: eine Kiste, die niemand abholt, hilft keinem von beiden."
+  boxes_so_far: "{count} Kisten bisher"
+  pause_until: Pausieren bis
+earnings:
+  title: Einnahmen
+  balances: Salden
+  all_balances: Alle Salden
+  where_from: Woher es kam
+  every_row: Jede Zeile
+  nothing_yet: Noch nichts.
+  no_statement: Für diese Partei gibt es keine Abrechnung.
+  food_and_drink: Speisen und Getränke
+  delivery: Lieferung
+  tips: Trinkgeld
+  sales_tax: Umsatzsteuer
+  tax_inside: Im Preis enthaltene Steuer
+  service_fee: Servicegebühr
+  paid_out: Ausgezahlt
+  owed_to: Betrieben und Kurieren geschuldet
+  kept_by_platform: Bei der Plattform verblieben
+  sales_tax_held: Einbehaltene Umsatzsteuer
+  earned: Verdient
+  outstanding: Offen
+  pay_out: Auszahlen
+
+tab:
+  finding_table: Dein Tisch wird gesucht…
+  scan_to_start: Scanne den Code auf deinem Tisch, um zu starten.
+  code_no_match: Zu diesem Code gibt es keinen Tisch.
+  order_more: Mehr bestellen
+  see_menu: Speisekarte ansehen
+  your_tab: Deine Rechnung
+  tab_total: Rechnungssumme
+  ask_for_bill: Rechnung verlangen
+  split_evenly: Gleichmäßig teilen
+  pay_for_mine: Ich zahle, was ich hatte
+  the_bill: Die Rechnung
+  split_ways: Geteilt durch
+  each_round: Jede Runde geht auf den, der sie bestellt hat
+  person: Person
+  round: Runde
+  total: Gesamt
+  test_mode: Testmodus. Es wurde nichts abgebucht.
+
+account:
+  title: Dein Konto
+  make_account: Konto erstellen
+  sign_in: Anmelden
+  or_with_email: oder mit einer E-Mail
+  your_name: Dein Name
+  email: E-Mail
+  password: Passwort
+  one_moment: Einen Moment…
+  make_the_account: Konto anlegen
+  already_have: Schon eins?
+  no_account_yet: Noch kein Konto?
+  make_one: Eins anlegen
+  terms: Nutzungsbedingungen
+  privacy: Datenschutzerklärung
+  continue_google: Weiter mit Google
+  continue_apple: Weiter mit Apple
+  did_not_work: Das hat nicht geklappt.
+  agree_prefix: Mit dem Fortfahren stimmst du den
+  agree_middle: und der
+  agree_suffix: " zu."
+  intro_head: Du brauchst keins. Aus diesem Browser funktioniert schon alles
+  intro_tail: Ein Konto ist der Weg, das auf ein anderes Gerät mitzunehmen.
+  carries_none: , hier ist allerdings noch nichts gespeichert
+  carries_prefix: , mit
+  carry_saved: "{count} gemerkt"
+  carry_orders_one: "{count} Bestellung"
+  carry_orders_many: "{count} Bestellungen"
+  carry_reviews_one: "{count} Bewertung"
+  carry_reviews_many: "{count} Bewertungen"
+  carry_shares_one: "{count} Anteil"
+  carry_shares_many: "{count} Anteile"
+  providers_note: Die ausgegrauten warten noch auf Schlüssel. E-Mail funktioniert jetzt schon.
+checkout:
+  loading_menu: Speisekarte wird geladen…
+  unavailable: Diese Speisekarte ist nicht verfügbar.
+  order_placed: Bestellung aufgegeben
+  setting_up: Zahlung wird vorbereitet…
+  payment: Zahlung
+  track_it: Verfolgen
+  order: Bestellung
+  deliver_to: Liefern an
+  street_number: Straße und Hausnummer
+  label_it: Benennen (Zuhause, Arbeit)
+  save_it: Speichern
+  your_order: Deine Bestellung
+  nothing_yet: Noch nichts.
+  remove: Entfernen
+  service: Service
+  test_mode: Testmodus. Es wird keine Karte belastet.
+  home: Zuhause
+  none: Kein
+  could_not_place: Diese Bestellung konnte nicht aufgegeben werden.
+  talking_to_stripe: Verbindung zu Stripe…
+  paid_test_mode: Bezahlt, im Testmodus. Es floss kein Geld.
+  pick_a_place_prefix: Wähle zuerst einen Ort über
+  pick_a_place_suffix: aus.
