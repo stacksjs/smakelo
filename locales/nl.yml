@@ -1,3 +1,13 @@
+# De interface, in het Nederlands.
+#
+# Vertaald wordt de interface. De vermeldingen, menukaarten, beschrijvingen en
+# reviews niet: dat is inhoud, in de taal van de zaak zelf, en een machinaal
+# vertaalde menukaart beweert dingen over een keuken die niemand daar gezegd
+# heeft.
+#
+# Ontbreekt hier een sleutel, dan valt hij terug op het Engels uit en.yml.
+# `buddy lang:check` zegt welke dat zijn.
+
 nav:
   discover: Ontdekken
   orders: Bestellingen
@@ -9,7 +19,7 @@ nav:
   shares: Aandelen
 
 search:
-  placeholder: Zoek een zaak of gerecht
+  placeholder: Taco's, flat white, een groentepakket
   near_me: Bij mij in de buurt
   open_now: Nu open
   filters: Filters
@@ -22,6 +32,23 @@ search:
   sort_name: A tot Z
   all_types: Alles
   nearby: In de buurt
+  label: Waar ben je naar op zoek?
+  submit: Zoeken
+
+types:
+  restaurant: Restaurants
+  cafe: Koffie
+  farm: Boerderijen
+  bakery: Bakkers
+  bar: Cafés
+  grocery: Winkels
+
+region:
+  label: Waar
+  switch: Ergens anders
+  los-angeles: Los Angeles
+  wuppertal: Wuppertal
+  gescher: Gescher
 
 business:
   menu: Menu
@@ -40,6 +67,114 @@ business:
   rating_count: '{count} reviews'
   price_tier: Prijs
   no_reviews: Nog geen reviews.
+  hours_unknown: Openingstijden niet bekend
+  listing_only: Alleen vermeld, neemt geen bestellingen
+  photo_credit: Vermelding uit OpenStreetMap
+
+home:
+  title: Vind de goede plekken bij jou in de buurt.
+  lede: Restaurants, koffiezaken, bakkers en boerderijen. Lees wat mensen er echt van vonden, en bestel dan bij de zaken die bezorgen.
+  stat_listed: zaken vermeld
+  stat_open: nu open
+  stat_orders: nemen bestellingen
+  browse_lead: Bladeren
+  browse_rest: per soort
+  open_lead: Nu
+  open_rest: open
+  see_all: 'Alle {count} bekijken'
+  orders_lead: Neemt
+  orders_rest: bestellingen
+  browse_everything: Alles bekijken
+  farms_lead: Rechtstreeks
+  farms_rest: van de boerderij
+  farms_body: Een wekelijks pakket van een teler in de buurt. De meeste liggen een uur verderop in plaats van om de hoek, daarom staat er bij elk hoe ver het kwam.
+  farms_cta: Boerderijen bekijken
+  how_lead: Hoe
+  how_rest: het werkt
+  how_find_title: Iets vinden
+  how_find_body: Filter op keuken, prijs, beoordeling en wat er open is, op een kaart van de hele omgeving.
+  how_reviews_title: Lees de reviews
+  how_reviews_body: Wat mensen over het eten zeiden, met hun foto's en de gerechten die ze noemden.
+  how_order_title: Bestel bij de zaken die bezorgen
+  how_order_body: '{count} daarvan nemen bestellingen aan - bezorgen, afhalen of een tafel. Over de rest kun je hier lezen.'
+  subscribe_title: Hoor het wanneer een zaak bij jou in de buurt gaat bezorgen.
+  subscribe_body: '{count} van deze zaken nemen vandaag bestellingen aan. Gaat er nog een van start, dan hoor je het zo.'
+  subscribe_label: E-mailadres
+  subscribe_button: Houd me op de hoogte
+  subscribe_busy: Momentje…
+  subscribe_done: Die staat op de lijst. Er komt verder niets.
+  subscribe_note: Eén adres, één doel. Je kunt altijd weg.
+  subscribe_bad_email: Dat lijkt geen e-mailadres.
+  subscribe_failed: Dat is niet verstuurd. Probeer het zo nog eens.
+
+discover:
+  results: Resultaten
+  result: Resultaat
+  map_lead: Kaart
+  map_rest: weergave
+  category: Categorie
+  cuisine: Keuken
+  price_lead: Prijs
+  price_rest: klasse
+  rating_lead: Beoor
+  rating_rest: deling
+  any_price: Elke prijs
+  average: Gemiddeld
+  more_filters: Meer filters
+  fewer_filters: Minder filters
+  follow_map: Zoeken terwijl ik de kaart verschuif
+  no_matches: Daar past niets bij. Probeer minder woorden.
+  show_closed: "{count} meer zijn nu gesloten — toon ze toch"
+  stat_places: zaken
+  stat_open: nu open
+  stat_orders: nemen bestellingen
+  fulfilment_label: Hoe je het wilt
+  fulfilment_any: Maakt niet uit
+  when_label: Wanneer
+  when_today: Vandaag · zo snel mogelijk
+  when_later: Elk moment
+  opens_in: "Opent over {minutes} min."
+  closing_in: "Sluit over {minutes} min."
+  clear_search: Zoekopdracht wissen
+  show_map: Kaart tonen
+  fullscreen: Kaart op volle grootte
+  zoom_in: Inzoomen
+  zoom_out: Uitzoomen
+  centre_on_me: Op mij centreren
+  highest_price: Hoogste prijsklasse
+  order_results: Resultaten sorteren
+  attribution: Kaarttegels van CARTO, gegevens van OpenStreetMap-bijdragers.
+place:
+  not_found: Niet gevonden
+  not_found_body: Die zaak staat niet in de lijst.
+  open_now: Nu open
+  closed_now: Nu gesloten
+  closed_opens_in: "Gesloten, opent over {minutes} min."
+  open_closing_in: "Open, sluit over {minutes} min."
+  hours_range: "{open} tot {close}"
+  fulfilment_delivery: "Bezorging, ongeveer {minutes} min. bereiden"
+  fulfilment_pickup: Afhalen
+  fulfilment_dine_in: Ter plaatse, bestel vanaf de tafel
+  fulfilment_shop: Wekelijkse pakketten en hofwaren
+  no_menu: Nog geen menu
+  order: Bestellen
+  claim_mine: Dit is mijn zaak
+  take_share: Neem een aandeel
+  join: Meedoen
+  no_reviews_yet: Niemand heeft er nog een geschreven.
+  your_review: Jouw review
+  how_to_get: Hoe je het krijgt
+  back_to_discover: Terug naar ontdekken
+
+meta:
+  home_title: Smakelo - vind de goede plekken bij jou in de buurt
+  home_description: "Restaurants, koffiezaken, bakkers en boerderijen rond {region}. Lees de reviews en bestel dan bezorging, afhalen of een wekelijks groentepakket."
+  discover_title: Ontdekken - Smakelo
+  discover_description: "Doorzoek elk restaurant, elke koffiezaak, bakker en boerderij die we rond {region} vermelden - op keuken, prijs, beoordeling en wat er nu open is."
+  saved_title: Bewaard - Smakelo
+  saved_description: Plekken die je hebt bewaard.
+  orders_title: Je bestellingen - Smakelo
+  orders_description: Alles wat je vanuit deze browser hebt besteld.
 
 order:
   add_to_cart: Toevoegen
@@ -87,6 +222,24 @@ review:
   owner_response: Reactie van de zaak
   verified: Bestelling bevestigd
 
+saved:
+  title: Bewaard
+  lede: Bewaard in deze browser. Er zijn hier geen accounts, dus een andere browser is een andere lijst - en wie zijn sitegegevens wist, wist hem mee.
+  empty: Nog niets bewaard.
+  empty_cta: Iets zoeken
+  remove: Verwijderen
+  listing_only: Alleen vermeld
+
+orders:
+  title: Je bestellingen
+  lede: Alles wat je vanuit deze browser hebt besteld.
+  empty: Nog geen bestellingen.
+  empty_cta: Een zaak zoeken om te bestellen
+  track: Volgen
+  reorder: Opnieuw bestellen
+  ordered_nothing: Je hebt nog niets besteld.
+  write_review: Review schrijven
+
 table:
   scan_prompt: Scan voor het menu
   tab_open: Je rekening
@@ -118,6 +271,22 @@ courier:
   picked_up: Opgehaald
   delivered: Bezorgd
   earnings: Inkomsten
+
+footer:
+  tagline: 'Restaurants, koffiezaken en boerderijen in {regions}.'
+  browse: Bladeren
+  for_business: Voor zaken
+  about: Over
+  list_your_place: Je zaak aanmelden
+  manage_place: Een zaak beheren
+  kitchen_screen: Keukenscherm
+  courier: Koerier
+  earnings: Inkomsten
+  claim_listing: Vermelding claimen
+  built_on: Gebouwd op Stacks
+  map_data: Kaartgegevens
+  sources: Vermeldingen uit OpenStreetMap en Foursquare Open Source Places. Reviews, bestellingen en accounts zijn verzonnen.
+  language: Taal
 
 common:
   back: Terug

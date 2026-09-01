@@ -17,7 +17,7 @@ const canonicalPath = '/account'
 </script>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ locale }}">
   <head>
     @include('head')
   </head>

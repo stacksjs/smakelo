@@ -1,3 +1,13 @@
+# Die Oberfläche, auf Deutsch.
+#
+# Übersetzt wird die Oberfläche. Die Einträge, Speisekarten, Beschreibungen und
+# Bewertungen nicht: das sind Inhalte in der Sprache des Betriebs, und eine
+# maschinell übersetzte Speisekarte behauptet Dinge über eine Küche, die keiner
+# dort gesagt hat.
+#
+# Fehlt hier ein Schlüssel, greift der englische Text aus en.yml.
+# `buddy lang:check` sagt, welche das sind.
+
 nav:
   discover: Entdecken
   orders: Bestellungen
@@ -9,7 +19,7 @@ nav:
   shares: Anteile
 
 search:
-  placeholder: Nach einem Ort oder Gericht suchen
+  placeholder: Tacos, Flat White, eine Gemüsekiste
   near_me: In meiner Nähe
   open_now: Jetzt geöffnet
   filters: Filter
@@ -22,6 +32,23 @@ search:
   sort_name: A bis Z
   all_types: Alle
   nearby: In der Nähe
+  label: Wonach suchst du?
+  submit: Suchen
+
+types:
+  restaurant: Restaurants
+  cafe: Cafés
+  farm: Höfe
+  bakery: Bäckereien
+  bar: Kneipen
+  grocery: Läden
+
+region:
+  label: Wo
+  switch: Woanders
+  los-angeles: Los Angeles
+  wuppertal: Wuppertal
+  gescher: Gescher
 
 business:
   menu: Speisekarte
@@ -40,6 +67,114 @@ business:
   rating_count: '{count} Bewertungen'
   price_tier: Preis
   no_reviews: Noch keine Bewertungen.
+  hours_unknown: Öffnungszeiten nicht hinterlegt
+  listing_only: Nur gelistet, nimmt keine Bestellungen
+  photo_credit: Eintrag aus OpenStreetMap
+
+home:
+  title: Finde die guten Orte in deiner Nähe.
+  lede: Restaurants, Cafés, Bäckereien und Höfe. Lies, was Leute wirklich gesagt haben, und bestelle dann bei denen, die liefern.
+  stat_listed: Orte gelistet
+  stat_open: gerade geöffnet
+  stat_orders: nehmen Bestellungen
+  browse_lead: Nach
+  browse_rest: Art stöbern
+  open_lead: Jetzt
+  open_rest: geöffnet
+  see_all: 'Alle {count} ansehen'
+  orders_lead: Nimmt
+  orders_rest: Bestellungen
+  browse_everything: Alles durchsehen
+  farms_lead: Direkt
+  farms_rest: vom Hof
+  farms_body: Eine wöchentliche Kiste von einem Hof in der Nähe. Die meisten liegen eine Stunde außerhalb statt um die Ecke, deshalb steht bei jedem, wie weit es war.
+  farms_cta: Höfe ansehen
+  how_lead: So
+  how_rest: funktioniert es
+  how_find_title: Etwas finden
+  how_find_body: Filtere nach Küche, Preis, Bewertung und was gerade offen ist, auf einer Karte der ganzen Gegend.
+  how_reviews_title: Bewertungen lesen
+  how_reviews_body: Was Leute über das Essen gesagt haben, mit ihren Fotos und den Gerichten, die sie genannt haben.
+  how_order_title: Bei denen bestellen, die liefern
+  how_order_body: '{count} davon nehmen Bestellungen an - Lieferung, Abholung oder Tisch. Über den Rest kann man hier lesen.'
+  subscribe_title: Erfahre, wenn ein Ort in deiner Nähe zu liefern anfängt.
+  subscribe_body: '{count} dieser Orte nehmen heute Bestellungen an. Wenn einer der anderen dazukommt, erfährst du es so.'
+  subscribe_label: E-Mail-Adresse
+  subscribe_button: Sag mir Bescheid
+  subscribe_busy: Einen Moment…
+  subscribe_done: Steht auf der Liste. Mehr kommt nicht.
+  subscribe_note: Eine Adresse, ein Zweck. Jederzeit abbestellbar.
+  subscribe_bad_email: Das sieht nicht nach einer E-Mail-Adresse aus.
+  subscribe_failed: Das ging nicht raus. Versuch es gleich noch einmal.
+
+discover:
+  results: Ergebnisse
+  result: Ergebnis
+  map_lead: Karten
+  map_rest: ansicht
+  category: Kategorie
+  cuisine: Küche
+  price_lead: Preis
+  price_rest: spanne
+  rating_lead: Bewer
+  rating_rest: tung
+  any_price: Jeder Preis
+  average: Durchschnitt
+  more_filters: Mehr Filter
+  fewer_filters: Weniger Filter
+  follow_map: Suchen, während ich die Karte bewege
+  no_matches: Dazu passt nichts. Versuch es mit weniger Wörtern.
+  show_closed: "{count} weitere sind gerade geschlossen — trotzdem zeigen"
+  stat_places: Orte
+  stat_open: jetzt geöffnet
+  stat_orders: nehmen Bestellungen
+  fulfilment_label: Wie du es möchtest
+  fulfilment_any: Egal wie
+  when_label: Wann
+  when_today: Heute · sofort
+  when_later: Zu jeder Zeit
+  opens_in: "Öffnet in {minutes} Min."
+  closing_in: "Schließt in {minutes} Min."
+  clear_search: Suche leeren
+  show_map: Karte anzeigen
+  fullscreen: Karte auf volle Größe
+  zoom_in: Hineinzoomen
+  zoom_out: Herauszoomen
+  centre_on_me: Auf mich zentrieren
+  highest_price: Höchste Preisstufe
+  order_results: Ergebnisse sortieren
+  attribution: Kartenkacheln von CARTO, Daten von OpenStreetMap-Mitwirkenden.
+place:
+  not_found: Nicht gefunden
+  not_found_body: Dieser Ort ist nicht gelistet.
+  open_now: Jetzt geöffnet
+  closed_now: Gerade geschlossen
+  closed_opens_in: "Geschlossen, öffnet in {minutes} Min."
+  open_closing_in: "Geöffnet, schließt in {minutes} Min."
+  hours_range: "{open} bis {close}"
+  fulfilment_delivery: "Lieferung, etwa {minutes} Min. Zubereitung"
+  fulfilment_pickup: Abholung
+  fulfilment_dine_in: Vor Ort, Bestellung vom Tisch
+  fulfilment_shop: Wöchentliche Kisten und Hofware
+  no_menu: Noch keine Speisekarte
+  order: Bestellen
+  claim_mine: Das ist mein Betrieb
+  take_share: Anteil nehmen
+  join: Beitreten
+  no_reviews_yet: Hat noch niemand geschrieben.
+  your_review: Deine Bewertung
+  how_to_get: So bekommst du es
+  back_to_discover: Zurück zum Entdecken
+
+meta:
+  home_title: Smakelo - finde die guten Orte in deiner Nähe
+  home_description: "Restaurants, Cafés, Bäckereien und Höfe rund um {region}. Lies die Bewertungen und bestelle dann Lieferung, Abholung oder eine wöchentliche Gemüsekiste."
+  discover_title: Entdecken - Smakelo
+  discover_description: "Durchsuche jedes Restaurant, Café, jede Bäckerei und jeden Hof, den wir rund um {region} listen - nach Küche, Preis, Bewertung und was gerade offen ist."
+  saved_title: Gemerkt - Smakelo
+  saved_description: Orte, die du dir gemerkt hast.
+  orders_title: Deine Bestellungen - Smakelo
+  orders_description: Alles, was du aus diesem Browser bestellt hast.
 
 order:
   add_to_cart: Hinzufügen
@@ -87,6 +222,24 @@ review:
   owner_response: Antwort des Betriebs
   verified: Bestellung bestätigt
 
+saved:
+  title: Gemerkt
+  lede: In diesem Browser gespeichert. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste - und wer die Websitedaten löscht, löscht sie mit.
+  empty: Noch nichts gemerkt.
+  empty_cta: Etwas finden
+  remove: Entfernen
+  listing_only: Nur gelistet
+
+orders:
+  title: Deine Bestellungen
+  lede: Alles, was du aus diesem Browser bestellt hast.
+  empty: Noch keine Bestellungen.
+  empty_cta: Einen Ort zum Bestellen finden
+  track: Verfolgen
+  reorder: Nochmal bestellen
+  ordered_nothing: Du hast noch nichts bestellt.
+  write_review: Bewertung schreiben
+
 table:
   scan_prompt: Scannen für die Speisekarte
   tab_open: Deine Rechnung
@@ -118,6 +271,22 @@ courier:
   picked_up: Abgeholt
   delivered: Geliefert
   earnings: Einnahmen
+
+footer:
+  tagline: 'Restaurants, Cafés und Höfe in {regions}.'
+  browse: Stöbern
+  for_business: Für Betriebe
+  about: Über
+  list_your_place: Betrieb eintragen
+  manage_place: Betrieb verwalten
+  kitchen_screen: Küchenansicht
+  courier: Kurier
+  earnings: Einnahmen
+  claim_listing: Eintrag beanspruchen
+  built_on: Gebaut mit Stacks
+  map_data: Kartendaten
+  sources: Einträge aus OpenStreetMap und Foursquare Open Source Places. Bewertungen, Bestellungen und Konten sind erfunden.
+  language: Sprache
 
 common:
   back: Zurück

@@ -220,10 +220,6 @@ export const tsCloud: TsCloudConfig = {
         'bun node_modules/@stacksjs/buddy/dist/cli.js migrate:fresh --force',
         'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo',
         'bun node_modules/@stacksjs/buddy/dist/cli.js build:places',
-        // The interface reads its German and Dutch from public/locales/*.json,
-        // compiled from locales/*.yml. Without this step the switcher fetches
-        // a 404 and every page silently stays English.
-        'bun node_modules/@stacksjs/buddy/dist/cli.js build:locales',
         // The production server serves what the build produced, so a page added
         // without this simply 404s. It runs after build:places because that is
         // what writes the per-business views the build then compiles.

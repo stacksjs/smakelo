@@ -14,37 +14,38 @@
  * runs.
  */
 import { searchBusinesses } from '../../app/Actions/Business/search'
+import { REGIONS, resolveRegion } from '../../app/Actions/Business/regions'
 
-// Named rather than pluralised by rule: "Coffee" reads better than "Cafes",
-// and appending an s produces "Bakerys".
+/*
+ * A type, in the language being served.
+ *
+ * Named per type rather than pluralised by rule: "Coffee" reads better than
+ * "Cafes" in English, and a rule that appends an s produces "Bakerys" in
+ * English and nonsense in German. A missing key falls through to the type
+ * itself, capitalised, which is a poor label and a legible one.
+ */
 function typeLabel(type: string): string {
-  if (type === 'restaurant')
-    return 'Restaurants'
-  if (type === 'cafe')
-    return 'Coffee'
-  if (type === 'farm')
-    return 'Farms'
-  if (type === 'bakery')
-    return 'Bakeries'
-  if (type === 'grocery')
-    return 'Grocers'
-  if (type === 'bar')
-    return 'Bars'
+  const translated = t(`types.${type}`)
 
-  return `${type.charAt(0).toUpperCase()}${type.slice(1)}`
+  return translated === `types.${type}`
+    ? `${type.charAt(0).toUpperCase()}${type.slice(1)}`
+    : translated
 }
 
-const pageTitle = 'Smakelo - find the good places near you'
-const pageDescription = 'Find restaurants, coffee shops, bakeries and farms across Los Angeles. Read the reviews, then order delivery, pickup or a weekly farm box.'
+/*
+ * Where this page is about.
+ *
+ * `?region=` if somebody asked for one, otherwise the region that matches the
+ * language being served - German pages open on Wuppertal, English on Los
+ * Angeles. See app/Actions/Business/regions.ts.
+ */
+const region = resolveRegion(query?.region, locale)
+const regions = REGIONS
+
+const pageTitle = t('meta.home_title')
+const pageDescription = t('meta.home_description', { region: region.name })
 const canonicalPath = '/'
 
-// Santa Monica, where the seeded data is densest.
-const CENTRE = { latitude: 34.0195, longitude: -118.4912 }
-
-// Wide enough to include the farms. They are real growers in Ojai, Moorpark
-// and Tehachapi rather than anything in the city, so a tidy city-sized radius
-// would drop the entire farm side of the app off its own home page. Distance is
-// shown per card, so a box coming from an hour away says so.
 /*
  * One query, sliced two ways.
  *
@@ -54,9 +55,9 @@ const CENTRE = { latitude: 34.0195, longitude: -118.4912 }
  * alike. So the count and the cards come from one call rather than two.
  */
 const everything = await searchBusinesses({
-  latitude: CENTRE.latitude,
-  longitude: CENTRE.longitude,
-  radiusMeters: 200000,
+  latitude: region.latitude,
+  longitude: region.longitude,
+  radiusMeters: region.radiusMeters,
   sort: 'distance',
   limit: 400,
 })
@@ -146,7 +147,7 @@ function typeIcon(type) {
 </script>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ locale }}">
   <head>
     @include('head')
   </head>
@@ -164,29 +165,26 @@ function typeIcon(type) {
       <section class="pt-10 pb-12 sm:pt-16 sm:pb-16">
         <span class="inline-flex gap-1.5 items-center px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
           <i class="w-3 h-3 i-hugeicons-location-01"></i>
-          Los Angeles
+          {{ region.name }}
         </span>
 
         <h1 class="mt-5 text-[clamp(2.25rem,6vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-balance max-w-3xl">
-          Find the good places near you.
+          {{ t('home.title') }}
         </h1>
 
         <p class="mt-4 max-w-xl text-[clamp(0.95rem,2.2vw,1.0625rem)] leading-relaxed" style="color: var(--ink-soft)">
-          Restaurants, coffee shops, bakeries and farms across Santa Monica,
-          Venice and the rest of the city. Read what people actually said, then
-          order from the ones that deliver.
+          {{ t('home.lede') }}
         </p>
 
         <form action="/discover" method="get" class="p-1.5 mt-8 max-w-2xl rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 24px 48px -24px rgba(20,17,15,0.16)">
           <div class="flex flex-col gap-2 items-stretch sm:flex-row sm:items-center">
             <label class="flex relative flex-1 items-center min-w-0">
               <i class="absolute left-5 w-5 h-5 i-hugeicons-search-01" style="color: var(--ink-soft)"></i>
-              <span class="sr-only">What are you looking for?</span>
+              <span class="sr-only">{{ t('search.label') }}</span>
               <input
                 type="search"
                 name="q"
-                data-i18n-placeholder="search.placeholder"
-                placeholder="Tacos, oat flat white, a farm box"
+                placeholder="{{ t('search.placeholder') }}"
                 class="py-4 pr-4 pl-14 w-full text-[16px] rounded-full outline-none"
                 style="background: transparent"
               >
@@ -197,7 +195,7 @@ function typeIcon(type) {
               class="px-7 py-4 text-[15px] font-medium whitespace-nowrap rounded-full transition-all duration-500 hover:-translate-y-px active:scale-[0.99]"
               style="background: var(--ink); color: var(--paper)"
             >
-              Search
+              {{ t('search.submit') }}
             </button>
           </div>
         </form>
@@ -206,17 +204,17 @@ function typeIcon(type) {
           <p class="inline-flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
             <span class="inline-flex justify-center items-center w-7 h-7 rounded-[9px]" style="background: var(--info-soft); color: var(--info)"><i class="w-3.5 h-3.5 i-hugeicons-store-01"></i></span>
             <strong class="text-[20px] font-semibold" style="color: var(--ink)">{{ total }}</strong>
-            places listed
+            {{ t('home.stat_listed') }}
           </p>
           <p class="inline-flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
             <span class="inline-flex justify-center items-center w-7 h-7 rounded-[9px]" style="background: var(--mint); color: var(--mint-ink)"><i class="w-3.5 h-3.5 i-hugeicons-flash"></i></span>
             <strong class="text-[20px] font-semibold" style="color: var(--ink)">{{ openNow.length }}</strong>
-            open right now
+            {{ t('home.stat_open') }}
           </p>
           <p class="inline-flex gap-2 items-center text-[13px]" style="color: var(--ink-soft)">
             <span class="inline-flex justify-center items-center w-7 h-7 rounded-[9px]" style="background: var(--accent-soft); color: var(--accent)"><i class="w-3.5 h-3.5 i-hugeicons-delivery-truck-01"></i></span>
             <strong class="text-[20px] font-semibold" style="color: var(--ink)">{{ partners.length }}</strong>
-            take orders
+            {{ t('home.stat_orders') }}
           </p>
         </div>
       </section>
@@ -225,7 +223,7 @@ function typeIcon(type) {
         category is the cheapest way to find "coffee" without reading, and each
         one is a link into /discover already filtered. --}}
       <section class="pb-14">
-        <h2 class="rail-head text-[20px]"><i class="i-hugeicons-dish-01"></i>Browse <span>by kind</span></h2>
+        <h2 class="rail-head text-[20px]"><i class="i-hugeicons-dish-01"></i>{{ t('home.browse_lead') }} <span>{{ t('home.browse_rest') }}</span></h2>
 
         <div class="grid grid-cols-2 gap-3 mt-5 sm:grid-cols-3 lg:grid-cols-6">
           @foreach (categories as category)
@@ -246,8 +244,8 @@ function typeIcon(type) {
         it goes first. --}}
       <section class="pb-14">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-5">
-          <h2 class="rail-head text-[20px]"><i class="i-hugeicons-flash"></i>Open <span>right now</span></h2>
-          <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">See all {{ total }}</a>
+          <h2 class="rail-head text-[20px]"><i class="i-hugeicons-flash"></i>{{ t('home.open_lead') }} <span>{{ t('home.open_rest') }}</span></h2>
+          <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">{{ t('home.see_all', { count: total }) }}</a>
         </div>
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -263,7 +261,7 @@ function typeIcon(type) {
                 <span class="cover-scrim"></span>
                 <span class="absolute top-3 left-3 inline-flex gap-1.5 items-center px-2.5 py-1 text-[11px] font-medium rounded-full backdrop-blur-sm" style="background: rgba(255,255,255,0.92); color: #14713f">
                   <span class="w-1.5 h-1.5 rounded-full" style="background: #14713f"></span>
-                  Open
+                  {{ t('business.open') }}
                 </span>
               </div>
 
@@ -290,8 +288,8 @@ function typeIcon(type) {
         one listing at a time. --}}
       <section class="pb-14">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-5">
-          <h2 class="rail-head text-[20px]"><i class="i-hugeicons-delivery-truck-01"></i>Taking <span>orders</span></h2>
-          <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">Browse everything</a>
+          <h2 class="rail-head text-[20px]"><i class="i-hugeicons-delivery-truck-01"></i>{{ t('home.orders_lead') }} <span>{{ t('home.orders_rest') }}</span></h2>
+          <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">{{ t('home.browse_everything') }}</a>
         </div>
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -307,7 +305,7 @@ function typeIcon(type) {
                 <span class="cover-scrim"></span>
                 <span class="absolute top-3 right-3 inline-flex gap-1 items-center px-2.5 py-1 text-[11px] font-medium rounded-full" style="background: var(--accent); color: #fff">
                   <i class="w-3 h-3 i-hugeicons-delivery-truck-01"></i>
-                  Orders
+                  {{ t('nav.orders') }}
                 </span>
               </div>
 
@@ -340,15 +338,13 @@ function typeIcon(type) {
         <div class="overflow-hidden p-6 rounded-[2rem] sm:p-10" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -28px rgba(20,17,15,0.16)">
           <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-center">
             <div>
-              <h2 class="rail-head text-[clamp(1.35rem,3vw,1.75rem)]"><i class="i-hugeicons-leaf-01"></i>Straight <span>from the farm</span></h2>
+              <h2 class="rail-head text-[clamp(1.35rem,3vw,1.75rem)]"><i class="i-hugeicons-leaf-01"></i>{{ t('home.farms_lead') }} <span>{{ t('home.farms_rest') }}</span></h2>
               <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-                A weekly box from a grower in Ojai, Moorpark or Tehachapi. They
-                are an hour out of the city rather than round the corner, which
-                is why each one tells you how far it came.
+                {{ t('home.farms_body') }}
               </p>
               <a href="/discover?type=farm" class="inline-flex gap-2 items-center px-5 py-3 mt-6 text-[14px] font-medium rounded-full transition-all duration-500 hover:-translate-y-px" style="background: var(--ink); color: var(--paper)">
                 <i class="w-4 h-4 i-hugeicons-plant-01"></i>
-                See the farms
+                {{ t('home.farms_cta') }}
               </a>
             </div>
 
@@ -377,17 +373,16 @@ function typeIcon(type) {
         the part somebody reads only if the rows above have not already
         answered it. --}}
       <section class="pb-16">
-        <h2 class="rail-head text-[20px]"><i class="i-hugeicons-help-circle"></i>How <span>it works</span></h2>
+        <h2 class="rail-head text-[20px]"><i class="i-hugeicons-help-circle"></i>{{ t('home.how_lead') }} <span>{{ t('home.how_rest') }}</span></h2>
 
         <div class="grid grid-cols-1 gap-5 mt-5 sm:grid-cols-3">
           <div class="p-6 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04)">
             <span class="inline-flex justify-center items-center w-10 h-10 rounded-[14px]" style="background: var(--accent-soft); color: var(--accent)">
               <i class="w-5 h-5 i-hugeicons-search-01"></i>
             </span>
-            <h3 class="mt-4 text-[16px] font-semibold">Find somewhere</h3>
+            <h3 class="mt-4 text-[16px] font-semibold">{{ t('home.how_find_title') }}</h3>
             <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-              Filter by cuisine, price, rating and what is open, on a map of
-              the whole city.
+              {{ t('home.how_find_body') }}
             </p>
           </div>
 
@@ -395,10 +390,9 @@ function typeIcon(type) {
             <span class="inline-flex justify-center items-center w-10 h-10 rounded-[14px]" style="background: var(--mint); color: var(--mint-ink)">
               <i class="w-5 h-5 i-hugeicons-star"></i>
             </span>
-            <h3 class="mt-4 text-[16px] font-semibold">Read the reviews</h3>
+            <h3 class="mt-4 text-[16px] font-semibold">{{ t('home.how_reviews_title') }}</h3>
             <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-              What people said about the food, with the photos they took and
-              the dishes they named.
+              {{ t('home.how_reviews_body') }}
             </p>
           </div>
 
@@ -406,10 +400,9 @@ function typeIcon(type) {
             <span class="inline-flex justify-center items-center w-10 h-10 rounded-[14px]" style="background: var(--accent-soft); color: var(--accent)">
               <i class="w-5 h-5 i-hugeicons-delivery-truck-01"></i>
             </span>
-            <h3 class="mt-4 text-[16px] font-semibold">Order from the ones that deliver</h3>
+            <h3 class="mt-4 text-[16px] font-semibold">{{ t('home.how_order_title') }}</h3>
             <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-              {{ partners.length }} of them take orders for delivery, pickup or
-              a table. The rest are here to be read about.
+              {{ t('home.how_order_body', { count: partners.length }) }}
             </p>
           </div>
         </div>
@@ -430,18 +423,17 @@ function typeIcon(type) {
 
           <div class="relative max-w-xl">
             <h2 class="text-[clamp(1.6rem,3.4vw,2.25rem)] font-semibold leading-[1.1] tracking-[-0.03em] text-balance">
-              Hear when somewhere near you starts delivering.
+              {{ t('home.subscribe_title') }}
             </h2>
 
             <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-              Twelve of these places take orders today. When one of the others
-              does, this is how you find out.
+              {{ t('home.subscribe_body', { count: partners.length }) }}
             </p>
 
             <div :if="!subscribed()" class="flex flex-col gap-2 mt-7 sm:flex-row">
               <label class="flex relative flex-1 items-center">
                 <i class="absolute left-5 w-4 h-4 i-hugeicons-mail-01" style="color: var(--ink-soft)"></i>
-                <span class="sr-only">Email address</span>
+                <span class="sr-only">{{ t('home.subscribe_label') }}</span>
                 <input
                   type="email"
                   autocomplete="email"
@@ -463,7 +455,7 @@ function typeIcon(type) {
                 class="px-7 py-3.5 text-[15px] font-medium whitespace-nowrap rounded-full transition-all duration-500 hover:-translate-y-px active:scale-[0.99] disabled:opacity-60"
                 style="background: var(--ink); color: var(--paper)"
               >
-                {{ subscribeBusy() ? 'One moment…' : 'Keep me posted' }}
+                {{ subscribeBusy() ? subscribeBusyLabel() : subscribeLabel() }}
               </button>
             </div>
 
@@ -471,13 +463,13 @@ function typeIcon(type) {
               second chance to submit an address that is already taken. --}}
             <p :if="subscribed()" class="inline-flex gap-2 items-center px-4 py-3 mt-7 text-[15px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">
               <i class="w-4 h-4 i-hugeicons-checkmark-circle-02"></i>
-              That is on the list. Nothing else will arrive.
+              {{ t('home.subscribe_done') }}
             </p>
 
             <p :if="subscribeError()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ subscribeError() }}</p>
 
             <p class="mt-4 text-[12px]" style="color: var(--ink-soft)">
-              One address, one purpose. Leave any time.
+              {{ t('home.subscribe_note') }}
             </p>
           </div>
         </div>
@@ -500,6 +492,19 @@ function typeIcon(type) {
       const subscribeError = state('')
       const subscribed = state(false)
 
+      /*
+       * The strings this script writes, in the language the server served.
+       *
+       * Held as signals rather than as plain constants because a template
+       * binding reads signals, and the button label has to change when
+       * `subscribeBusy` does. The English text is passed as the fallback, so a
+       * key the head partial has not been told about renders in English rather
+       * than as its own name. See partials/head.stx.
+       */
+      const say = (key, english) => (window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english)
+      const subscribeLabel = state(say('home.subscribe_button', 'Keep me posted'))
+      const subscribeBusyLabel = state(say('home.subscribe_busy', 'One moment…'))
+
       async function sendSubscribe() {
         const address = subscribeEmail().trim()
 
@@ -509,7 +514,7 @@ function typeIcon(type) {
            client trying to match it exactly would drift out of step and start
            rejecting addresses the server would have taken. */
         if (!/^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(address)) {
-          subscribeError.set('That does not look like an email address.')
+          subscribeError.set(say('home.subscribe_bad_email', 'That does not look like an email address.'))
           return
         }
 
@@ -521,7 +526,7 @@ function typeIcon(type) {
         subscribeBusy.set(false)
 
         if (!answer || !answer.ok) {
-          subscribeError.set('That did not send. Try again in a moment.')
+          subscribeError.set(say('home.subscribe_failed', 'That did not send. Try again in a moment.'))
           return
         }
 

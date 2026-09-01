@@ -22,73 +22,84 @@
         </a>
 
         <p class="mt-3 max-w-[28ch] text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-          Restaurants, coffee shops and farms across Los Angeles.
+          {{ t('footer.tagline', { regions: 'Los Angeles, Wuppertal, Gescher' }) }}
         </p>
       </div>
 
       <div>
-        <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">Browse</h2>
+        <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('footer.browse') }}</h2>
         <ul class="flex flex-col gap-2.5 mt-4 text-[14px]">
-          <li><a href="/discover" data-i18n="nav.discover" class="transition-opacity duration-500 hover:opacity-70">Discover</a></li>
-          <li><a href="/orders" data-i18n="nav.orders" class="transition-opacity duration-500 hover:opacity-70">Orders</a></li>
-          <li><a href="/saved" data-i18n="nav.favorites" class="transition-opacity duration-500 hover:opacity-70">Saved</a></li>
-          <li><a href="/shares" data-i18n="nav.shares" class="transition-opacity duration-500 hover:opacity-70">Shares</a></li>
-          <li><a href="/account" class="transition-opacity duration-500 hover:opacity-70">Account</a></li>
+          <li><a href="/discover" class="transition-opacity duration-500 hover:opacity-70">{{ t('nav.discover') }}</a></li>
+          <li><a href="/orders" class="transition-opacity duration-500 hover:opacity-70">{{ t('nav.orders') }}</a></li>
+          <li><a href="/saved" class="transition-opacity duration-500 hover:opacity-70">{{ t('nav.favorites') }}</a></li>
+          <li><a href="/shares" class="transition-opacity duration-500 hover:opacity-70">{{ t('nav.shares') }}</a></li>
+          <li><a href="/account" class="transition-opacity duration-500 hover:opacity-70">{{ t('nav.account') }}</a></li>
         </ul>
       </div>
 
       <div>
-        <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">For businesses</h2>
+        <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('footer.for_business') }}</h2>
         <ul class="flex flex-col gap-2.5 mt-4 text-[14px]">
-          <li><a href="/partner" data-i18n="nav.partner" class="transition-opacity duration-500 hover:opacity-70">List your place</a></li>
-          <li><a href="/manage" class="transition-opacity duration-500 hover:opacity-70">Manage a place</a></li>
-          <li><a href="/kitchen" class="transition-opacity duration-500 hover:opacity-70">Kitchen screen</a></li>
-          <li><a href="/courier" class="transition-opacity duration-500 hover:opacity-70">Courier</a></li>
-          <li><a href="/earnings" class="transition-opacity duration-500 hover:opacity-70">Earnings</a></li>
+          <li><a href="/partner" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.list_your_place') }}</a></li>
+          <li><a href="/manage" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.manage_place') }}</a></li>
+          <li><a href="/kitchen" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.kitchen_screen') }}</a></li>
+          <li><a href="/courier" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.courier') }}</a></li>
+          <li><a href="/earnings" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.earnings') }}</a></li>
         </ul>
       </div>
 
       <div>
-        <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">About</h2>
+        <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('footer.about') }}</h2>
         <ul class="flex flex-col gap-2.5 mt-4 text-[14px]">
-          <li><a href="/claims" class="transition-opacity duration-500 hover:opacity-70">Claim a listing</a></li>
-          <li><a href="https://github.com/stacksjs/stacks" class="transition-opacity duration-500 hover:opacity-70">Built on Stacks</a></li>
-          <li><a href="https://www.openstreetmap.org/copyright" class="transition-opacity duration-500 hover:opacity-70">Map data</a></li>
+          <li><a href="/claims" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.claim_listing') }}</a></li>
+          <li><a href="https://github.com/stacksjs/stacks" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.built_on') }}</a></li>
+          <li><a href="https://www.openstreetmap.org/copyright" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.map_data') }}</a></li>
         </ul>
       </div>
     </div>
 
     <div class="flex flex-wrap gap-6 justify-between items-center pt-8 mt-12 border-t" style="border-color: var(--line)">
       <p class="max-w-2xl text-[12px] leading-relaxed" style="color: var(--ink-soft)">
-        Listings from OpenStreetMap and Foursquare Open Source Places.
-        Reviews, orders and accounts are invented.
+        {{ t('footer.sources') }}
       </p>
 
       {{-- Three languages, named in their own. A flag would be wrong: German is
-        not Germany, and Dutch is not only the Netherlands. --}}
-      <div class="flex gap-1 items-center text-[12px]" id="lang-switch">
-        <a href="?lang=en" data-lang="en" class="px-3 py-2 rounded-full transition-all duration-500">EN</a>
-        <a href="?lang=de" data-lang="de" class="px-3 py-2 rounded-full transition-all duration-500">DE</a>
-        <a href="?lang=nl" data-lang="nl" class="px-3 py-2 rounded-full transition-all duration-500">NL</a>
-      </div>
+        not Germany, and Dutch is not only the Netherlands.
+
+        Each href is a locale root - `/en/`, `/de/`, `/nl/` - so the switch
+        works with scripting off. English is spelled with its prefix here even
+        though its canonical URLs carry none: the server rewrites in-page links
+        into the locale it is serving, and a bare `/` on a German page would
+        be rewritten to `/de/`, leaving the English option pointing at German.
+
+        The views server finds this element by id (`pickerSelector` in
+        config/site.ts), marks the current language on it, and turns a click
+        into a client-side hop to the unprefixed English URL. Neither half
+        needs the other to be correct. --}}
+      <nav id="lang-switch" aria-label="{{ t('footer.language') }}" class="flex gap-1 items-center text-[12px]">
+        <a href="/en/" data-lang="en" hreflang="en" class="lang-option px-3 py-2 rounded-full transition-all duration-500">EN</a>
+        <a href="/de/" data-lang="de" hreflang="de" class="lang-option px-3 py-2 rounded-full transition-all duration-500">DE</a>
+        <a href="/nl/" data-lang="nl" hreflang="nl" class="lang-option px-3 py-2 rounded-full transition-all duration-500">NL</a>
+      </nav>
     </div>
   </div>
 </footer>
 
-<script>
-  /* Mark the language in use, so the switcher says where you are. */
-  ;(function () {
-    try {
-      const current = (window.Smakelo && window.Smakelo.locale) || 'en'
+<style>
+  /* The current language, marked in CSS rather than by a script.
 
-      for (const link of document.querySelectorAll('#lang-switch [data-lang]')) {
-        const on = link.dataset.lang === current
+     The server sets `aria-current` on the language being served and updates it
+     on a client-side hop, so the state is already in the markup and in the
+     accessibility tree. Styling from the attribute rather than assigning
+     `style.background` from our own script means one source of truth and no
+     flash of the wrong language being highlighted before a script runs. */
+  .lang-option {
+    color: var(--ink-soft);
+    background: transparent;
+  }
 
-        link.style.background = on ? 'var(--ink)' : 'transparent'
-        link.style.color = on ? 'var(--paper)' : 'var(--ink-soft)'
-        link.setAttribute('aria-current', on ? 'true' : 'false')
-      }
-    }
-    catch {}
-  })()
-</script>
+  .lang-option[aria-current='true'] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+</style>

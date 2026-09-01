@@ -11,7 +11,7 @@
     <main class="mx-auto px-4 sm:px-8 max-w-7xl" data-stx-content>
       <a href="/" class="inline-flex gap-2 items-center pt-10 text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">
         <i class="w-3.5 h-3.5 i-hugeicons-arrow-left-01"></i>
-        Back to discover
+        {{ t('place.back_to_discover') }}
       </a>
 
       {{-- The cover band: a photograph of what this kind of kitchen sends
@@ -31,7 +31,7 @@
             </span>
             @if (vm.isPartner)
               <span class="px-3 py-1 text-[10px] font-medium tracking-[0.16em] uppercase rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">
-                Takes orders
+                {{ t('search.takes_orders') }}
               </span>
             @endif
           </div>
@@ -93,9 +93,9 @@
           @if (vm.menu.length > 0)
             <section>
               <div class="flex flex-wrap gap-4 justify-between items-center">
-                <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Menu</h2>
+                <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('business.menu') }}</h2>
                 <a href="/order?business={{ vm.slug }}" class="inline-flex gap-3 items-center px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group" style="background: var(--accent); color: #fff">
-                  <span>Order</span>
+                  <span>{{ t('place.order') }}</span>
                   <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.2)">
                     <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
                   </span>
@@ -127,7 +127,7 @@
               honest version of an absent order button. --}}
             <section class="p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
               <div class="p-8 rounded-[calc(2rem-0.375rem)]">
-                <h2 class="text-[20px] font-semibold tracking-[-0.02em]">No menu here yet</h2>
+                <h2 class="text-[20px] font-semibold tracking-[-0.02em]">{{ t('place.no_menu') }}</h2>
                 <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
                   {{ vm.name }} is listed so people can find it, with its address,
                   hours and neighbourhood. It has not joined Smakelo yet, so there
@@ -139,7 +139,7 @@
                   class="inline-flex gap-3 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
                   style="background: var(--ink); color: var(--paper)"
                 >
-                  <span>This is my business</span>
+                  <span>{{ t('place.claim_mine') }}</span>
                   <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px" style="background: rgba(255,255,255,0.14)">
                     <i class="w-3.5 h-3.5 i-hugeicons-arrow-up-right-01"></i>
                   </span>
@@ -197,7 +197,7 @@
 
           {{-- Farms only, and only when the farm actually runs shares. --}}
           <section :if="plans().length > 0" class="mt-16">
-            <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Take a share</h2>
+            <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('place.take_share') }}</h2>
             <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
               You are buying a share of the season, not a list of vegetables. What
               is in the box is whatever came ready that week, which in a good year
@@ -218,7 +218,7 @@
                     <span class="px-2.5 py-1 text-[11px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">{{ cadence(plan.cadence) }}</span>
                     <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ plan.dayName }}s</span>
                     <span :if="plan.feeds" class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ plan.feeds }}</span>
-                    <button @click="setShare('plan', plan)" class="px-4 py-2 ml-auto text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">Join</button>
+                    <button @click="setShare('plan', plan)" class="px-4 py-2 ml-auto text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">{{ t('place.join') }}</button>
                   </div>
                 </div>
               </div>
@@ -274,7 +274,7 @@
 
           <section class="mt-16">
             <div class="flex flex-wrap gap-4 justify-between items-baseline">
-              <h2 class="text-[28px] font-semibold tracking-[-0.03em]">Reviews</h2>
+              <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('business.reviews') }}</h2>
               <p :if="stats() && stats().count > 0" class="text-[14px]" style="color: var(--ink-soft)">
                 {{ stats().average }} average from {{ stats().count }}
               </p>
@@ -290,7 +290,7 @@
               </div>
             </div>
 
-            <p :if="!loadingReviews() && reviews().length === 0" class="mt-6 text-[15px]" style="color: var(--ink-soft)">Nobody has written one yet.</p>
+            <p :if="!loadingReviews() && reviews().length === 0" class="mt-6 text-[15px]" style="color: var(--ink-soft)">{{ t('place.no_reviews_yet') }}</p>
 
             <div class="mt-6 space-y-4">
               <article :for="review in reviews()" class="p-1.5 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 16px 32px -22px rgba(20,17,15,0.12)">
@@ -320,12 +320,12 @@
                   <p :if="review.dishes" class="mt-3 text-[13px]" style="color: var(--ink-soft)">Ordered: {{ review.dishes }}</p>
 
                   <div :if="review.ownerResponse" class="pl-4 mt-5 border-l" style="border-color: var(--line)">
-                    <p class="text-[12px] font-medium tracking-[0.14em] uppercase" style="color: var(--ink-soft)">Response from the owner</p>
+                    <p class="text-[12px] font-medium tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('review.owner_response') }}</p>
                     <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ review.ownerResponse }}</p>
                   </div>
 
                   <div class="flex gap-4 items-center mt-5">
-                    <span :if="review.mine" class="text-[12px]" style="color: var(--ink-soft)">Your review</span>
+                    <span :if="review.mine" class="text-[12px]" style="color: var(--ink-soft)">{{ t('place.your_review') }}</span>
                     <button
                       :if="!review.mine"
                       @click="vote(review.id)"
@@ -352,7 +352,7 @@
 
             <div :if="canReview() && !wroteOne()" class="p-1.5 mt-10 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
               <div class="p-7 rounded-[calc(1.75rem-0.375rem)]">
-                <h3 class="text-[18px] font-semibold tracking-[-0.02em]">Write a review</h3>
+                <h3 class="text-[18px] font-semibold tracking-[-0.02em]">{{ t('review.write') }}</h3>
                 <p class="mt-2 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
                   Say what it was actually like. Reviews stay up, and the owner
                   can reply to yours underneath it.
@@ -415,7 +415,7 @@
         <aside class="lg:col-span-5">
           <div class="p-1.5 rounded-[2rem] lg:sticky lg:top-24" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
             <div class="p-7 rounded-[calc(2rem-0.375rem)]">
-              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">Hours</h2>
+              <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('business.hours') }}</h2>
 
               <dl class="mt-4 space-y-2 text-[14px]">
                 @foreach (vm.week as day)
@@ -428,7 +428,7 @@
 
               @if (vm.fulfilment.length > 0)
                 <div class="pt-6 mt-6 border-t" style="border-color: var(--line)">
-                  <h3 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">How to get it</h3>
+                  <h3 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('place.how_to_get') }}</h3>
                   <ul class="mt-3 space-y-1.5 text-[14px]" style="color: var(--ink-soft)">
                     @foreach (vm.fulfilment as option)
                       <li>{{ option }}</li>

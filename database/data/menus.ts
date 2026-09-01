@@ -63,7 +63,522 @@ const MILK_GROUP: SeedModifierGroup = {
   ],
 }
 
+
+/*
+ * The German partners.
+ *
+ * Written in German, for the same reason the German descriptions are: a menu
+ * is the kitchen's own words. Prices are in cents, like everything else in the
+ * app, and read as euros because the business belongs to a market whose
+ * currency is the euro - the number here does not know that, and does not need
+ * to.
+ */
+
+/** Sizes, in the words a German counter uses. */
+function groesse(kleinLabel = 'Klein', grossDelta = 80): SeedModifierGroup {
+  return {
+    name: 'Größe',
+    min: 1,
+    max: 1,
+    options: [
+      { name: kleinLabel, isDefault: true },
+      { name: 'Groß', priceDeltaCents: grossDelta },
+    ],
+  }
+}
+
+const MILCH_GROUP: SeedModifierGroup = {
+  name: 'Milch',
+  min: 1,
+  max: 1,
+  options: [
+    { name: 'Vollmilch', isDefault: true },
+    { name: 'Hafer', priceDeltaCents: 70 },
+    { name: 'Soja', priceDeltaCents: 70 },
+    { name: 'Ohne', isDefault: false },
+  ],
+}
+
+const DE_MENUS: Record<string, SeedMenuSection[]> = {
+  'zur-schwebenden-laterne': [
+    {
+      name: 'Vorweg',
+      items: [
+        {
+          name: 'Reibekuchen',
+          description: 'Drei Stück, aus der Pfanne, mit Apfelkompott.',
+          priceCents: 780,
+          allergens: ['gluten', 'egg'],
+          modifierGroups: [
+            {
+              name: 'Dazu',
+              min: 0,
+              max: 2,
+              options: [
+                { name: 'Lachs', priceDeltaCents: 450 },
+                { name: 'Rübenkraut', priceDeltaCents: 0 },
+              ],
+            },
+          ],
+        },
+        { name: 'Bergische Kartoffelsuppe', description: 'Mit Mettwürstchen, oder ohne.', priceCents: 690, allergens: ['celery'] },
+        { name: 'Blutwurst im Netz', description: 'Gebraten, mit Zwiebeln und Apfel.', priceCents: 850 },
+      ],
+    },
+    {
+      name: 'Hauptgerichte',
+      items: [
+        {
+          name: 'Rheinischer Sauerbraten',
+          description: 'Fünf Tage eingelegt. Mit Rosinensoße, Rotkohl und Klößen.',
+          priceCents: 2280,
+          prepMinutes: 25,
+          allergens: ['gluten'],
+          modifierGroups: [
+            {
+              name: 'Beilage',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Kartoffelklöße', isDefault: true },
+                { name: 'Salzkartoffeln' },
+                { name: 'Semmelknödel', priceDeltaCents: 100 },
+              ],
+            },
+          ],
+        },
+        { name: 'Himmel un Ääd', description: 'Kartoffelpüree, Apfelmus, gebratene Blutwurst.', priceCents: 1680, prepMinutes: 20 },
+        { name: 'Wildragout aus dem Bergischen', description: 'Nur von Oktober bis Januar. Mit Preiselbeeren und Spätzle.', priceCents: 2450, prepMinutes: 30, allergens: ['gluten', 'egg'] },
+        { name: 'Gemüseschnitzel', description: 'Aus Sellerie, paniert, mit Kartoffelsalat.', priceCents: 1580, prepMinutes: 18, allergens: ['gluten', 'celery', 'egg'] },
+      ],
+    },
+    {
+      name: 'Nachtisch',
+      items: [
+        { name: 'Waffel mit heißen Kirschen', description: 'Und Sahne, wenn Sie möchten.', priceCents: 720, allergens: ['gluten', 'dairy', 'egg'] },
+        { name: 'Bergischer Milchreis', description: 'Mit Zimt und Zucker.', priceCents: 620, allergens: ['dairy'] },
+      ],
+    },
+  ],
+
+  'ocakbasi-nordstadt': [
+    {
+      name: 'Vom Grill',
+      items: [
+        {
+          name: 'Adana Kebap',
+          description: 'Vom Holzkohlegrill, mit Fladenbrot, Zwiebelsalat und Sumach.',
+          priceCents: 1290,
+          prepMinutes: 15,
+          allergens: ['gluten'],
+          modifierGroups: [
+            {
+              name: 'Schärfe',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Mild', isDefault: true },
+                { name: 'Scharf' },
+                { name: 'Sehr scharf' },
+              ],
+            },
+            {
+              name: 'Dazu',
+              min: 0,
+              max: 3,
+              options: [
+                { name: 'Bulgur', priceDeltaCents: 250 },
+                { name: 'Ayran', priceDeltaCents: 200 },
+                { name: 'Extra Fladenbrot', priceDeltaCents: 150 },
+              ],
+            },
+          ],
+        },
+        { name: 'Beyti Sarma', description: 'Im Fladenbrot gerollt, mit Joghurt und Tomatensoße.', priceCents: 1450, prepMinutes: 18, allergens: ['gluten', 'dairy'] },
+        { name: 'Hähnchenspieß', description: 'Über Nacht mariniert, mit Grillgemüse.', priceCents: 1190, prepMinutes: 15 },
+        { name: 'Sebzeli Şiş', description: 'Nur Gemüse: Aubergine, Paprika, Zwiebel, Champignon.', priceCents: 1050, prepMinutes: 14 },
+      ],
+    },
+    {
+      name: 'Aus dem Steinofen',
+      items: [
+        { name: 'Lahmacun', description: 'Dünn, mit Zitrone und Petersilie zum Rollen.', priceCents: 550, prepMinutes: 8, allergens: ['gluten'] },
+        { name: 'Pide mit Käse', description: 'Kaşar, Ei obendrauf.', priceCents: 890, prepMinutes: 12, allergens: ['gluten', 'dairy', 'egg'] },
+      ],
+    },
+    {
+      name: 'Suppen und Salate',
+      items: [
+        { name: 'Mercimek Çorbası', description: 'Rote Linsensuppe, den ganzen Tag.', priceCents: 490, prepMinutes: 5 },
+        { name: 'Çoban Salatası', description: 'Tomate, Gurke, Zwiebel, Petersilie.', priceCents: 620 },
+      ],
+    },
+    {
+      name: 'Getränke',
+      items: [
+        { name: 'Ayran', description: 'Selbstgemacht, gesalzen.', priceCents: 250 },
+        { name: 'Çay', description: 'Im Gläschen, wie es sich gehört.', priceCents: 190 },
+      ],
+    },
+  ],
+
+  'osteria-wupperbogen': [
+    {
+      name: 'Antipasti',
+      items: [
+        { name: 'Vitello Tonnato', description: 'Dünn geschnitten, Thunfischcreme, Kapern.', priceCents: 1250, allergens: ['fish', 'egg'] },
+        { name: 'Burrata', description: 'Aus Apulien, mit Ofentomaten und Basilikum.', priceCents: 1180, allergens: ['dairy'] },
+        { name: 'Focaccia', description: 'Aus dem Ofen, mit Rosmarin und Olivenöl.', priceCents: 590, allergens: ['gluten'] },
+      ],
+    },
+    {
+      name: 'Pasta',
+      items: [
+        {
+          name: 'Cacio e Pepe',
+          description: 'Tonnarelli, Pecorino, viel Pfeffer. Sonst nichts.',
+          priceCents: 1450,
+          prepMinutes: 14,
+          allergens: ['gluten', 'dairy', 'egg'],
+          modifierGroups: [
+            {
+              name: 'Portion',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Normal', isDefault: true },
+                { name: 'Groß', priceDeltaCents: 400 },
+              ],
+            },
+          ],
+        },
+        { name: 'Ragù alla Bolognese', description: 'Vier Stunden geschmort, mit Tagliatelle.', priceCents: 1620, prepMinutes: 15, allergens: ['gluten', 'egg', 'celery'] },
+        { name: 'Cacciucco-Ravioli', description: 'Gefüllt mit Fisch, in Krustentierfond.', priceCents: 1890, prepMinutes: 16, allergens: ['gluten', 'egg', 'fish', 'crustaceans'] },
+        { name: 'Pasta e Ceci', description: 'Kichererbsen, Rosmarin, gebrochene Maccheroni. Vegan.', priceCents: 1290, prepMinutes: 14, allergens: ['gluten'] },
+      ],
+    },
+    {
+      name: 'Dolci',
+      items: [
+        { name: 'Tiramisù', description: 'Im Glas, am Vortag angesetzt.', priceCents: 680, allergens: ['gluten', 'dairy', 'egg'] },
+        { name: 'Affogato', description: 'Vanilleeis, ein Espresso darüber.', priceCents: 550, allergens: ['dairy'] },
+      ],
+    },
+  ],
+
+  'kaffeehaus-nordbahn': [
+    {
+      name: 'Kaffee',
+      items: [
+        { name: 'Filterkaffee', description: 'Alle zwanzig Minuten frisch.', priceCents: 320, prepMinutes: 2, modifierGroups: [groesse('0,2 l', 70)] },
+        { name: 'Cappuccino', description: 'In der richtigen Tasse.', priceCents: 380, prepMinutes: 3, allergens: ['dairy'], modifierGroups: [MILCH_GROUP] },
+        { name: 'Flat White', description: 'Doppelter Espresso, wenig Milch.', priceCents: 420, prepMinutes: 3, allergens: ['dairy'], modifierGroups: [MILCH_GROUP] },
+        { name: 'Espresso', description: 'Hauseigene Röstung aus Ronsdorf.', priceCents: 250, prepMinutes: 2 },
+      ],
+    },
+    {
+      name: 'Frühstück',
+      items: [
+        {
+          name: 'Frühstücksbrett',
+          description: 'Brot, Käse, Aufschnitt, gekochtes Ei, Marmelade.',
+          priceCents: 1290,
+          prepMinutes: 12,
+          allergens: ['gluten', 'dairy', 'egg'],
+          modifierGroups: [
+            {
+              name: 'Ohne',
+              min: 0,
+              max: 3,
+              options: [
+                { name: 'Aufschnitt' },
+                { name: 'Käse' },
+                { name: 'Ei' },
+              ],
+            },
+          ],
+        },
+        { name: 'Rührei mit Schnittlauch', description: 'Drei Eier, Bauernbrot dazu.', priceCents: 890, prepMinutes: 10, allergens: ['egg', 'gluten'] },
+        { name: 'Porridge', description: 'Mit Apfel und gerösteten Haselnüssen.', priceCents: 720, prepMinutes: 8, allergens: ['nuts'] },
+      ],
+    },
+    {
+      name: 'Kuchen',
+      items: [
+        { name: 'Käsekuchen', description: 'Ohne Boden, wie in der Familie üblich.', priceCents: 420, allergens: ['dairy', 'egg'] },
+        { name: 'Apfelstreusel', description: 'Vom Blech, solange er reicht.', priceCents: 390, allergens: ['gluten', 'dairy'] },
+      ],
+    },
+  ],
+
+  'bergischer-kaffeegarten': [
+    {
+      name: 'Die Kaffeetafel',
+      items: [
+        {
+          name: 'Bergische Kaffeetafel',
+          description: 'Kaffee aus der Dröppelminna, Waffeln mit heißen Kirschen, Brot, Aufschnitt, Käse, Quark, Rosinenstuten. Pro Person, ab zwei Personen.',
+          priceCents: 2450,
+          prepMinutes: 25,
+          allergens: ['gluten', 'dairy', 'egg'],
+          modifierGroups: [
+            {
+              name: 'Personen',
+              min: 1,
+              max: 1,
+              options: [
+                { name: '2 Personen', isDefault: true },
+                { name: '3 Personen', priceDeltaCents: 2450 },
+                { name: '4 Personen', priceDeltaCents: 4900 },
+              ],
+            },
+          ],
+        },
+        { name: 'Kleine Kaffeetafel', description: 'Waffel, Brot, Aufschnitt, Kaffee. Für eine Person.', priceCents: 1650, prepMinutes: 18, allergens: ['gluten', 'dairy', 'egg'] },
+      ],
+    },
+    {
+      name: 'Einzeln',
+      items: [
+        { name: 'Waffel mit heißen Kirschen', description: 'Mit Sahne.', priceCents: 750, allergens: ['gluten', 'dairy', 'egg'] },
+        { name: 'Rosinenstuten mit Butter', description: 'Zwei Scheiben.', priceCents: 380, allergens: ['gluten', 'dairy'] },
+        { name: 'Kanne Kaffee', description: 'Aus der Dröppelminna, für zwei.', priceCents: 690, modifierGroups: [MILCH_GROUP] },
+      ],
+    },
+  ],
+
+  'baeckerei-morgenrot': [
+    {
+      name: 'Brot',
+      items: [
+        { name: 'Bergisches Sauerteigbrot', description: 'Über Nacht geführt, 1 kg.', priceCents: 480, allergens: ['gluten'] },
+        { name: 'Roggenmischbrot', description: 'Kräftig, hält eine Woche.', priceCents: 420, allergens: ['gluten'] },
+        { name: 'Dinkelvollkorn', description: 'Mit Sonnenblumenkernen.', priceCents: 520, allergens: ['gluten'] },
+      ],
+    },
+    {
+      name: 'Brötchen',
+      items: [
+        {
+          name: 'Brötchen',
+          description: 'Ab sechs Uhr. Stückpreis.',
+          priceCents: 55,
+          allergens: ['gluten'],
+          modifierGroups: [
+            {
+              name: 'Sorte',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Weizen', isDefault: true },
+                { name: 'Körner', priceDeltaCents: 15 },
+                { name: 'Roggen', priceDeltaCents: 10 },
+              ],
+            },
+          ],
+        },
+        { name: 'Laugenstange', description: 'Mit grobem Salz.', priceCents: 140, allergens: ['gluten'] },
+      ],
+    },
+    {
+      name: 'Süß',
+      items: [
+        { name: 'Streuselkuchen vom Blech', description: 'Samstags. Ein Stück.', priceCents: 290, allergens: ['gluten', 'dairy', 'egg'] },
+        { name: 'Berliner', description: 'Mit Pflaumenmus.', priceCents: 190, allergens: ['gluten', 'egg'] },
+        { name: 'Franzbrötchen', description: 'Zimt, Butter, platt gedrückt.', priceCents: 220, allergens: ['gluten', 'dairy'] },
+      ],
+    },
+  ],
+
+  'wupperschaenke': [
+    {
+      name: 'Vom Fass',
+      items: [
+        {
+          name: 'Obergäriges Hausbier',
+          description: 'Aus Ronsdorf, 0,3 l.',
+          priceCents: 340,
+          modifierGroups: [
+            {
+              name: 'Größe',
+              min: 1,
+              max: 1,
+              options: [
+                { name: '0,3 l', isDefault: true },
+                { name: '0,5 l', priceDeltaCents: 130 },
+              ],
+            },
+          ],
+        },
+        { name: 'Pils', description: 'Sieben Minuten gezapft, 0,3 l.', priceCents: 320 },
+        { name: 'Kölsch', description: 'Ja, hier auch. 0,2 l.', priceCents: 260 },
+        { name: 'Alkoholfreies Weizen', description: '0,5 l.', priceCents: 380 },
+      ],
+    },
+    {
+      name: 'Kleine Karte',
+      items: [
+        { name: 'Bergische Käseplatte', description: 'Drei Sorten, Brot, Senf.', priceCents: 980, allergens: ['dairy', 'gluten'] },
+        { name: 'Mettbrötchen', description: 'Mit Zwiebeln. Zwei Stück.', priceCents: 550, allergens: ['gluten'] },
+        { name: 'Brezel', description: 'Groß, mit Butter.', priceCents: 350, allergens: ['gluten', 'dairy'] },
+      ],
+    },
+  ],
+
+  'gasthaus-glockenklang': [
+    {
+      name: 'Vorweg',
+      items: [
+        { name: 'Töttchen', description: 'Münsterländer Ragout vom Kalb, mit Brot.', priceCents: 890, allergens: ['gluten', 'celery'] },
+        { name: 'Kartoffelsuppe', description: 'Mit Majoran und einem Klecks Sahne.', priceCents: 650, allergens: ['dairy', 'celery'] },
+      ],
+    },
+    {
+      name: 'Hauptgerichte',
+      items: [
+        {
+          name: 'Pfefferpotthast',
+          description: 'Rindfleisch, viel Pfeffer, drei Stunden. Mit Salzkartoffeln und Rote Bete.',
+          priceCents: 2150,
+          prepMinutes: 25,
+          allergens: ['celery'],
+        },
+        {
+          name: 'Münsterländer Spargel',
+          description: 'Nur von April bis Juni. Mit zerlassener Butter und neuen Kartoffeln.',
+          priceCents: 2280,
+          prepMinutes: 22,
+          allergens: ['dairy'],
+          modifierGroups: [
+            {
+              name: 'Dazu',
+              min: 0,
+              max: 2,
+              options: [
+                { name: 'Schinken', priceDeltaCents: 450 },
+                { name: 'Sauce hollandaise', priceDeltaCents: 250 },
+                { name: 'Pfannkuchen', priceDeltaCents: 350 },
+              ],
+            },
+          ],
+        },
+        { name: 'Schnitzel Wiener Art', description: 'Vom Schwein, mit Pommes und Preiselbeeren.', priceCents: 1690, prepMinutes: 18, allergens: ['gluten', 'egg'] },
+        { name: 'Grünkohl mit Mettenden', description: 'Nur wenn es gefroren hat.', priceCents: 1580, prepMinutes: 20 },
+      ],
+    },
+    {
+      name: 'Nachtisch',
+      items: [
+        { name: 'Rote Grütze', description: 'Mit Vanillesoße.', priceCents: 590, allergens: ['dairy'] },
+        { name: 'Westfälischer Apfelkuchen', description: 'Warm, mit Sahne.', priceCents: 620, allergens: ['gluten', 'dairy', 'egg'] },
+      ],
+    },
+  ],
+
+  'pizzeria-muehlenrad': [
+    {
+      name: 'Pizza',
+      items: [
+        {
+          name: 'Margherita',
+          description: 'San Marzano, Fior di Latte, Basilikum.',
+          priceCents: 890,
+          prepMinutes: 8,
+          allergens: ['gluten', 'dairy'],
+          modifierGroups: [
+            {
+              name: 'Belag dazu',
+              min: 0,
+              max: 4,
+              options: [
+                { name: 'Salami', priceDeltaCents: 180 },
+                { name: 'Rucola', priceDeltaCents: 120 },
+                { name: 'Büffelmozzarella', priceDeltaCents: 250 },
+                { name: 'Sardellen', priceDeltaCents: 150 },
+              ],
+            },
+          ],
+        },
+        { name: 'Diavola', description: 'Scharfe Salami, Chili, Honig obendrauf.', priceCents: 1150, prepMinutes: 8, allergens: ['gluten', 'dairy'] },
+        { name: 'Quattro Formaggi', description: 'Gorgonzola, Pecorino, Fontina, Mozzarella.', priceCents: 1250, prepMinutes: 8, allergens: ['gluten', 'dairy'] },
+        { name: 'Ortolana', description: 'Gegrilltes Gemüse, ohne Käse. Vegan.', priceCents: 1050, prepMinutes: 8, allergens: ['gluten'] },
+      ],
+    },
+    {
+      name: 'Dazu',
+      items: [
+        { name: 'Insalata Mista', description: 'Blattsalat, Tomate, Balsamico.', priceCents: 480 },
+        { name: 'Knoblauchbrot', description: 'Aus dem Holzofen.', priceCents: 420, allergens: ['gluten'] },
+      ],
+    },
+  ],
+
+  'kaffeescheune-berkelblick': [
+    {
+      name: 'Kaffee',
+      items: [
+        { name: 'Filterkaffee', description: 'Kanne oder Tasse.', priceCents: 300, prepMinutes: 2, modifierGroups: [groesse('Tasse', 190)] },
+        { name: 'Milchkaffee', description: 'In der Schale.', priceCents: 390, prepMinutes: 3, allergens: ['dairy'], modifierGroups: [MILCH_GROUP] },
+        { name: 'Espresso', description: 'Doppelt, wenn Sie nichts sagen.', priceCents: 260, prepMinutes: 2 },
+      ],
+    },
+    {
+      name: 'Kuchen',
+      items: [
+        { name: 'Butterkuchen', description: 'Vom Blech, noch warm um drei.', priceCents: 350, allergens: ['gluten', 'dairy', 'egg'] },
+        { name: 'Möhrenkuchen', description: 'Mit Frischkäsehaube.', priceCents: 420, allergens: ['gluten', 'dairy', 'egg', 'nuts'] },
+        { name: 'Rhabarberstreusel', description: 'Im Mai und Juni, vom Hof gegenüber.', priceCents: 400, allergens: ['gluten', 'dairy'] },
+      ],
+    },
+  ],
+
+  'hofladen-berkelaue': [
+    {
+      name: 'Gemüsekisten',
+      items: [
+        {
+          name: 'Kleine Kiste',
+          description: 'Für ein bis zwei Personen. Was diese Woche reif ist.',
+          priceCents: 1800,
+          modifierGroups: [
+            {
+              name: 'Ohne',
+              min: 0,
+              max: 3,
+              options: [
+                { name: 'Kohl' },
+                { name: 'Rote Bete' },
+                { name: 'Zwiebeln' },
+              ],
+            },
+          ],
+        },
+        { name: 'Große Kiste', description: 'Für vier. Reicht bis Freitag.', priceCents: 2900 },
+        { name: 'Obstkiste', description: 'Äpfel, Birnen, Pflaumen. Nur im Herbst.', priceCents: 1600 },
+      ],
+    },
+    {
+      name: 'Vom Hof',
+      items: [
+        { name: 'Kartoffeln, 5 kg', description: 'Festkochend, aus der Berkelaue.', priceCents: 750 },
+        { name: 'Eier, 10 Stück', description: 'Von den Hühnern hinterm Stall.', priceCents: 420, allergens: ['egg'] },
+        { name: 'Spargel, 1 kg', description: 'April bis Juni, morgens gestochen.', priceCents: 1400 },
+        { name: 'Rohmilch, 1 l', description: 'Selbst abfüllen, Flasche mitbringen.', priceCents: 130, allergens: ['dairy'] },
+      ],
+    },
+  ],
+}
+
+/**
+ * Every menu, keyed by the slug of the partner it belongs to.
+ *
+ * The German ones are spread in from `DE_MENUS` above rather than written
+ * inline here, so the two languages stay in one block each instead of
+ * interleaving down a thousand lines.
+ */
 export const MENUS: Record<string, SeedMenuSection[]> = {
+  ...DE_MENUS,
+
   'aster-and-ash': [
     {
       name: 'To Start',

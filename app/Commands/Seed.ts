@@ -3,6 +3,7 @@ import { db } from '@stacksjs/database'
 import { dispatchOrder } from '../Actions/Delivery/dispatch'
 import { advanceOrder } from '../Actions/Merchant/board'
 import { placeOrder } from '../Actions/Order/place'
+import { resolveRegion } from '../Actions/Business/regions'
 import { ALL_BUSINESSES } from '../../database/data/businesses'
 import { MENUS } from '../../database/data/menus'
 import { REVIEWS } from '../../database/data/reviews'
@@ -21,7 +22,7 @@ import { REVIEWS } from '../../database/data/reviews'
  */
 export default defineCommand((cli) => {
   cli
-    .command('seed:demo', 'Load the curated Los Angeles demo data')
+    .command('seed:demo', 'Load the curated Los Angeles and Nordrhein-Westfalen demo data')
     .option('--fresh', 'Delete existing demo rows first', { default: false })
     .action(async (options: { fresh?: boolean }) => {
       if (options.fresh) {
@@ -32,8 +33,8 @@ export default defineCommand((cli) => {
         log.info('Cleared existing demo rows')
       }
 
-      const marketId = await seedMarkets()
-      const businessIds = await seedBusinesses(marketId)
+      const marketIds = await seedMarkets()
+      const businessIds = await seedBusinesses(marketIds)
       const menuItems = await seedMenus(businessIds)
       const reviewCount = await seedReviews(businessIds)
       const tableCount = await seedTables(businessIds)
@@ -45,25 +46,47 @@ export default defineCommand((cli) => {
     })
 })
 
-/** The three markets. Only Los Angeles is active; the others prove the schema. */
-async function seedMarkets(): Promise<number> {
+/**
+ * The markets.
+ *
+ * A market is a country's worth of rules: its currency, whether tax is quoted
+ * inside the price or added at the till, and - the one a visitor notices - its
+ * clock. Los Angeles and Nordrhein-Westfalen are both live, because both have
+ * listings; Berlin and Amsterdam are still here and still inactive, proving
+ * the schema and nothing else.
+ *
+ * Two active markets is the point at which "the market" stopped being a
+ * singular thing anybody could ask for. Everything downstream now asks which
+ * one, per business.
+ */
+async function seedMarkets(): Promise<Record<string, number>> {
   const markets = [
     { name: 'Los Angeles', slug: 'los-angeles', city: 'Los Angeles', country_code: 'US', currency: 'usd', tax_mode: 'exclusive', default_tax_rate: 9.5, timezone: 'America/Los_Angeles', locale: 'en', center_latitude: 34.0195, center_longitude: -118.4912, is_active: 1 },
+    { name: 'Nordrhein-Westfalen', slug: 'nordrhein-westfalen', city: 'Wuppertal', country_code: 'DE', currency: 'eur', tax_mode: 'inclusive', default_tax_rate: 19, timezone: 'Europe/Berlin', locale: 'de', center_latitude: 51.2562, center_longitude: 7.1508, is_active: 1 },
     { name: 'Berlin', slug: 'berlin', city: 'Berlin', country_code: 'DE', currency: 'eur', tax_mode: 'inclusive', default_tax_rate: 19, timezone: 'Europe/Berlin', locale: 'de', center_latitude: 52.5200, center_longitude: 13.4050, is_active: 0 },
     { name: 'Amsterdam', slug: 'amsterdam', city: 'Amsterdam', country_code: 'NL', currency: 'eur', tax_mode: 'inclusive', default_tax_rate: 9, timezone: 'Europe/Amsterdam', locale: 'nl', center_latitude: 52.3676, center_longitude: 4.9041, is_active: 0 },
   ]
 
+  const ids: Record<string, number> = {}
+
   for (const market of markets) {
     const existing = await db.selectFrom('markets').where('slug', '=', market.slug).select(['id']).executeTakeFirst() as { id: number } | undefined
-    if (!existing)
-      await db.insertInto('markets').values({ uuid: crypto.randomUUID(), ...market } as never).executeTakeFirst()
+
+    if (existing) {
+      ids[market.slug] = Number(existing.id)
+      continue
+    }
+
+    await db.insertInto('markets').values({ uuid: crypto.randomUUID(), ...market } as never).executeTakeFirst()
+
+    const row = await db.selectFrom('markets').where('slug', '=', market.slug).select(['id']).executeTakeFirst() as { id: number }
+    ids[market.slug] = Number(row.id)
   }
 
-  const la = await db.selectFrom('markets').where('slug', '=', 'los-angeles').select(['id']).executeTakeFirst() as { id: number }
-  return Number(la.id)
+  return ids
 }
 
-async function seedBusinesses(marketId: number): Promise<Record<string, number>> {
+async function seedBusinesses(marketIds: Record<string, number>): Promise<Record<string, number>> {
   const ids: Record<string, number> = {}
 
   for (const seed of ALL_BUSINESSES) {
@@ -75,6 +98,15 @@ async function seedBusinesses(marketId: number): Promise<Record<string, number>>
     }
 
     const partner = seed.partner === true
+
+    /*
+     * The business belongs to the market of the region it sits in, which is
+     * how a restaurant in Wuppertal comes to be open at nine in the morning in
+     * Wuppertal rather than at nine in the morning in California. A row with
+     * no region is a Los Angeles row from before there was a second one.
+     */
+    const region = resolveRegion(seed.region)
+    const marketId = marketIds[region.market] ?? marketIds['los-angeles'] as number
 
     await db.insertInto('businesses').values({
       uuid: crypto.randomUUID(),

@@ -20,19 +20,19 @@
       they lose their labels rather than themselves: three icons and the
       account chip fit next to the wordmark, three words do not. --}}
     <div class="flex flex-none gap-1 items-center text-[14px] sm:gap-8" style="color: var(--ink-soft)">
-      <a href="/discover" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="Discover">
+      <a href="/discover" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="{{ t('nav.discover') }}">
         <i class="w-5 h-5 sm:hidden i-hugeicons-search-01"></i>
-        <span data-i18n="nav.discover" class="hidden sm:inline">Discover</span>
+        <span class="hidden sm:inline">{{ t('nav.discover') }}</span>
       </a>
 
-      <a href="/orders" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="Orders">
+      <a href="/orders" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="{{ t('nav.orders') }}">
         <i class="w-5 h-5 sm:hidden i-hugeicons-delivery-truck-01"></i>
-        <span data-i18n="nav.orders" class="hidden sm:inline">Orders</span>
+        <span class="hidden sm:inline">{{ t('nav.orders') }}</span>
       </a>
 
-      <a href="/saved" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="Saved">
+      <a href="/saved" class="inline-flex gap-1.5 items-center px-2 py-2 rounded-full transition-colors duration-500 hover:opacity-70" aria-label="{{ t('nav.favorites') }}">
         <i class="w-5 h-5 sm:hidden i-hugeicons-favourite"></i>
-        <span data-i18n="nav.favorites" class="hidden sm:inline">Saved</span>
+        <span class="hidden sm:inline">{{ t('nav.favorites') }}</span>
       </a>
 
       {{-- Says who you are once you are somebody. Filled in by the script at
@@ -40,7 +40,7 @@
         built once and served to everybody. --}}
       <a href="/account" id="account-link" class="inline-flex gap-1.5 items-center px-2.5 py-2 rounded-full transition-all duration-500 hover:opacity-70 sm:px-3 sm:py-1.5" style="border: 1px solid var(--line)">
         <i class="w-4 h-4 sm:w-3.5 sm:h-3.5 i-hugeicons-user-circle"></i>
-        <span data-account-label class="hidden sm:inline">Sign in</span>
+        <span data-account-label class="hidden sm:inline">{{ t('nav.sign_in') }}</span>
       </a>
     </div>
   </nav>

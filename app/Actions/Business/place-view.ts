@@ -1,3 +1,4 @@
+import { t } from '@stacksjs/i18n'
 import { formatMinuteOfDay } from './hours'
 import { visualFor } from './identity'
 
@@ -9,9 +10,32 @@ import { visualFor } from './identity'
  * pages each include one shared partial, and a partial inherits the including
  * page's scope, so anything the markup needs must exist as a plain name in that
  * scope. Precomputing here keeps 35 generated pages down to four lines each.
+ *
+ * The locale is passed in rather than read from a global. The views server
+ * resolves it per request and puts it in the template scope, so the generated
+ * page hands it down here; a module-level `getLocale()` would answer with
+ * whatever the last request happened to set, which is the classic way a server
+ * renders one visitor's page in another visitor's language.
  */
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+/**
+ * Weekday names, in the language being served.
+ *
+ * From `Intl` rather than from the locale files. Seven weekday names per
+ * language is exactly the sort of thing every platform already knows, and
+ * translating them by hand invites the language where somebody stopped after
+ * five. Indexed from Sunday to match the rest of the app, which stores day 0
+ * as Sunday.
+ */
+function dayNames(locale: string): string[] {
+  // UTC, explicitly. Without it the formatter uses the server's zone, and a
+  // box in Los Angeles reads a UTC midnight as the evening before - so every
+  // row in the opening-hours table was labelled with the wrong day.
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+
+  // 2024-01-07 was a Sunday, so this walks Sunday through Saturday.
+  return Array.from({ length: 7 }, (_, day) => formatter.format(new Date(Date.UTC(2024, 0, 7 + day))))
+}
 
 export interface PlaceViewModel {
   found: boolean
@@ -63,18 +87,19 @@ export interface PlaceViewModel {
   mapPoint: string
 }
 
-export function placeViewModel(found: any): PlaceViewModel {
+export function placeViewModel(found: any, locale = 'en'): PlaceViewModel {
   const business = found?.business ?? {}
   const hours = found?.hours ?? []
   const status = found?.status ?? { state: 'unknown' }
-  const name = String(business.name ?? 'Not found')
+  const currency = String(found?.currency ?? 'usd')
+  const name = String(business.name ?? say('place.not_found', locale))
 
   return {
     found: Boolean(found),
-    pageTitle: found ? `${name} - Smakelo` : 'Not found - Smakelo',
+    pageTitle: found ? `${name} - Smakelo` : `${say('place.not_found', locale)} - Smakelo`,
     pageDescription: found
       ? String(business.description || `${name} in ${business.city}`)
-      : 'That place is not listed.',
+      : say('place.not_found_body', locale),
     canonicalPath: `/places/${String(business.slug ?? '')}`,
     name,
     slug: String(business.slug ?? ''),
@@ -92,21 +117,21 @@ export function placeViewModel(found: any): PlaceViewModel {
      * every one of them: ", Los Angeles".
      */
     location: [String(business.address ?? '').trim(), String(business.city ?? '').trim()].filter(Boolean).join(', '),
-    priceLabel: '$'.repeat(Math.max(1, Math.min(4, Number(business.price_tier) || 2))),
+    priceLabel: symbolFor(currency).repeat(Math.max(1, Math.min(4, Number(business.price_tier) || 2))),
     ratingAverage: Number(business.rating_average ?? 0),
     ratingCount: Number(business.rating_count ?? 0),
     hasRating: Number(business.rating_count ?? 0) > 0,
     isPartner: Number(business.is_partner) === 1,
-    statusLabel: statusLabel(status),
+    statusLabel: statusLabel(status, locale),
     prepTimeMinutes: Number(business.prep_time_minutes ?? 0),
-    fulfilment: fulfilment(business),
-    week: weekTable(hours),
+    fulfilment: fulfilment(business, locale),
+    week: weekTable(hours, locale),
     menu: (found?.menu ?? []).map((section: any) => ({
       section: String(section.section),
       items: section.items.map((item: any) => ({
         name: String(item.name),
         description: String(item.description ?? ''),
-        price: money(item.price),
+        price: money(item.price, currency),
       })),
     })),
     reviews: (found?.reviews ?? []).map((review: any) => ({
@@ -135,43 +160,67 @@ export function placeViewModel(found: any): PlaceViewModel {
   }
 }
 
-function money(cents: unknown): string {
-  return `$${(Number(cents ?? 0) / 100).toFixed(2)}`
+/**
+ * A price, in the currency of the market the business belongs to.
+ *
+ * The symbol used to be a literal dollar sign, which was true of every
+ * business on the site until there were businesses in Germany. A euro menu
+ * priced in dollars is not a cosmetic slip - it is the page stating the wrong
+ * amount of money.
+ */
+function money(cents: unknown, currency: string): string {
+  return symbolFor(currency) + (Number(cents ?? 0) / 100).toFixed(2)
 }
 
-function statusLabel(status: any): string {
+function symbolFor(currency: string): string {
+  return currency.toLowerCase() === 'eur' ? '€' : '$'
+}
+
+/**
+ * One string, in the language of this request.
+ *
+ * `t` is called with an explicit locale rather than relying on the global one.
+ * The views server sets that per request in development and does not in
+ * production, and a page whose language depends on which server is running is
+ * worse than one that is honestly always English.
+ */
+function say(key: string, locale: string, values?: Record<string, string | number>): string {
+  return t(key, values, locale)
+}
+
+function statusLabel(status: any, locale: string): string {
   if (status.state === 'unknown')
-    return 'Hours not recorded'
+    return say('business.hours_unknown', locale)
 
   if (status.state === 'closed') {
     return typeof status.opensInMinutes === 'number' && status.opensInMinutes < 240
-      ? `Closed, opens in ${status.opensInMinutes} min`
-      : 'Closed right now'
+      ? say('place.closed_opens_in', locale, { minutes: status.opensInMinutes })
+      : say('place.closed_now', locale)
   }
 
   return typeof status.closesInMinutes === 'number' && status.closesInMinutes < 90
-    ? `Open, closing in ${status.closesInMinutes} min`
-    : 'Open now'
+    ? say('place.open_closing_in', locale, { minutes: status.closesInMinutes })
+    : say('place.open_now', locale)
 }
 
 /** How you can actually get the food, in the order a customer would ask. */
-function fulfilment(business: any): string[] {
+function fulfilment(business: any, locale: string): string[] {
   if (Number(business.is_partner) !== 1)
     return []
 
   const options: string[] = []
 
   if (Number(business.offers_delivery) === 1)
-    options.push(`Delivery, about ${Number(business.prep_time_minutes ?? 0)} min to prepare`)
+    options.push(say('place.fulfilment_delivery', locale, { minutes: Number(business.prep_time_minutes ?? 0) }))
 
   if (Number(business.offers_pickup) === 1)
-    options.push('Pickup')
+    options.push(say('place.fulfilment_pickup', locale))
 
   if (Number(business.offers_dine_in) === 1)
-    options.push('Dine in, order from the table')
+    options.push(say('place.fulfilment_dine_in', locale))
 
   if (Number(business.offers_shop) === 1)
-    options.push('Weekly boxes and produce')
+    options.push(say('place.fulfilment_shop', locale))
 
   return options
 }
@@ -182,17 +231,19 @@ function fulfilment(business: any): string[] {
  * A day the business is shut still gets a line: a table that silently omits
  * Sunday reads as an oversight rather than as "closed on Sunday".
  */
-function weekTable(hours: any[]): Array<{ name: string, text: string }> {
+function weekTable(hours: any[], locale: string): Array<{ name: string, text: string }> {
+  const names = dayNames(locale)
+
   return [1, 2, 3, 4, 5, 6, 0].map((day) => {
     const intervals = hours
       .filter(hour => hour.dayOfWeek === day && !hour.isClosed)
       .sort((a, b) => a.opensAt - b.opensAt)
 
     return {
-      name: DAY_NAMES[day] ?? '',
+      name: names[day] ?? '',
       text: intervals.length === 0
-        ? 'Closed'
-        : intervals.map(hour => `${formatMinuteOfDay(hour.opensAt)} to ${formatMinuteOfDay(hour.closesAt)}`).join(', '),
+        ? say('business.closed', locale)
+        : intervals.map(hour => say('place.hours_range', locale, { open: formatMinuteOfDay(hour.opensAt), close: formatMinuteOfDay(hour.closesAt) })).join(', '),
     }
   })
 }

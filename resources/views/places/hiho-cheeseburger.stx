@@ -5,7 +5,7 @@
 import { placeViewModel } from '../../../app/Actions/Business/place-view'
 import { businessBySlug } from '../../../app/Actions/Business/search'
 
-const vm = placeViewModel(await businessBySlug('hiho-cheeseburger'))
+const vm = placeViewModel(await businessBySlug('hiho-cheeseburger'), locale)
 
 // Read by the head partial.
 const pageTitle = vm.pageTitle
@@ -14,7 +14,7 @@ const canonicalPath = vm.canonicalPath
 </script>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ locale }}">
   <head>
     @include('head')
   </head>
@@ -29,6 +29,7 @@ const canonicalPath = vm.canonicalPath
       // linter cannot see from here.
       // eslint-disable-next-line unused-imports/no-unused-imports
       import { money } from '../../functions/session'
+      import 'ts-maps/styles.css'
 
       // Read off the element rather than interpolated: a raw echo inside
       // <script client> is not processed by the views build, so the page

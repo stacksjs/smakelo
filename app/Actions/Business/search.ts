@@ -129,7 +129,7 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
   }
 
   const hoursByBusiness = await loadHours(rows.map(row => Number(row.id)))
-  const timezone = await marketTimezone()
+  const timezones = await marketTimezones()
   const now = new Date()
 
   const results: BusinessResult[] = []
@@ -153,7 +153,7 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
         continue
     }
 
-    const status = openStatus(hoursByBusiness.get(Number(row.id)) ?? [], timezone, now)
+    const status = openStatus(hoursByBusiness.get(Number(row.id)) ?? [], timezones.get(Number(row.market_id)) ?? FALLBACK_TIMEZONE, now)
 
     // `unknown` survives an open-now filter on purpose. A listing whose hours
     // nobody recorded is not a closed business, and dropping it would quietly
@@ -243,24 +243,48 @@ async function loadHours(businessIds: number[]): Promise<Map<number, OpeningInte
 }
 
 /**
- * The market's timezone, which is what "open now" is answered in.
+ * Every market's timezone, by id. "Open now" is answered in one of these.
+ *
+ * This used to read the first active market and apply its clock to everything,
+ * which was correct for exactly as long as there was one market. There are two
+ * now - Los Angeles and Nordrhein-Westfalen - and under the old rule a
+ * Wuppertal restaurant was judged open or shut on California time, which is
+ * nine hours of being wrong about the single fact a directory exists to state.
  *
  * Falls back to Los Angeles rather than to the server's zone: the server could
  * be anywhere, and a box in Frankfurt would otherwise decide that everything in
  * Santa Monica is shut.
  */
-async function marketTimezone(): Promise<string> {
-  const market = await db.selectFrom('markets')
-    .where('is_active', '=', 1)
-    .select(['timezone'])
-    .executeTakeFirst() as { timezone: string } | undefined
+async function marketTimezones(): Promise<Map<number, string>> {
+  const markets = await db.selectFrom('markets')
+    .select(['id', 'timezone'])
+    .execute() as Array<{ id: number, timezone: string }>
 
-  return market?.timezone || 'America/Los_Angeles'
+  return new Map(markets.map(market => [Number(market.id), market.timezone || FALLBACK_TIMEZONE]))
+}
+
+const FALLBACK_TIMEZONE = 'America/Los_Angeles'
+
+/** The money one business takes. Its market's, not the site's. */
+async function currencyFor(marketId: unknown): Promise<string> {
+  const market = await db.selectFrom('markets')
+    .where('id', '=', Number(marketId))
+    .select(['currency'])
+    .executeTakeFirst() as { currency?: string } | undefined
+
+  return String(market?.currency ?? 'usd')
+}
+
+/** The clock one business keeps. */
+async function timezoneFor(marketId: unknown): Promise<string> {
+  return (await marketTimezones()).get(Number(marketId)) ?? FALLBACK_TIMEZONE
 }
 
 /** One business with everything its page needs. */
 export async function businessBySlug(slug: string): Promise<{
   business: Record<string, unknown>
+  /** Its market's currency, so a German menu is priced in euros. */
+  currency: string
   hours: OpeningInterval[]
   status: ReturnType<typeof openStatus>
   menu: Array<{ section: string, items: Array<Record<string, unknown>> }>
@@ -277,7 +301,8 @@ export async function businessBySlug(slug: string): Promise<{
 
   const businessId = Number(business.id)
   const hours = (await loadHours([businessId])).get(businessId) ?? []
-  const status = openStatus(hours, await marketTimezone())
+  const status = openStatus(hours, await timezoneFor(business.market_id))
+  const currency = await currencyFor(business.market_id)
 
   const products = await db.selectFrom('products')
     .where('business_id', '=', businessId)
@@ -312,7 +337,7 @@ export async function businessBySlug(slug: string): Promise<{
     .selectAll()
     .execute() as Array<Record<string, unknown>>
 
-  return { business, hours, status, menu, reviews }
+  return { business, currency, hours, status, menu, reviews }
 }
 
 /**

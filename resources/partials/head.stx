@@ -872,8 +872,19 @@
     'types.bakery': t('types.bakery'),
     'types.bar': t('types.bar'),
     'types.grocery': t('types.grocery'),
+    'home.subscribe_button': t('home.subscribe_button'),
+    'home.subscribe_busy': t('home.subscribe_busy'),
     'home.subscribe_bad_email': t('home.subscribe_bad_email'),
     'home.subscribe_failed': t('home.subscribe_failed'),
+    'search.all_types': t('search.all_types'),
+    'place.open_now': t('place.open_now'),
+    'discover.result': t('discover.result'),
+    'discover.results': t('discover.results'),
+    'discover.any_price': t('discover.any_price'),
+    'discover.average': t('discover.average'),
+    'discover.more_filters': t('discover.more_filters'),
+    'discover.fewer_filters': t('discover.fewer_filters'),
+    'discover.show_closed': t('discover.show_closed', { count: '{count}' }),
   }) }}"
 ></div>
 

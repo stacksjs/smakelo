@@ -74,7 +74,7 @@ function pageFor(slug: string): string {
 import { placeViewModel } from '../../../app/Actions/Business/place-view'
 import { businessBySlug } from '../../../app/Actions/Business/search'
 
-const vm = placeViewModel(await businessBySlug('${slug}'))
+const vm = placeViewModel(await businessBySlug('${slug}'), locale)
 
 // Read by the head partial.
 const pageTitle = vm.pageTitle
@@ -83,7 +83,7 @@ const canonicalPath = vm.canonicalPath
 </script>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ locale }}">
   <head>
     @include('head')
   </head>

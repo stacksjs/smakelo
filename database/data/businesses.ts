@@ -1,5 +1,10 @@
 /**
- * The Los Angeles seed.
+ * The curated seed, region by region.
+ *
+ * Los Angeles came first and is still the bulk of it; Wuppertal and Gescher in
+ * Nordrhein-Westfalen came second, which is what the `region` field on every
+ * row is for. The OpenStreetMap imports that sit alongside these are in
+ * `osm-listings*.ts`, one file per region.
  *
  * These are real places. Names, neighbourhoods and approximate coordinates are
  * drawn from public sources (OpenStreetMap and Foursquare's Open Source Places
@@ -41,6 +46,12 @@ export interface SeedBusiness {
   priceTier: number
   /** Real business copied from open data, or an invented partner. */
   partner?: boolean
+  /**
+   * Which region in `app/Actions/Business/regions.ts` this sits in. Absent
+   * means Los Angeles, which is every row that predates the second region and
+   * is why this is optional rather than required.
+   */
+  region?: string
   hours?: SeedHours[]
 }
 
@@ -573,19 +584,258 @@ export const PARTNERS: SeedBusiness[] = [
   },
 ]
 
+
+/*
+ * German opening hours, which are not American ones.
+ *
+ * A Ruhetag - one day a week the kitchen is shut - is normal here and worth
+ * modelling rather than flattening: a restaurant that claims to be open on
+ * Monday because the seed found it easier is lying about the one thing a
+ * directory exists to tell you.
+ */
+
+/** 11:30-23:00, seven days. */
+const DE_MITTAG_BIS_SPAET: SeedHours[] = [0, 1, 2, 3, 4, 5, 6].map(day => ({ day, open: 690, close: 1380 }))
+
+/** 17:00-23:00, Tuesday to Sunday. Monday is the Ruhetag. */
+const DE_ABENDS_OHNE_MONTAG: SeedHours[] = [0, 2, 3, 4, 5, 6].map(day => ({ day, open: 1020, close: 1380 }))
+
+/** 08:00-18:00 in the week, a shorter Sunday. */
+const DE_CAFE: SeedHours[] = [
+  ...[1, 2, 3, 4, 5, 6].map(day => ({ day, open: 480, close: 1080 })),
+  { day: 0, open: 600, close: 1080 },
+]
+
+/** The baker's day: open at six, and Sunday morning only. */
+const DE_BAECKEREI: SeedHours[] = [
+  ...[1, 2, 3, 4, 5, 6].map(day => ({ day, open: 360, close: 1080 })),
+  { day: 0, open: 450, close: 660 },
+]
+
+/** A Hofladen keeps farm hours: two afternoons and a Saturday morning. */
+const DE_HOFLADEN: SeedHours[] = [
+  { day: 3, open: 840, close: 1080 },
+  { day: 5, open: 540, close: 1080 },
+  { day: 6, open: 540, close: 780 },
+]
+
+/**
+ * Invented partners in Nordrhein-Westfalen.
+ *
+ * The same rule as the Los Angeles partners, in another country: real streets
+ * so the map and the distances behave, invented names so nobody could mistake
+ * one for a business that exists, and every transactional part of the app -
+ * menus, orders, tables, couriers - hanging off these rather than off the
+ * OpenStreetMap listings around them.
+ *
+ * They are written in German, because they are German. The interface is
+ * translated; a menu is not. A Bergische Kaffeetafel rendered into English as
+ * "coffee table" would be a worse answer than leaving it in the language the
+ * kitchen uses.
+ */
+export const NRW_PARTNERS: SeedBusiness[] = [
+  // Wuppertal - Elberfeld, Barmen and the slopes between them.
+  {
+    name: 'Zur Schwebenden Laterne',
+    slug: 'zur-schwebenden-laterne',
+    type: 'restaurant',
+    cuisine: 'Bergisch, Regional',
+    description: 'Bergische Küche in einem schmalen Haus am Luisenviertel. Sauerbraten, Reibekuchen, und im Herbst Wild aus dem Bergischen.',
+    address: 'Luisenstraße 92',
+    city: 'Wuppertal',
+    postalCode: '42103',
+    latitude: 51.2549,
+    longitude: 7.1425,
+    priceTier: 2,
+    partner: true,
+    region: 'wuppertal',
+    hours: DE_ABENDS_OHNE_MONTAG,
+  },
+  {
+    name: 'Ocakbaşı Nordstadt',
+    slug: 'ocakbasi-nordstadt',
+    type: 'restaurant',
+    cuisine: 'Türkisch, Grill',
+    description: 'Holzkohlegrill im Gastraum, Brot aus dem Steinofen daneben. Adana, Lahmacun, und Linsensuppe den ganzen Tag.',
+    address: 'Marienstraße 41',
+    city: 'Wuppertal',
+    postalCode: '42105',
+    latitude: 51.2601,
+    longitude: 7.1421,
+    priceTier: 1,
+    partner: true,
+    region: 'wuppertal',
+    hours: DE_MITTAG_BIS_SPAET,
+  },
+  {
+    name: 'Osteria Wupperbogen',
+    slug: 'osteria-wupperbogen',
+    type: 'restaurant',
+    cuisine: 'Italienisch, Pasta',
+    description: 'Zwölf Nudelgerichte, jeden Morgen frisch gerollt, und sonst nichts auf der Karte.',
+    address: 'Friedrich-Ebert-Straße 128',
+    city: 'Wuppertal',
+    postalCode: '42117',
+    latitude: 51.2495,
+    longitude: 7.1315,
+    priceTier: 2,
+    partner: true,
+    region: 'wuppertal',
+    hours: DE_ABENDS_OHNE_MONTAG,
+  },
+  {
+    name: 'Kaffeehaus Nordbahn',
+    slug: 'kaffeehaus-nordbahn',
+    type: 'cafe',
+    cuisine: 'Kaffee, Frühstück',
+    description: 'Direkt an der Nordbahntrasse. Frühstück bis zwei, Kuchen bis der Kuchen alle ist.',
+    address: 'Uellendahler Straße 65',
+    city: 'Wuppertal',
+    postalCode: '42107',
+    latitude: 51.2662,
+    longitude: 7.1489,
+    priceTier: 1,
+    partner: true,
+    region: 'wuppertal',
+    hours: DE_CAFE,
+  },
+  {
+    name: 'Bergischer Kaffeegarten',
+    slug: 'bergischer-kaffeegarten',
+    type: 'cafe',
+    cuisine: 'Kaffee, Bergische Kaffeetafel',
+    description: 'Die vollständige Bergische Kaffeetafel, mit Dröppelminna auf dem Tisch. Zwei Stunden einplanen.',
+    address: 'Hardt 12',
+    city: 'Wuppertal',
+    postalCode: '42107',
+    latitude: 51.2617,
+    longitude: 7.1553,
+    priceTier: 2,
+    partner: true,
+    region: 'wuppertal',
+    hours: DE_CAFE,
+  },
+  {
+    name: 'Bäckerei Morgenrot',
+    slug: 'baeckerei-morgenrot',
+    type: 'bakery',
+    cuisine: 'Bäckerei, Brot',
+    description: 'Sauerteig über Nacht, Brötchen ab sechs, und samstags Streuselkuchen im Blech.',
+    address: 'Werther Brücke 3',
+    city: 'Wuppertal',
+    postalCode: '42275',
+    latitude: 51.2721,
+    longitude: 7.1975,
+    priceTier: 1,
+    partner: true,
+    region: 'wuppertal',
+    hours: DE_BAECKEREI,
+  },
+  {
+    name: 'Wupperschänke',
+    slug: 'wupperschaenke',
+    type: 'bar',
+    cuisine: 'Bier, Kleine Karte',
+    description: 'Obergärig vom Fass, acht Hähne, und eine Karte, die auf ein Bierdeckel passt.',
+    address: 'Luisenstraße 116',
+    city: 'Wuppertal',
+    postalCode: '42103',
+    latitude: 51.2551,
+    longitude: 7.1408,
+    priceTier: 1,
+    partner: true,
+    region: 'wuppertal',
+    hours: [0, 1, 2, 3, 4, 5, 6].map(day => ({ day, open: 1020, close: 1500 })),
+  },
+
+  // Gescher and the Münsterland around it.
+  {
+    name: 'Gasthaus Glockenklang',
+    slug: 'gasthaus-glockenklang',
+    type: 'restaurant',
+    cuisine: 'Westfälisch, Regional',
+    description: 'Westfälische Küche in der Glockenstadt. Töttchen, Pfefferpotthast, und im Frühjahr Spargel vom Hof nebenan.',
+    address: 'Hauptstraße 14',
+    city: 'Gescher',
+    postalCode: '48712',
+    latitude: 51.9551,
+    longitude: 7.0059,
+    priceTier: 2,
+    partner: true,
+    region: 'gescher',
+    hours: DE_ABENDS_OHNE_MONTAG,
+  },
+  {
+    name: 'Pizzeria Mühlenrad',
+    slug: 'pizzeria-muehlenrad',
+    type: 'restaurant',
+    cuisine: 'Italienisch, Pizza',
+    description: 'Holzofen, sechzig Sekunden, und Teig von vorgestern. Zum Mitnehmen oder an sechs Tischen.',
+    address: 'Mühlenstraße 8',
+    city: 'Gescher',
+    postalCode: '48712',
+    latitude: 51.9538,
+    longitude: 7.0088,
+    priceTier: 1,
+    partner: true,
+    region: 'gescher',
+    hours: DE_MITTAG_BIS_SPAET,
+  },
+  {
+    name: 'Kaffeescheune Berkelblick',
+    slug: 'kaffeescheune-berkelblick',
+    type: 'cafe',
+    cuisine: 'Kaffee, Kuchen',
+    description: 'Eine umgebaute Scheune an der Berkel. Filterkaffee, Butterkuchen, und draußen sitzen, solange es geht.',
+    address: 'Armlandstraße 5',
+    city: 'Gescher',
+    postalCode: '48712',
+    latitude: 51.9583,
+    longitude: 7.0011,
+    priceTier: 1,
+    partner: true,
+    region: 'gescher',
+    hours: DE_CAFE,
+  },
+  {
+    name: 'Hofladen Berkelaue',
+    slug: 'hofladen-berkelaue',
+    type: 'farm',
+    cuisine: 'Hofladen, Gemüsekiste',
+    description: 'Vierzehn Hektar an der Berkel. Wöchentliche Gemüsekisten und was sonst gerade reif ist.',
+    address: 'Estern 22',
+    city: 'Gescher',
+    postalCode: '48712',
+    latitude: 51.9702,
+    longitude: 6.9803,
+    priceTier: 2,
+    partner: true,
+    region: 'gescher',
+    hours: DE_HOFLADEN,
+  },
+]
+
 import { OSM_LISTINGS } from './osm-listings'
+import { OSM_LISTINGS_GESCHER } from './osm-listings-gescher'
+import { OSM_LISTINGS_WUPPERTAL } from './osm-listings-wuppertal'
 
 /**
  * Everything the seeder loads.
  *
- * Curated first, then the OpenStreetMap import minus anything already curated.
- * The hand-written entries win on a slug collision because they carry a
- * description somebody wrote and hours somebody checked; the import is breadth,
- * not depth, and overwriting depth with breadth would be a strange trade.
+ * Curated first, then the OpenStreetMap imports minus anything already
+ * curated. The hand-written entries win on a slug collision because they carry
+ * a description somebody wrote and hours somebody checked; the import is
+ * breadth, not depth, and overwriting depth with breadth would be a strange
+ * trade.
+ *
+ * One import file per region, concatenated here. The regions themselves are
+ * described in `app/Actions/Business/regions.ts`; this file only needs to know
+ * that every row carries the slug of the one it belongs to.
  */
 export const ALL_BUSINESSES: SeedBusiness[] = (() => {
-  const curated = [...LISTINGS, ...PARTNERS]
+  const curated = [...LISTINGS, ...PARTNERS, ...NRW_PARTNERS]
   const taken = new Set(curated.map(business => business.slug))
+  const imported = [...OSM_LISTINGS, ...OSM_LISTINGS_WUPPERTAL, ...OSM_LISTINGS_GESCHER]
 
-  return [...curated, ...OSM_LISTINGS.filter(business => !taken.has(business.slug))]
+  return [...curated, ...imported.filter(business => !taken.has(business.slug))]
 })()

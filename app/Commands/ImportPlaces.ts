@@ -1,9 +1,11 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineCommand, log } from '@stacksjs/cli'
+import type { Region } from '../Actions/Business/regions'
+import { REGIONS, regionBySlug } from '../Actions/Business/regions'
 
 /**
- * Import real Los Angeles businesses from OpenStreetMap.
+ * Import real businesses from OpenStreetMap, one region at a time.
  *
  * The listing half of Smakelo is real places or it is nothing: a directory of
  * invented restaurants demonstrates a directory of invented restaurants. OSM
@@ -15,19 +17,14 @@ import { defineCommand, log } from '@stacksjs/cli'
  * Tuesday for reasons nobody can act on, and a demo whose contents change
  * under it is one where a screenshot stops matching.
  *
+ * One file per region, named after it, because that is the unit somebody
+ * re-imports: Wuppertal gaining a restaurant should not rewrite the Los
+ * Angeles file and put four hundred unrelated lines in the diff.
+ *
  * These places have not agreed to anything. They are listed and searchable and
  * that is all: no reviews, no orders, and a claim form that leads with taking
  * the listing down.
  */
-
-const BBOX = { south: 33.975, west: -118.52, north: 34.06, east: -118.42 }
-
-const QUERY = `[out:json][timeout:90];
-(
-  node["amenity"~"^(restaurant|cafe)$"]["name"](${BBOX.south},${BBOX.west},${BBOX.north},${BBOX.east});
-  node["shop"~"^(bakery|greengrocer|farm)$"]["name"](${BBOX.south},${BBOX.west},${BBOX.north},${BBOX.east});
-);
-out body 400;`
 
 interface OsmElement {
   id: number
@@ -36,12 +33,41 @@ interface OsmElement {
   tags: Record<string, string>
 }
 
+/** The export name and file each region's listings are written to. */
+function fileFor(region: Region): { path: string, constant: string } {
+  const suffix = region.slug === 'los-angeles' ? '' : `-${region.slug}`
+  const constant = region.slug === 'los-angeles'
+    ? 'OSM_LISTINGS'
+    : `OSM_LISTINGS_${region.slug.toUpperCase().replace(/-/g, '_')}`
+
+  return { path: `osm-listings${suffix}.ts`, constant }
+}
+
+function queryFor(region: Region): string {
+  const box = `${region.box.south},${region.box.west},${region.box.north},${region.box.east}`
+
+  return `[out:json][timeout:90];
+(
+  node["amenity"~"^(restaurant|cafe)$"]["name"](${box});
+  node["shop"~"^(bakery|greengrocer|farm)$"]["name"](${box});
+);
+out body 400;`
+}
+
 export default defineCommand((cli) => {
   cli
-    .command('import:places', 'Fetch real Santa Monica and Venice listings from OpenStreetMap')
+    .command('import:places', 'Fetch real listings for a region from OpenStreetMap')
+    .option('--region <slug>', `Which region: ${REGIONS.map(region => region.slug).join(', ')}`, { default: 'los-angeles' })
     .option('--limit <count>', 'How many to keep', { default: 250 })
-    .action(async (options: { limit?: number }) => {
-      log.info('Asking Overpass for restaurants, cafes and food shops in the Santa Monica and Venice box...')
+    .action(async (options: { region?: string, limit?: number }) => {
+      const region = regionBySlug(options.region)
+
+      if (!region) {
+        log.error(`No region called "${options.region}". Known regions: ${REGIONS.map(entry => entry.slug).join(', ')}.`)
+        return
+      }
+
+      log.info(`Asking Overpass for restaurants, cafes and food shops around ${region.name}...`)
 
       const response = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
@@ -51,7 +77,7 @@ export default defineCommand((cli) => {
           // is asking is also just good manners toward a volunteer-run service.
           'User-Agent': 'Smakelo/0.1 (demonstration app; https://smakelo.stacksjs.com)',
         },
-        body: `data=${encodeURIComponent(QUERY)}`,
+        body: `data=${encodeURIComponent(queryFor(region))}`,
       })
 
       if (!response.ok) {
@@ -68,7 +94,7 @@ export default defineCommand((cli) => {
       const listings = []
 
       for (const element of elements) {
-        const listing = shape(element)
+        const listing = shape(element, region)
 
         if (!listing)
           continue
@@ -86,17 +112,18 @@ export default defineCommand((cli) => {
           break
       }
 
-      const target = join(process.cwd(), 'database', 'data', 'osm-listings.ts')
+      const file = fileFor(region)
+      const target = join(process.cwd(), 'database', 'data', file.path)
 
-      writeFileSync(target, render(listings))
+      writeFileSync(target, render(listings, region, file.constant))
 
       const withHours = listings.filter(listing => listing.hours.length > 0).length
 
-      log.success(`Wrote ${listings.length} listings (${withHours} with hours) to database/data/osm-listings.ts`)
+      log.success(`Wrote ${listings.length} ${region.name} listings (${withHours} with hours) to database/data/${file.path}`)
     })
 })
 
-function shape(element: OsmElement) {
+function shape(element: OsmElement, region: Region) {
   const tags = element.tags ?? {}
   const name = String(tags.name ?? '').trim()
 
@@ -111,7 +138,10 @@ function shape(element: OsmElement) {
     farm: 'farm',
   } as Record<string, string>)[tags.amenity ?? tags.shop ?? ''] ?? 'restaurant'
 
-  const street = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ')
+  const parts = [tags['addr:housenumber'], tags['addr:street']]
+  const street = (region.addressStyle === 'street-first' ? parts.reverse() : parts)
+    .filter(Boolean)
+    .join(' ')
 
   /*
    * A listing with no street is kept, because the map pin is the thing that
@@ -119,16 +149,21 @@ function shape(element: OsmElement) {
    */
   return {
     name,
-    slug: slugify(name),
+    // Two towns three thousand miles apart both have a Ristorante Roma, and a
+    // slug is the primary key the seeder deduplicates on. Prefixing everything
+    // outside the first region keeps the older Los Angeles slugs - and the
+    // URLs somebody may have linked to - exactly as they were.
+    slug: region.slug === 'los-angeles' ? slugify(name) : `${region.slug}-${slugify(name)}`,
     type,
     cuisine: cuisine(tags),
     description: '',
     address: street,
-    city: tags['addr:city'] || 'Los Angeles',
+    city: tags['addr:city'] || region.cityFallback,
     postalCode: tags['addr:postcode'] || '',
     latitude: Number(element.lat.toFixed(6)),
     longitude: Number(element.lon.toFixed(6)),
     priceTier: 2,
+    region: region.slug,
     hours: parseHours(String(tags.opening_hours ?? '')),
   }
 }
@@ -215,13 +250,13 @@ function slugify(name: string): string {
     .slice(0, 60)
 }
 
-function render(listings: unknown[]): string {
+function render(listings: unknown[], region: Region, constant: string): string {
   return `/**
- * Real places, imported from OpenStreetMap.
+ * Real places around ${region.name}, imported from OpenStreetMap.
  *
- * Generated by \`buddy import:places\`. Do not edit by hand: the curated
- * Santa Monica listings live in \`businesses.ts\`, which is where a correction
- * belongs.
+ * Generated by \`buddy import:places --region ${region.slug}\`. Do not edit by
+ * hand: the curated listings live in \`businesses.ts\`, which is where a
+ * correction belongs.
  *
  * These businesses have agreed to nothing. They are listed and searchable and
  * that is all: no reviews, no orders, and a claim form that leads with taking
@@ -230,6 +265,6 @@ function render(listings: unknown[]): string {
 
 import type { SeedBusiness } from './businesses'
 
-export const OSM_LISTINGS: SeedBusiness[] = ${JSON.stringify(listings, null, 2)}
+export const ${constant}: SeedBusiness[] = ${JSON.stringify(listings, null, 2)}
 `
 }

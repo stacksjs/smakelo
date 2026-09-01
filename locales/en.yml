@@ -1,3 +1,14 @@
+# The interface, in English.
+#
+# English is the default locale, so this file is also the reference: a key that
+# is here and missing from de.yml or nl.yml falls back to this text rather than
+# rendering empty. `buddy lang:check` says which those are.
+#
+# What is translated is the interface. The listings, menus, descriptions and
+# reviews are not: they are content, in the language of the business that
+# serves it, and machine-translating a menu is how a demonstration starts
+# lying about what a kitchen cooks.
+
 nav:
   discover: Discover
   orders: Orders
@@ -9,7 +20,7 @@ nav:
   shares: Shares
 
 search:
-  placeholder: Search for a place or a dish
+  placeholder: Tacos, oat flat white, a farm box
   near_me: Near me
   open_now: Open now
   filters: Filters
@@ -22,6 +33,23 @@ search:
   sort_name: A to Z
   all_types: All
   nearby: Nearby
+  label: What are you looking for?
+  submit: Search
+
+types:
+  restaurant: Restaurants
+  cafe: Coffee
+  farm: Farms
+  bakery: Bakeries
+  bar: Bars
+  grocery: Grocers
+
+region:
+  label: Where
+  switch: Somewhere else
+  los-angeles: Los Angeles
+  wuppertal: Wuppertal
+  gescher: Gescher
 
 business:
   menu: Menu
@@ -40,6 +68,114 @@ business:
   rating_count: '{count} reviews'
   price_tier: Price
   no_reviews: No reviews yet.
+  hours_unknown: Hours not recorded
+  listing_only: Listed, not taking orders
+  photo_credit: Listing from OpenStreetMap
+
+home:
+  title: Find the good places near you.
+  lede: Restaurants, coffee shops, bakeries and farms. Read what people actually said, then order from the ones that deliver.
+  stat_listed: places listed
+  stat_open: open right now
+  stat_orders: take orders
+  browse_lead: Browse
+  browse_rest: by kind
+  open_lead: Open
+  open_rest: right now
+  see_all: 'See all {count}'
+  orders_lead: Taking
+  orders_rest: orders
+  browse_everything: Browse everything
+  farms_lead: Straight
+  farms_rest: from the farm
+  farms_body: A weekly box from a grower nearby. Most are an hour out rather than round the corner, which is why each one tells you how far it came.
+  farms_cta: See the farms
+  how_lead: How
+  how_rest: it works
+  how_find_title: Find somewhere
+  how_find_body: Filter by cuisine, price, rating and what is open, on a map of the whole area.
+  how_reviews_title: Read the reviews
+  how_reviews_body: What people said about the food, with the photos they took and the dishes they named.
+  how_order_title: Order from the ones that deliver
+  how_order_body: '{count} of them take orders for delivery, pickup or a table. The rest are here to be read about.'
+  subscribe_title: Hear when somewhere near you starts delivering.
+  subscribe_body: '{count} of these places take orders today. When one of the others does, this is how you find out.'
+  subscribe_label: Email address
+  subscribe_button: Keep me posted
+  subscribe_busy: One moment…
+  subscribe_done: That is on the list. Nothing else will arrive.
+  subscribe_note: One address, one purpose. Leave any time.
+  subscribe_bad_email: That does not look like an email address.
+  subscribe_failed: That did not send. Try again in a moment.
+
+discover:
+  results: Results
+  result: Result
+  map_lead: Map
+  map_rest: View
+  category: Category
+  cuisine: Cuisine
+  price_lead: Price
+  price_rest: Range
+  rating_lead: Star
+  rating_rest: Rating
+  any_price: Any price
+  average: Average
+  more_filters: More filters
+  fewer_filters: Fewer filters
+  follow_map: Search as I move the map
+  no_matches: Nothing matches that. Try fewer words.
+  show_closed: "{count} more closed right now — show them"
+  stat_places: places
+  stat_open: open now
+  stat_orders: take orders
+  fulfilment_label: How you want it
+  fulfilment_any: Any way
+  when_label: When
+  when_today: Today · ASAP
+  when_later: Any time
+  opens_in: "Opens in {minutes} min"
+  closing_in: "Closing in {minutes} min"
+  clear_search: Clear the search
+  show_map: Show the map
+  fullscreen: Fill the window with the map
+  zoom_in: Zoom in
+  zoom_out: Zoom out
+  centre_on_me: Centre on me
+  highest_price: Highest price tier
+  order_results: Order the results
+  attribution: Map tiles by CARTO, data from OpenStreetMap contributors.
+place:
+  not_found: Not found
+  not_found_body: That place is not listed.
+  open_now: Open now
+  closed_now: Closed right now
+  closed_opens_in: "Closed, opens in {minutes} min"
+  open_closing_in: "Open, closing in {minutes} min"
+  hours_range: "{open} to {close}"
+  fulfilment_delivery: "Delivery, about {minutes} min to prepare"
+  fulfilment_pickup: Pickup
+  fulfilment_dine_in: Dine in, order from the table
+  fulfilment_shop: Weekly boxes and produce
+  no_menu: No menu here yet
+  order: Order
+  claim_mine: This is my business
+  take_share: Take a share
+  join: Join
+  no_reviews_yet: Nobody has written one yet.
+  your_review: Your review
+  how_to_get: How to get it
+  back_to_discover: Back to discover
+
+meta:
+  home_title: Smakelo - find the good places near you
+  home_description: "Find restaurants, coffee shops, bakeries and farms around {region}. Read the reviews, then order delivery, pickup or a weekly farm box."
+  discover_title: Discover - Smakelo
+  discover_description: "Search every restaurant, coffee shop, bakery and farm we list around {region} - by cuisine, price, rating, and what is open now."
+  saved_title: Saved - Smakelo
+  saved_description: Places you kept.
+  orders_title: Your orders - Smakelo
+  orders_description: Everything you have ordered from this browser.
 
 order:
   add_to_cart: Add
@@ -87,6 +223,24 @@ review:
   owner_response: Response from the owner
   verified: Verified order
 
+saved:
+  title: Saved
+  lede: Kept in this browser. There are no accounts here, so a different browser is a different list, and clearing your site data clears it.
+  empty: Nothing saved yet.
+  empty_cta: Find somewhere
+  remove: Remove
+  listing_only: Listing only
+
+orders:
+  title: Your orders
+  lede: Everything you have ordered from this browser.
+  empty: No orders yet.
+  empty_cta: Find somewhere to order from
+  track: Track
+  reorder: Order again
+  ordered_nothing: You have not ordered anything yet.
+  write_review: Write a review
+
 table:
   scan_prompt: Scan to see the menu
   tab_open: Your tab
@@ -118,6 +272,22 @@ courier:
   picked_up: Picked up
   delivered: Delivered
   earnings: Earnings
+
+footer:
+  tagline: 'Restaurants, coffee shops and farms in {regions}.'
+  browse: Browse
+  for_business: For businesses
+  about: About
+  list_your_place: List your place
+  manage_place: Manage a place
+  kitchen_screen: Kitchen screen
+  courier: Courier
+  earnings: Earnings
+  claim_listing: Claim a listing
+  built_on: Built on Stacks
+  map_data: Map data
+  sources: Listings from OpenStreetMap and Foursquare Open Source Places. Reviews, orders and accounts are invented.
+  language: Language
 
 common:
   back: Back

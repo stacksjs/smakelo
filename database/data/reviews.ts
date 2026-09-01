@@ -29,7 +29,225 @@ export interface SeedReview {
   helpful?: number
 }
 
+
+/**
+ * Reviews for the German partners.
+ *
+ * In German, and written by invented people about invented restaurants, which
+ * is the only combination this site allows anywhere. Kept in their own block
+ * rather than interleaved, so a translator or a proofreader has one place to
+ * look.
+ */
+const DE_REVIEWS: Record<string, SeedReview[]> = {
+  'zur-schwebenden-laterne': [
+    {
+      rating: 5,
+      author: 'Meike Overath',
+      title: 'Sauerbraten wie bei meiner Oma, nur besser',
+      body: 'Fünf Tage eingelegt, und man schmeckt es. Die Soße war dunkel und süß-sauer, ohne dass sie in die eine oder andere Richtung kippt. Die Klöße kamen zu zweit, was reichlich war, und niemand hat komisch geguckt, als wir einen mitgenommen haben.',
+      dishes: 'Rheinischer Sauerbraten, Reibekuchen',
+      helpful: 14,
+    },
+    {
+      rating: 4,
+      author: 'Jonas Kremer',
+      title: 'Eng, aber gemütlich',
+      body: 'Das Haus ist schmal und die Tische stehen dicht. Am Samstagabend hört man das Gespräch nebenan mit. Essen war sehr gut, Bedienung freundlich und schnell. Montags ist zu, das steht auch dran.',
+      dishes: 'Himmel un Ääd',
+      ownerResponse: 'Danke Ihnen. Die zwei Tische am Fenster sind etwas ruhiger, einfach vorher anrufen.',
+      helpful: 9,
+    },
+    {
+      rating: 5,
+      author: 'Ayşe Demirtaş',
+      title: 'Das Gemüseschnitzel ist kein Trostpreis',
+      body: 'Ich esse kein Fleisch und bin es gewohnt, in solchen Häusern die eine traurige Beilage zu bekommen. Hier nicht: Sellerieschnitzel, richtig paniert, mit einem Kartoffelsalat, der nach Essig und nicht nach Mayonnaise schmeckt.',
+      dishes: 'Gemüseschnitzel',
+      helpful: 22,
+    },
+  ],
+
+  'ocakbasi-nordstadt': [
+    {
+      rating: 5,
+      author: 'Deniz Yücel',
+      title: 'Der Grill steht im Raum, und das merkt man',
+      body: 'Man sitzt fünf Meter von der Holzkohle entfernt und riecht sein Essen, bevor es kommt. Adana mittel-scharf, Fladenbrot direkt aus dem Steinofen daneben. Die Linsensuppe gibt es auch um drei Uhr nachmittags, was selten ist.',
+      dishes: 'Adana Kebap, Mercimek Çorbası',
+      helpful: 31,
+    },
+    {
+      rating: 4,
+      author: 'Tobias Lehnert',
+      title: 'Preis-Leistung stimmt',
+      body: 'Zu zweit gegessen und getrunken für unter dreißig Euro. Das Beyti war gut, hätte etwas weniger Joghurt vertragen. Kommt aufs Handy in zwanzig Minuten, wenn man vorbestellt.',
+      dishes: 'Beyti Sarma',
+      helpful: 7,
+    },
+  ],
+
+  'osteria-wupperbogen': [
+    {
+      rating: 5,
+      author: 'Carla Bittner',
+      title: 'Zwölf Nudeln und sonst nichts',
+      body: 'Eine Karte, auf der nur Pasta steht, ist eine Ansage. Cacio e Pepe war cremig ohne Sahne, was den Unterschied macht. Die Portion Normal reicht, wenn man vorher Focaccia isst, und die sollte man.',
+      dishes: 'Cacio e Pepe, Focaccia',
+      helpful: 18,
+    },
+    {
+      rating: 4,
+      author: 'Sven Ahlbrecht',
+      title: 'Reservieren',
+      body: 'Ohne Tisch am Freitag geht nichts, wir standen zwanzig Minuten an der Tür. Als wir saßen, ging es schnell. Ragù nach vier Stunden schmeckt nach vier Stunden.',
+      dishes: 'Ragù alla Bolognese',
+      ownerResponse: 'Stimmt, freitags wird es eng. Online kann man ab zwei Wochen vorher buchen.',
+      helpful: 11,
+    },
+  ],
+
+  'kaffeehaus-nordbahn': [
+    {
+      rating: 5,
+      author: 'Lena Poth',
+      title: 'Nach der Trasse genau richtig',
+      body: 'Mit dem Rad von Vohwinkel gekommen und hier Frühstück gemacht. Das Brett ist groß genug für zwei, wenn man nicht sehr hungrig ist. Draußen sitzen und den Leuten beim Fahren zusehen.',
+      dishes: 'Frühstücksbrett, Flat White',
+      helpful: 16,
+    },
+    {
+      rating: 4,
+      author: 'Robert Zilles',
+      title: 'Kaffee sehr gut, Kuchen manchmal alle',
+      body: 'Um vier war der Käsekuchen weg. Das steht so auch auf der Karte, insofern kein Vorwurf. Der Filterkaffee ist besser als der von den meisten Röstereien hier.',
+      dishes: 'Filterkaffee',
+      helpful: 5,
+    },
+  ],
+
+  'bergischer-kaffeegarten': [
+    {
+      rating: 5,
+      author: 'Ursula Brenner',
+      title: 'Zwei Stunden, und die braucht man',
+      body: 'Die vollständige Kaffeetafel mit Dröppelminna auf dem Tisch, so wie es sein soll. Waffeln mit heißen Kirschen kamen zweimal, weil wir gefragt haben. Man geht satt und langsam wieder raus.',
+      dishes: 'Bergische Kaffeetafel',
+      helpful: 27,
+    },
+    {
+      rating: 5,
+      author: 'Hendrik Vogel',
+      title: 'Meine Schwiegereltern waren beeindruckt',
+      body: 'Aus Hamburg zu Besuch und wollten etwas Bergisches. Das hier war die richtige Wahl. Der Rosinenstuten mit Butter ist unspektakulär und genau deswegen gut.',
+      dishes: 'Bergische Kaffeetafel, Rosinenstuten',
+      helpful: 13,
+    },
+  ],
+
+  'baeckerei-morgenrot': [
+    {
+      rating: 5,
+      author: 'Petra Salzmann',
+      title: 'Das Sauerteigbrot hält wirklich eine Woche',
+      body: 'Am Samstag gekauft, am Freitag noch gut. Kruste kräftig, Krume feucht. Ab sechs offen, das weiß ich seit ich Frühschicht habe.',
+      dishes: 'Bergisches Sauerteigbrot',
+      helpful: 19,
+    },
+    {
+      rating: 4,
+      author: 'Nils Kortenkamp',
+      title: 'Samstags Schlange',
+      body: 'Der Streuselkuchen ist um zehn meistens schon halb weg. Anstellen lohnt sich trotzdem. Brötchen sind solide, nichts Verrücktes.',
+      dishes: 'Streuselkuchen vom Blech',
+      helpful: 6,
+    },
+  ],
+
+  'wupperschaenke': [
+    {
+      rating: 4,
+      author: 'Marco Zeppenfeld',
+      title: 'Acht Hähne, ein Bierdeckel',
+      body: 'Die Karte passt tatsächlich auf einen Bierdeckel, und das ist keine Masche, sondern das ganze Konzept. Das obergärige Hausbier ist der Grund herzukommen. Mettbrötchen dazu, fertig.',
+      dishes: 'Obergäriges Hausbier, Mettbrötchen',
+      helpful: 12,
+    },
+  ],
+
+  'gasthaus-glockenklang': [
+    {
+      rating: 5,
+      author: 'Bernhard Terhorst',
+      title: 'Töttchen, wie es sein muss',
+      body: 'Man bekommt es außerhalb von Münster selten richtig. Hier schon: sauer genug, mit Brot zum Auftunken. Der Pfefferpotthast danach war ehrlich gepfeffert, kein Alibi.',
+      dishes: 'Töttchen, Pfefferpotthast',
+      helpful: 21,
+    },
+    {
+      rating: 5,
+      author: 'Gudrun Lammers',
+      title: 'Spargelzeit',
+      body: 'Im Mai hier gegessen, Spargel vom Hof nebenan, mit Pfannkuchen statt Kartoffeln. Die Bedienung hat gesagt, welcher Hof, was ich gut finde. Ansonsten ruhiges Haus, montags zu.',
+      dishes: 'Münsterländer Spargel',
+      ownerResponse: 'Der Spargel kommt vom Hof Berkelaue, drei Kilometer die Straße runter. Danke für die netten Worte.',
+      helpful: 17,
+    },
+  ],
+
+  'pizzeria-muehlenrad': [
+    {
+      rating: 5,
+      author: 'Elif Baran',
+      title: 'Sechzig Sekunden, und es stimmt',
+      body: 'Rand luftig, Boden gefleckt, nicht labberig in der Mitte. Diavola mit Honig klingt komisch und ist es nicht. Sechs Tische, also besser abholen.',
+      dishes: 'Diavola',
+      helpful: 15,
+    },
+    {
+      rating: 4,
+      author: 'Frank Wielspütz',
+      title: 'Abholen geht schneller als Liefern',
+      body: 'Lieferung hat vierzig Minuten gedauert am Samstag, was für hier normal ist. Pizza war noch heiß. Ortolana für meine Tochter ohne Käse, ging problemlos.',
+      dishes: 'Margherita, Ortolana',
+      helpful: 8,
+    },
+  ],
+
+  'kaffeescheune-berkelblick': [
+    {
+      rating: 5,
+      author: 'Annegret Sühling',
+      title: 'Butterkuchen um drei',
+      body: 'Wenn man es um drei schafft, ist der Butterkuchen noch warm. Draußen an der Berkel sitzen, bis es zu kalt wird. Filterkaffee kommt in der Kanne, das mag ich.',
+      dishes: 'Butterkuchen, Filterkaffee',
+      helpful: 14,
+    },
+  ],
+
+  'hofladen-berkelaue': [
+    {
+      rating: 5,
+      author: 'Katrin Bösing',
+      title: 'Kiste seit zwei Jahren',
+      body: 'Freitags abholen, und man kocht danach, was drin ist, statt zu planen. Kohl kann man abwählen, was ich im Januar auch mache. Die Kartoffeln sind die besten, die ich hier bekomme.',
+      dishes: 'Große Kiste, Kartoffeln',
+      helpful: 24,
+    },
+    {
+      rating: 4,
+      author: 'Wilhelm Rottmann',
+      title: 'Kurze Öffnungszeiten',
+      body: 'Mittwochnachmittag, Freitag und Samstagvormittag. Wer arbeitet, muss es sich einteilen. Dafür weiß man, wo alles herkommt, und die Eier sind zwei Tage alt.',
+      dishes: 'Eier, Rohmilch',
+      helpful: 10,
+    },
+  ],
+}
+
+/** Every review, keyed by the slug of the partner it was left for. */
 export const REVIEWS: Record<string, SeedReview[]> = {
+  ...DE_REVIEWS,
+
   'aster-and-ash': [
     {
       rating: 5,

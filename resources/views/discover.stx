@@ -9,38 +9,80 @@
  */
 import { formatDistance } from '../../app/Actions/Business/geo'
 import { searchBusinesses } from '../../app/Actions/Business/search'
+import { REGIONS, resolveRegion } from '../../app/Actions/Business/regions'
 import { deliveryFee } from '../../app/Actions/Order/pricing'
 
-// Named rather than pluralised by rule: "Coffee" reads better than "Cafes",
-// and appending an s produces "Bakerys".
-function typeLabel(type: string): string {
-  if (type === 'restaurant')
-    return 'Restaurants'
-  if (type === 'cafe')
-    return 'Coffee'
-  if (type === 'farm')
-    return 'Farms'
-  if (type === 'bakery')
-    return 'Bakeries'
-  if (type === 'grocery')
-    return 'Grocers'
-  if (type === 'bar')
-    return 'Bars'
+/*
+ * A type, in the language being served.
+ *
+ * Named per type rather than pluralised by rule: "Coffee" reads better than
+ * "Cafes" in English, and a rule that appends an s produces "Bakerys" there
+ * and nonsense in German. A key with no translation falls through to the type
+ * itself, capitalised: a poor label, but a legible one.
+ */
+function typeLabel(type) {
+  const key = 'types.' + type
+  const translated = t(key)
 
-  return `${type.charAt(0).toUpperCase()}${type.slice(1)}`
+  if (translated === key)
+    return type.charAt(0).toUpperCase() + type.slice(1)
+
+  return translated
 }
 
-const pageTitle = 'Discover - Smakelo'
-const pageDescription = 'Search every restaurant, coffee shop, bakery and farm we list across Los Angeles - by cuisine, price, rating, and what is open now.'
+/*
+ * Which part of the world this page is searching.
+ *
+ * `?region=` if somebody asked, otherwise the region that matches the language
+ * being served. Los Angeles, Wuppertal and Gescher are thousands of kilometres
+ * apart, so this is not a default anything can split the difference on: the
+ * centre and the radius come from one region or another. The radius is the
+ * region's too, which is why Los Angeles still reaches the farms an hour out
+ * of town and Gescher does not pretend to.
+ *
+ * Declared before everything that reads it. `pageTitle` below is one of them,
+ * and a `const` referenced above its own declaration throws before the
+ * template is reached - which in stx is silent, and renders the whole page
+ * around undefined values rather than reporting anything.
+ */
+const region = resolveRegion(query?.region, locale)
+
+/*
+ * The places this site covers, as a row of links.
+ *
+ * Links rather than a picker: a region is a different set of results, so it
+ * deserves a URL somebody can send. Written as a plain loop for the reason
+ * given below the type filter - this file has a history of quietly failing on
+ * `.map()` with an arrow returning an object literal.
+ */
+const regionOptions = []
+
+for (const entry of REGIONS) {
+  regionOptions.push({
+    slug: entry.slug,
+    label: t('region.' + entry.slug),
+    href: '/discover?region=' + entry.slug,
+    current: entry.slug === region.slug ? 'true' : 'false',
+  })
+}
+
+const pageTitle = t('meta.discover_title')
+const pageDescription = t('meta.discover_description').replace('{region}', region.name)
 const canonicalPath = '/discover'
 
-// Santa Monica, where the seeded data is densest.
-const CENTRE = { latitude: 34.0195, longitude: -118.4912 }
+const CENTRE = { latitude: region.latitude, longitude: region.longitude }
 
-// Wide enough to include the farms. They are real growers in Ojai, Moorpark
-// and Tehachapi rather than anything in the city, so a tidy city-sized radius
-// would drop the entire farm side of the app off its own home page. Distance is
-// shown per card, so a box coming from an hour away says so.
+/*
+ * The currency this region prices in, as the symbol a card prints.
+ *
+ * From the region rather than a literal dollar sign: the same three marks mean
+ * a different thing on a German page than on a Californian one, and a euro
+ * restaurant labelled with dollars is the site quoting a currency nobody there
+ * takes. Declared up here because `cardsJson` below calls the functions that
+ * read it, and a `const` used before its declaration takes the whole script
+ * down silently.
+ */
+const CURRENCY_SYMBOL = region.market === 'los-angeles' ? '$' : '€'
 /*
  * One query, sliced two ways.
  *
@@ -52,7 +94,7 @@ const CENTRE = { latitude: 34.0195, longitude: -118.4912 }
 const everything = await searchBusinesses({
   latitude: CENTRE.latitude,
   longitude: CENTRE.longitude,
-  radiusMeters: 200000,
+  radiusMeters: region.radiusMeters,
   sort: 'distance',
   limit: 400,
 })
@@ -158,7 +200,7 @@ const cardsJson = JSON.stringify(results.map(business => ({
 })))
 
 function priceLabel(tier) {
-  return '$'.repeat(Math.max(1, Math.min(4, Number(tier) || 2)))
+  return CURRENCY_SYMBOL.repeat(Math.max(1, Math.min(4, Number(tier) || 2)))
 }
 
 /*
@@ -194,24 +236,24 @@ function feeLabel(business) {
   if (!business.isPartner || !business.offersDelivery || business.distanceMeters === null)
     return ''
 
-  return `$${(deliveryFee(business.distanceMeters) / 100).toFixed(2)}`
+  return CURRENCY_SYMBOL + (deliveryFee(business.distanceMeters) / 100).toFixed(2)
 }
 
 function openLabel(business) {
   if (business.openState === 'unknown')
-    return 'Hours unknown'
+    return t('business.hours_unknown')
 
   if (business.openState === 'closed') {
     if (typeof business.opensInMinutes === 'number' && business.opensInMinutes < 180)
-      return `Opens in ${business.opensInMinutes} min`
+      return t('discover.opens_in').replace('{minutes}', business.opensInMinutes)
 
-    return 'Closed'
+    return t('business.closed')
   }
 
   if (typeof business.closesInMinutes === 'number' && business.closesInMinutes < 60)
-    return `Closing in ${business.closesInMinutes} min`
+    return t('discover.closing_in').replace('{minutes}', business.closesInMinutes)
 
-  return 'Open now'
+  return t('place.open_now')
 }
 </script>
 
@@ -237,8 +279,7 @@ function openLabel(business) {
             <i class="flex-none w-5 h-5 i-hugeicons-search-01" style="color: var(--ink-soft)"></i>
             <input
               type="search"
-              data-i18n-placeholder="search.placeholder"
-              placeholder="Tacos, oat flat white, a farm box"
+              placeholder="{{ t('search.placeholder') }}"
               :value="query()"
               @input="onQuery($event.target.value)"
               class="flex-1 min-w-0 text-[17px] outline-none"
@@ -248,7 +289,7 @@ function openLabel(business) {
               :if="query()"
               type="button"
               @click="onQuery('')"
-              aria-label="Clear the search"
+              aria-label="{{ t('discover.clear_search') }}"
               class="inline-flex flex-none justify-center items-center w-6 h-6 rounded-full transition-opacity duration-300 hover:opacity-70"
               style="background: var(--line); color: var(--ink-soft)"
             >
@@ -264,17 +305,17 @@ function openLabel(business) {
             <span class="inline-flex flex-none justify-center items-center w-9 h-9 rounded-[12px]" style="background: var(--accent-soft); color: var(--accent)">
               <i class="w-4 h-4 i-hugeicons-bicycle-01"></i>
             </span>
-            <span class="sr-only">How you want it</span>
+            <span class="sr-only">{{ t('discover.fulfilment_label') }}</span>
             <select
               :value="fulfilment()"
               @change="fulfilment.set($event.target.value)"
               class="text-[14px] font-medium outline-none cursor-pointer"
               style="background: transparent"
             >
-              <option value="">Any way</option>
-              <option value="delivery">Delivery</option>
-              <option value="pickup">Pickup</option>
-              <option value="dinein">Dine in</option>
+              <option value="">{{ t('discover.fulfilment_any') }}</option>
+              <option value="delivery">{{ t('order.delivery') }}</option>
+              <option value="pickup">{{ t('order.pickup') }}</option>
+              <option value="dinein">{{ t('order.dine_in') }}</option>
             </select>
           </label>
 
@@ -284,24 +325,36 @@ function openLabel(business) {
             <span class="inline-flex flex-none justify-center items-center w-9 h-9 rounded-[12px]" style="background: var(--mint); color: var(--mint-ink)">
               <i class="w-4 h-4 i-hugeicons-clock-01"></i>
             </span>
-            <span class="sr-only">When</span>
+            <span class="sr-only">{{ t('discover.when_label') }}</span>
             <select
               :value="when()"
               @change="when.set($event.target.value)"
               class="text-[14px] font-medium outline-none cursor-pointer"
               style="background: transparent"
             >
-              <option value="asap">Today · ASAP</option>
-              <option value="open">Open now</option>
-              <option value="any">Any time</option>
+              <option value="asap">{{ t('discover.when_today') }}</option>
+              <option value="open">{{ t('search.open_now') }}</option>
+              <option value="any">{{ t('discover.when_later') }}</option>
             </select>
           </label>
         </div>
 
+        {{-- Where. Three towns on two continents, so this is the control that
+          changes the answer most, and it sits above everything that only
+          narrows it. The one being shown stays in the row rather than
+          disappearing from it: a switch that hides where you are gives you no
+          way back. --}}
+        <div class="flex flex-wrap gap-2 items-center mt-4">
+          <span class="text-[12px] font-medium tracking-[0.08em] uppercase" style="color: var(--ink-soft)">{{ t('region.label') }}</span>
+          @foreach (regionOptions as option)
+            <a href="{{ option.href }}" class="pill" aria-current="{{ option.current }}">{{ option.label }}</a>
+          @endforeach
+        </div>
+
         <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">
-          <strong style="color: var(--ink)">{{ total }}</strong> places ·
-          <strong style="color: var(--ink)">{{ openNow.length }}</strong> open now ·
-          <strong style="color: var(--ink)">{{ partners.length }}</strong> take orders
+          <strong style="color: var(--ink)">{{ total }}</strong> {{ t('discover.stat_places') }} ·
+          <strong style="color: var(--ink)">{{ openNow.length }}</strong> {{ t('discover.stat_open') }} ·
+          <strong style="color: var(--ink)">{{ partners.length }}</strong> {{ t('discover.stat_orders') }}
         </p>
       </section>
 
@@ -326,6 +379,7 @@ function openLabel(business) {
           data-cards="{{ cardsJson }}"
           data-total="{{ total }}"
           data-centre="{{ mapCentre }}"
+          data-currency="{{ CURRENCY_SYMBOL }}"
           hidden
         ></div>
 
@@ -333,18 +387,18 @@ function openLabel(business) {
           <aside class="discover-rail">
             <div class="flex flex-col gap-7 p-5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -24px rgba(20,17,15,0.14)">
               <div class="flex justify-between items-center">
-                <h2 class="rail-head"><i class="i-hugeicons-maps-location-01"></i>Map <span>View</span></h2>
+                <h2 class="rail-head"><i class="i-hugeicons-maps-location-01"></i>{{ t('discover.map_lead') }} <span>{{ t('discover.map_rest') }}</span></h2>
                 <button
                   type="button"
                   class="switch"
                   :aria-pressed="mapView() ? 'true' : 'false'"
-                  aria-label="Show the map"
+                  aria-label="{{ t('discover.show_map') }}"
                   @click="mapView.set(!mapView())"
                 ></button>
               </div>
 
               <div>
-                <h2 class="rail-head"><i class="i-hugeicons-dish-01"></i>Category</h2>
+                <h2 class="rail-head"><i class="i-hugeicons-dish-01"></i>{{ t('discover.category') }}</h2>
                 <div class="grid grid-cols-2 gap-2 mt-3">
                   <button
                     :for="entry in typeFilters()"
@@ -363,7 +417,7 @@ function openLabel(business) {
                 phone can do without until asked. --}}
               <div class="rail-more flex-col gap-7">
                 <div>
-                  <h2 class="rail-head"><i class="i-hugeicons-restaurant-01"></i>Cuisine</h2>
+                  <h2 class="rail-head"><i class="i-hugeicons-restaurant-01"></i>{{ t('discover.cuisine') }}</h2>
                   <div class="fade-list mt-3 max-h-[188px]">
                     <div class="flex flex-col gap-1 pr-1">
                       <button
@@ -380,7 +434,7 @@ function openLabel(business) {
                 </div>
 
                 <div>
-                  <h2 class="rail-head"><i class="i-hugeicons-money-03"></i>Price <span>Range</span></h2>
+                  <h2 class="rail-head"><i class="i-hugeicons-money-03"></i>{{ t('discover.price_lead') }} <span>{{ t('discover.price_rest') }}</span></h2>
 
                   {{-- The bars are the results, counted per tier, so the
                     control shows you where the places actually are before you
@@ -403,18 +457,18 @@ function openLabel(business) {
                     class="price-range mt-2 w-full"
                     :value="maxPrice()"
                     @input="maxPrice.set(Number($event.target.value))"
-                    aria-label="Highest price tier"
+                    aria-label="{{ t('discover.highest_price') }}"
                   >
 
                   <div class="flex justify-between items-baseline mt-1 text-[12px]">
-                    <span class="font-medium">{{ maxPrice() >= 4 ? 'Any price' : '$ - ' + '$'.repeat(maxPrice()) }}</span>
-                    <span style="color: var(--ink-soft)">Average: {{ averagePrice() }}</span>
+                    <span class="font-medium">{{ maxPrice() >= 4 ? say('discover.any_price', 'Any price') : currency + ' - ' + currency.repeat(maxPrice()) }}</span>
+                    <span style="color: var(--ink-soft)">{{ say('discover.average', 'Average') }}: {{ averagePrice() }}</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h2 class="rail-head"><i class="i-hugeicons-star"></i>Star <span>Rating</span></h2>
+                <h2 class="rail-head"><i class="i-hugeicons-star"></i>{{ t('discover.rating_lead') }} <span>{{ t('discover.rating_rest') }}</span></h2>
                 <div class="seg mt-3">
                   <button
                     :for="entry in ratingFilters"
@@ -429,7 +483,7 @@ function openLabel(business) {
                 type="button"
                 class="rail-toggle pill justify-center"
                 @click="moreFilters.set(!moreFilters())"
-              >{{ moreFilters() ? 'Fewer filters' : 'More filters' }}</button>
+              >{{ moreFilters() ? say('discover.fewer_filters', 'Fewer filters') : say('discover.more_filters', 'More filters') }}</button>
             </div>
           </aside>
 
@@ -441,7 +495,7 @@ function openLabel(business) {
               <button
                 type="button"
                 class="map-btn map-solo absolute top-6 right-6 z-[500]"
-                aria-label="Fill the window with the map"
+                aria-label="{{ t('discover.fullscreen') }}"
                 @click="toggleFullscreen()"
               >
                 <i class="w-4 h-4 i-hugeicons-arrow-expand-01"></i>
@@ -449,11 +503,11 @@ function openLabel(business) {
 
               <div class="flex absolute bottom-6 left-6 z-[500] flex-col gap-2">
                 <div class="map-stack">
-                  <button type="button" class="map-btn" aria-label="Zoom in" @click="zoomBy(1)"><i class="w-4 h-4 i-hugeicons-plus-sign"></i></button>
-                  <button type="button" class="map-btn" aria-label="Zoom out" @click="zoomBy(-1)"><i class="w-4 h-4 i-hugeicons-minus-sign"></i></button>
+                  <button type="button" class="map-btn" aria-label="{{ t('discover.zoom_in') }}" @click="zoomBy(1)"><i class="w-4 h-4 i-hugeicons-plus-sign"></i></button>
+                  <button type="button" class="map-btn" aria-label="{{ t('discover.zoom_out') }}" @click="zoomBy(-1)"><i class="w-4 h-4 i-hugeicons-minus-sign"></i></button>
                 </div>
 
-                <button type="button" class="map-btn map-solo" aria-label="Centre on me" @click="locate()"><i class="w-4 h-4 i-hugeicons-target-02"></i></button>
+                <button type="button" class="map-btn map-solo" aria-label="{{ t('discover.centre_on_me') }}" @click="locate()"><i class="w-4 h-4 i-hugeicons-target-02"></i></button>
               </div>
 
               {{-- Off by default. Panning the map and having the list rewrite
@@ -468,22 +522,22 @@ function openLabel(business) {
                 @click="followMap.set(!followMap())"
               >
                 <span class="check follow-check w-[18px] h-[18px] rounded-[6px] text-[11px]" :aria-pressed="followMap() ? 'true' : 'false'" aria-hidden="true">✓</span>
-                Search as I move the map
+                {{ t('discover.follow_map') }}
               </button>
             </div>
           </div>
 
           <div class="discover-list">
             <div class="flex flex-wrap gap-3 justify-between items-center pb-4">
-              <h2 class="rail-head">{{ shown().length }} <span>{{ shown().length === 1 ? 'Result' : 'Results' }}</span></h2>
+              <h2 class="rail-head">{{ shown().length }} <span>{{ shown().length === 1 ? say('discover.result', 'Result') : say('discover.results', 'Results') }}</span></h2>
 
               <label class="inline-flex gap-1.5 items-center px-2.5 py-2 rounded-[10px]" style="background: var(--paper-raised); border: 1px solid var(--line)">
                 <i class="w-3.5 h-3.5 i-hugeicons-sort-by-down-01" style="color: var(--ink-soft)"></i>
-                <span class="sr-only">Order the results</span>
+                <span class="sr-only">{{ t('discover.order_results') }}</span>
                 <select :value="sort()" @change="sort.set($event.target.value)" class="text-[12px] outline-none cursor-pointer" style="background: transparent">
-                <option value="distance" data-i18n="search.sort_distance">Nearest</option>
-                <option value="rating" data-i18n="search.sort_rating">Best rated</option>
-                <option value="name" data-i18n="search.sort_name">A to Z</option>
+                <option value="distance">{{ t('search.sort_distance') }}</option>
+                <option value="rating">{{ t('search.sort_rating') }}</option>
+                <option value="name">{{ t('search.sort_name') }}</option>
                 </select>
               </label>
             </div>
@@ -498,11 +552,11 @@ function openLabel(business) {
               style="background: var(--accent-soft); color: var(--accent)"
             >
               <i class="flex-none w-4 h-4 i-hugeicons-clock-01"></i>
-              <span><strong>{{ closedRightNow() }}</strong> more closed right now — show them</span>
+              <span>{{ closedNote(closedRightNow()) }}</span>
             </button>
 
-            <p :if="shown().length === 0" data-i18n="search.no_results" class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
-              Nothing matches that. Try fewer words.
+            <p :if="shown().length === 0" class="py-12 text-center text-[15px]" style="color: var(--ink-soft)">
+              {{ t('discover.no_matches') }}
             </p>
 
             <div class="discover-results">
@@ -573,7 +627,7 @@ function openLabel(business) {
         </div>
 
         <p class="mt-6 text-[11px]" style="color: var(--ink-soft)">
-          Map tiles by CARTO, data from OpenStreetMap contributors.
+          {{ t('discover.attribution') }}
         </p>
       </section>
     </main>
@@ -596,6 +650,16 @@ function openLabel(business) {
       const cards = state(source ? JSON.parse(source.dataset.cards || '[]') : [])
       const total = Number(source ? source.dataset.total : 0)
       const centre = source ? JSON.parse(source.dataset.centre || '{}') : { latitude: 34.0195, longitude: -118.4912 }
+
+      /*
+       * The currency this region prices in, decided by the server.
+       *
+       * Travels on a data attribute like everything else the server tells this
+       * file: stx does not interpolate inside a script tag. A symbol rather
+       * than a currency code, because the only thing done with it here is
+       * printing it in front of a number.
+       */
+      const currency = (source && source.dataset.currency) || '$'
 
       /*
        * Where each business is, by slug.
@@ -961,15 +1025,26 @@ function openLabel(business) {
 
       function label(value) {
         const named = {
-          restaurant: 'Restaurants',
-          cafe: 'Coffee',
-          farm: 'Farms',
-          bakery: 'Bakeries',
-          grocery: 'Grocers',
-          bar: 'Bars',
+          restaurant: say('types.restaurant', 'Restaurants'),
+          cafe: say('types.cafe', 'Coffee'),
+          farm: say('types.farm', 'Farms'),
+          bakery: say('types.bakery', 'Bakeries'),
+          grocery: say('types.grocery', 'Grocers'),
+          bar: say('types.bar', 'Bars'),
         }
 
         return named[value] || `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+      }
+
+      /*
+       * How many results the time picker is holding back.
+       *
+       * The count sits inside the sentence rather than in front of it, because
+       * German and Dutch put it somewhere else; filling the placeholder here
+       * lets the translation own the word order.
+       */
+      function closedNote(count) {
+        return say('discover.show_closed', '{count} more closed right now — show them').replace('{count}', count)
       }
 
       /*
@@ -1023,12 +1098,12 @@ function openLabel(business) {
           cuisine: business.cuisine || business.type,
           description: business.description || '',
           city: business.city,
-          price: '$'.repeat(Math.max(1, Math.min(4, Number(business.priceTier) || 2))),
+          price: currency.repeat(Math.max(1, Math.min(4, Number(business.priceTier) || 2))),
           rating: business.ratingAverage,
           ratingCount: business.ratingCount,
           distance: '',
           distanceMeters: business.distanceMeters,
-          openLabel: business.openState === 'open' ? 'Open now' : business.city,
+          openLabel: business.openState === 'open' ? say('place.open_now', 'Open now') : business.city,
           openState: business.openState,
           isPartner: business.isPartner,
           haystack: `${business.name} ${business.cuisine} ${business.city}`.toLowerCase(),
