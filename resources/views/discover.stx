@@ -11,7 +11,7 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
 import { requestQuery } from '../../app/Actions/Request/context'
 import { formatDistance } from '../../app/Actions/Business/geo'
 import { searchBusinesses } from '../../app/Actions/Business/search'
-import { REGIONS, resolveRegion } from '../../app/Actions/Business/regions'
+import { REGIONS, currencySymbol, resolveRegion } from '../../app/Actions/Business/regions'
 import { deliveryFee } from '../../app/Actions/Order/pricing'
 
 /*
@@ -84,7 +84,7 @@ const CENTRE = { latitude: region.latitude, longitude: region.longitude }
  * read it, and a `const` used before its declaration takes the whole script
  * down silently.
  */
-const CURRENCY_SYMBOL = region.market === 'los-angeles' ? '$' : '€'
+const CURRENCY_SYMBOL = currencySymbol(region)
 /*
  * One query, sliced two ways.
  *
@@ -584,7 +584,7 @@ function openLabel(business) {
                     style="background: rgba(255,255,255,0.92); color: #14713f"
                   >
                     <span class="w-1.5 h-1.5 rounded-full" style="background: #14713f"></span>
-                    Open
+                    {{ say('business.open', 'Open') }}
                   </span>
 
                   {{-- A link inside a link is not a link, so the save button

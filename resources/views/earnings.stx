@@ -35,6 +35,7 @@ const clientStrings = JSON.stringify({
   'earnings.sales_tax_held': t('earnings.sales_tax_held'),
   'earnings.earned': t('earnings.earned'),
   'earnings.outstanding': t('earnings.outstanding'),
+  'earnings.order_ref': t('earnings.order_ref', { id: '{id}' }),
   'earnings.party_tax': t('earnings.party_tax'),
   'earnings.party_unassigned': t('earnings.party_unassigned'),
   'earnings.type_business': t('earnings.type_business'),
@@ -129,9 +130,7 @@ const canonicalPath = '/earnings'
 
           <div :if="canPayOut()" class="p-6 mt-10 rounded-[1.5rem]" style="background: var(--accent-soft)">
             <p class="text-[14px] leading-relaxed" style="color: var(--ink)">
-              Paying out writes a negative row rather than clearing the balance,
-              so the history of what was owed and then paid survives. No money
-              moves here: these accounts belong to invented businesses.
+              {{ t('earnings.payout_note') }}
             </p>
             <button @click="payOut()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="background: var(--accent); color: #fff">
               {{ t('earnings.pay_out') }} {{ money(statement().outstandingCents, statement().currency) }}
@@ -148,7 +147,7 @@ const canonicalPath = '/earnings'
               <li :for="line in statement().lines" class="flex gap-4 justify-between py-2 border-b" style="border-color: var(--line)">
                 <span class="min-w-0">
                   <span class="block truncate">{{ line.description || label(line.kind) }}</span>
-                  <span :if="line.orderId" class="block text-[12px]" style="color: var(--ink-soft)">Order #{{ line.orderId }}</span>
+                  <span :if="line.orderId" class="block text-[12px]" style="color: var(--ink-soft)">{{ orderRef(line.orderId) }}</span>
                 </span>
                 <span class="tabular-nums shrink-0" :style="line.amountCents < 0 ? 'color: var(--ink-soft)' : ''">
                   {{ line.amountCents < 0 ? '−' : '' }}{{ money(line.amountCents, statement().currency) }}
@@ -205,6 +204,11 @@ const canonicalPath = '/earnings'
 
       /* Which side of the ledger a party sits on, in words rather than as the
          column value. */
+      /* Which order a ledger row came from. */
+      function orderRef(id) {
+        return say('earnings.order_ref', 'Order #{id}').replace('{id}', id)
+      }
+
       function partyKind(type) {
         return say(`earnings.type_${type}`, String(type ?? ''))
       }

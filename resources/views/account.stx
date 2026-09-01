@@ -43,6 +43,14 @@ const clientStrings = JSON.stringify({
   'account.carry_reviews_many': t('account.carry_reviews_many', { count: '{count}' }),
   'account.carry_shares_one': t('account.carry_shares_one', { count: '{count}' }),
   'account.carry_shares_many': t('account.carry_shares_many', { count: '{count}' }),
+  'account.tile_saved_one': t('account.tile_saved_one'),
+  'account.tile_saved_many': t('account.tile_saved_many'),
+  'account.tile_orders_one': t('account.tile_orders_one'),
+  'account.tile_orders_many': t('account.tile_orders_many'),
+  'account.tile_reviews_one': t('account.tile_reviews_one'),
+  'account.tile_reviews_many': t('account.tile_reviews_many'),
+  'account.tile_shares_one': t('account.tile_shares_one'),
+  'account.tile_shares_many': t('account.tile_shares_many'),
 })
 
 const pageTitle = t('meta.account_title')
@@ -81,7 +89,7 @@ const canonicalPath = '/account'
           </div>
 
           <button @click="signOut()" class="px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="border: 1px solid var(--line); color: var(--ink-soft)">
-            Sign out
+            {{ t('nav.sign_out') }}
           </button>
         </div>
 
@@ -246,11 +254,18 @@ const canonicalPath = '/account'
           : String(words[0] || '?').slice(0, 2).toUpperCase()
       })
 
+      /* What a tile counts, singular or plural. Separate keys rather than an
+         English rule, because "1 Bewertung" and "2 Bewertungen" do not differ
+         by an s the way the English pair happens to. */
+      function tileLabel(kind, count, one, many) {
+        return say(`account.tile_${kind}_${count === 1 ? 'one' : 'many'}`, count === 1 ? one : many)
+      }
+
       const tiles = derived(() => [
-        { label: carries().saved === 1 ? 'saved place' : 'saved places', count: carries().saved, href: '/saved', icon: 'i-hugeicons-bookmark-02' },
-        { label: carries().orders === 1 ? 'order' : 'orders', count: carries().orders, href: '/orders', icon: 'i-hugeicons-delivery-truck-01' },
-        { label: carries().reviews === 1 ? 'review' : 'reviews', count: carries().reviews, href: '/', icon: 'i-hugeicons-star' },
-        { label: carries().shares === 1 ? 'share' : 'shares', count: carries().shares, href: '/shares', icon: 'i-hugeicons-plant-01' },
+        { label: tileLabel('saved', carries().saved, 'saved place', 'saved places'), count: carries().saved, href: '/saved', icon: 'i-hugeicons-bookmark-02' },
+        { label: tileLabel('orders', carries().orders, 'order', 'orders'), count: carries().orders, href: '/orders', icon: 'i-hugeicons-delivery-truck-01' },
+        { label: tileLabel('reviews', carries().reviews, 'review', 'reviews'), count: carries().reviews, href: '/', icon: 'i-hugeicons-star' },
+        { label: tileLabel('shares', carries().shares, 'share', 'shares'), count: carries().shares, href: '/shares', icon: 'i-hugeicons-plant-01' },
       ])
 
       /*

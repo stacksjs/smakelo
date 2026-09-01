@@ -43,6 +43,7 @@ const clientStrings = JSON.stringify({
   'courier.deliveries': t('courier.deliveries'),
   'courier.fees': t('courier.fees'),
   'courier.tips': t('courier.tips'),
+  'courier.away': t('courier.away', { distance: '{distance}' }),
   'courier.state_active': t('courier.state_active'),
   'courier.state_offline': t('courier.state_offline'),
   'courier.state_on_delivery': t('courier.state_on_delivery'),
@@ -143,7 +144,7 @@ const canonicalPath = '/courier'
               </p>
               <p class="mt-1 text-[15px]" style="color: var(--ink-soft)">{{ view().current.address }}</p>
               <p :if="view().current.distanceMeters !== null" class="mt-2 text-[13px]" style="color: var(--ink-soft)">
-                {{ km(view().current.distanceMeters) }} away
+                {{ awayLine(view().current.distanceMeters) }}
               </p>
 
               <div class="grid grid-cols-1 gap-2 mt-6 sm:grid-cols-2">
@@ -214,6 +215,12 @@ const canonicalPath = '/courier'
       /* Where a courier is right now, in words rather than as the column
          value. An unknown state falls back to the value with its underscores
          opened out, which is what this used to do for every one of them. */
+      /* How far the next stop is, with the distance where the sentence wants
+         it. */
+      function awayLine(metres) {
+        return say('courier.away', '{distance} away').replace('{distance}', km(metres))
+      }
+
       function shiftState(status) {
         const key = String(status ?? '')
 

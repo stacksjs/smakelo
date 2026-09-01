@@ -45,7 +45,6 @@ types:
 
 region:
   label: Waar
-  switch: Ergens anders
   los-angeles: Los Angeles
   wuppertal: Wuppertal
   gescher: Gescher
@@ -68,9 +67,8 @@ business:
   price_tier: Prijs
   no_reviews: Nog geen reviews.
   hours_unknown: Openingstijden niet bekend
-  listing_only: Alleen vermeld, neemt geen bestellingen
-  photo_credit: Vermelding uit OpenStreetMap
   save_name: "{name} bewaren"
+  rating_from: "{average} uit {count}"
 home:
   title: Vind de goede plekken bij jou in de buurt.
   lede: Restaurants, koffiezaken, bakkers en boerderijen. Lees wat mensen er echt van vonden, en bestel dan bij de zaken die bezorgen.
@@ -181,6 +179,16 @@ place:
   every_day: "elke {day}"
   share_lede: Je koopt een aandeel in het seizoen, geen groentelijst. In het pakket zit wat die week rijp werd - in een goed jaar meer dan je dacht, in een slecht jaar drie soorten pompoen.
   reviewed_once: Je hebt deze zaak al beoordeeld. Eén per persoon.
+  not_partner_body: "{name} staat vermeld zodat mensen de zaak kunnen vinden, met adres, openingstijden en buurt. De zaak doet nog niet mee aan Smakelo, dus hier valt niets te bestellen."
+  claim_body: "{name} staat vermeld op basis van OpenStreetMap en Foursquare Open Source Places. Vertel ons wie je bent en wat je wilt: de vermelding gecorrigeerd, aan jou overgedragen, of weggehaald. We lezen ze allemaal en geven je gegevens nooit door."
+  claim_send: Versturen
+  claim_sent: Verstuurd. Iemand van het team leest het en antwoordt op het adres dat je gaf, meestal binnen twee werkdagen.
+  collect_from_farm: Afhalen bij de boerderij
+  join_share: Aandeel nemen
+  rating_summary: "{average} gemiddeld uit {count}"
+  reviews_closed: "{name} doet nog niet mee aan Smakelo, dus reviews zijn hier gesloten. Run je de zaak, claim dan hierboven de vermelding en ze gaan dezelfde dag open."
+  review_prompt: Zeg hoe het echt was. Reviews blijven staan, en de zaak kan er direct onder reageren.
+  review_post: Plaatsen
 meta:
   home_title: Smakelo - vind de goede plekken bij jou in de buurt
   home_description: "Restaurants, koffiezaken, bakkers en boerderijen rond {region}. Lees de reviews en bestel dan bezorging, afhalen of een wekelijks groentepakket."
@@ -276,6 +284,7 @@ review:
   title_placeholder: Vat het samen
   body_placeholder: Hoe was het?
   dishes_placeholder: Wat je besteld hebt (optioneel)
+  dishes_label: "Besteld: {dishes}"
 saved:
   title: Bewaard
   lede: Bewaard in deze browser. Er zijn hier geen accounts, dus een andere browser is een andere lijst - en wie zijn sitegegevens wist, wist hem mee.
@@ -286,11 +295,9 @@ saved:
 
 orders:
   title: Je bestellingen
-  lede: Alles wat je vanuit deze browser hebt besteld.
-  empty: Nog geen bestellingen.
+  lede: Geplaatst vanuit deze browser. Er zijn hier geen accounts, dus een andere browser is een andere lijst.
   empty_cta: Een zaak zoeken om te bestellen
   track: Volgen
-  reorder: Opnieuw bestellen
   ordered_nothing: Je hebt nog niets besteld.
   write_review: Review schrijven
 
@@ -374,6 +381,7 @@ courier:
   state_active: In dienst
   state_offline: Offline
   state_on_delivery: Onderweg met een bezorging
+  away: "{distance} verderop"
 footer:
   tagline: 'Restaurants, koffiezaken en boerderijen in {regions}.'
   browse: Bladeren
@@ -429,7 +437,7 @@ kitchen:
   untitled: Zonder titel
   reply_placeholder: Antwoord namens de zaak
   reply: Antwoorden
-
+  minutes_ago: "{minutes} min."
 manage:
   title: Beheren
   needs_slug: Voeg ?business=<slug> toe om een zaak te beheren.
@@ -439,6 +447,7 @@ manage:
   available_on: Aan
   available_off: Uit
   not_a_partner: Daar valt niets te beheren. Alleen de partnerzaken hebben een menu.
+  off_the_menu: "{count} van de kaart"
 admin:
   title: Bedrijfsvoering
   guards: Controles
@@ -450,7 +459,6 @@ admin:
   hidden: Verborgen
   put_back: Terugzetten
   take_down: Weghalen
-  lede: Of deze site zijn eigen beloften nog nakomt, getoetst aan de database in plaats van aan de code die ze zou moeten afdwingen.
   guards_lede: Wat deze site over zichzelf belooft, getoetst aan wat er werkelijk is opgeslagen. Een controle waarvan niemand de stand kan zien, is er een waar je achteraf van hoort.
   listings_lede: "Een vermelding verbergen haalt hem van de ontdekpagina, uit het zoeken, van de kaart en van zijn eigen pagina, en er kan niet meer besteld worden. De regel blijft staan, zodat hij terug kan komen als blijkt dat het verzoek van iemand kwam die de zaak helemaal niet runt."
 shares:
@@ -496,6 +504,8 @@ earnings:
   type_courier: Koerier
   type_platform: Platform
   type_tax: Belasting
+  payout_note: "Uitbetalen schrijft een negatieve regel in plaats van het saldo op nul te zetten, zodat de geschiedenis van wat verschuldigd was en toen betaald werd blijft bestaan. Hier gaat geen geld heen: deze rekeningen horen bij verzonnen zaken."
+  order_ref: "Bestelling #{id}"
 tab:
   finding_table: Je tafel wordt gezocht…
   scan_to_start: Scan de code op je tafel om te beginnen.
@@ -551,6 +561,14 @@ account:
   carry_shares_one: "{count} aandeel"
   carry_shares_many: "{count} aandelen"
   providers_note: De grijze wachten nog op sleutels. E-mail werkt nu al.
+  tile_saved_one: bewaarde plek
+  tile_saved_many: bewaarde plekken
+  tile_orders_one: bestelling
+  tile_orders_many: bestellingen
+  tile_reviews_one: review
+  tile_reviews_many: reviews
+  tile_shares_one: aandeel
+  tile_shares_many: aandelen
 checkout:
   loading_menu: Menu wordt geladen…
   unavailable: Dat menu is niet beschikbaar.
@@ -582,6 +600,7 @@ checkout:
   stripe_test: Stripe-testmodus
   stripe_card: Kaart 4242 4242 4242 4242, elke toekomstige vervaldatum, elke CVC. Er gaat geen geld heen.
   pay_test_mode: Betalen in testmodus
+  placed_body: "{name} heeft hem, en de keuken is begonnen. Vanaf hier kun je hem volgen."
 allergen:
   gluten: gluten
   dairy: zuivel

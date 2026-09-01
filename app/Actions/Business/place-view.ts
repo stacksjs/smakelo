@@ -1,4 +1,4 @@
-import { t } from '@stacksjs/i18n'
+import { translateFor } from '../Locale/translate'
 import { formatMinuteOfDay } from './hours'
 import { visualFor } from './identity'
 
@@ -69,6 +69,20 @@ export interface PlaceViewModel {
   priceLabel: string
   ratingAverage: number
   ratingCount: number
+  /** "12 reviews", in the language being served. */
+  ratingLabel: string
+  /*
+   * Three sentences that name the business.
+   *
+   * Built here rather than by a helper the markup calls, because a `{{ }}`
+   * holding a function call is compiled as a client binding - and `vm` is a
+   * server value that does not exist in the browser, so the call returned
+   * nothing and the paragraph rendered empty. A plain property does resolve
+   * server-side, which is what these are.
+   */
+  notPartnerBody: string
+  claimBody: string
+  reviewsClosed: string
   hasRating: boolean
   isPartner: boolean
   statusLabel: string
@@ -120,6 +134,10 @@ export function placeViewModel(found: any, locale = 'en'): PlaceViewModel {
     priceLabel: symbolFor(currency).repeat(Math.max(1, Math.min(4, Number(business.price_tier) || 2))),
     ratingAverage: Number(business.rating_average ?? 0),
     ratingCount: Number(business.rating_count ?? 0),
+    ratingLabel: say('business.rating_count', locale, { count: Number(business.rating_count ?? 0) }),
+    notPartnerBody: say('place.not_partner_body', locale, { name }),
+    claimBody: say('place.claim_body', locale, { name }),
+    reviewsClosed: say('place.reviews_closed', locale, { name }),
     hasRating: Number(business.rating_count ?? 0) > 0,
     isPartner: Number(business.is_partner) === 1,
     statusLabel: statusLabel(status, locale),
@@ -177,15 +195,17 @@ function symbolFor(currency: string): string {
 }
 
 /**
- * One string, in the language of this request.
+ * One string, in the language of this render.
  *
- * `t` is called with an explicit locale rather than relying on the global one.
- * The views server sets that per request in development and does not in
- * production, and a page whose language depends on which server is running is
- * worse than one that is honestly always English.
+ * Through `Actions/Locale/translate` rather than straight to the framework's
+ * `t`, because that module loads the translation files on its first call. Calling
+ * `t` directly worked only when something else had already loaded them - which
+ * the generated place pages happen to do on the line above this module's
+ * import, and nothing else does. A caller who imported this module on its own
+ * got a view model full of key names.
  */
 function say(key: string, locale: string, values?: Record<string, string | number>): string {
-  return t(key, values, locale)
+  return translateFor(key, locale, values)
 }
 
 function statusLabel(status: any, locale: string): string {

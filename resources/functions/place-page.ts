@@ -206,6 +206,21 @@ export function placeHandlers(page: PlaceSignals) {
       .replace('{day}', dayName(Number(plan.dayOfWeek)))
   }
 
+  /** What a reviewer says they ordered. */
+  function dishesLine(dishes: string): string {
+    return say('review.dishes_label', 'Ordered: {dishes}').replace('{dishes}', String(dishes))
+  }
+
+  /** The rating line beside the reviews heading. */
+  function ratingSummary(stats: any): string {
+    if (!stats)
+      return ''
+
+    return say('place.rating_summary', '{average} average from {count}')
+      .replace('{average}', String(stats.average))
+      .replace('{count}', String(stats.count))
+  }
+
   /** The line that confirms a share, up to the link into /shares. */
   function joinedLine(date: string): string {
     return say('place.joined_head', 'You are in. First box on {date}. Manage it at').replace('{date}', String(date))
@@ -248,6 +263,8 @@ export function placeHandlers(page: PlaceSignals) {
     joinedLine,
     everyDay,
     boxLine,
+    ratingSummary,
+    dishesLine,
     load,
   }
 }

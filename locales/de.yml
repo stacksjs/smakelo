@@ -45,7 +45,6 @@ types:
 
 region:
   label: Wo
-  switch: Woanders
   los-angeles: Los Angeles
   wuppertal: Wuppertal
   gescher: Gescher
@@ -68,9 +67,8 @@ business:
   price_tier: Preis
   no_reviews: Noch keine Bewertungen.
   hours_unknown: Öffnungszeiten nicht hinterlegt
-  listing_only: Nur gelistet, nimmt keine Bestellungen
-  photo_credit: Eintrag aus OpenStreetMap
   save_name: "{name} merken"
+  rating_from: "{average} aus {count}"
 home:
   title: Finde die guten Orte in deiner Nähe.
   lede: Restaurants, Cafés, Bäckereien und Höfe. Lies, was Leute wirklich gesagt haben, und bestelle dann bei denen, die liefern.
@@ -181,6 +179,16 @@ place:
   every_day: "jeden {day}"
   share_lede: Du kaufst einen Anteil an der Saison, keine Gemüseliste. In der Kiste ist, was in dieser Woche reif geworden ist - in einem guten Jahr mehr als erwartet, in einem schlechten dreierlei Kürbis.
   reviewed_once: Du hast diesen Ort schon bewertet. Eine pro Person.
+  not_partner_body: "{name} ist gelistet, damit man den Ort findet - mit Adresse, Öffnungszeiten und Viertel. Der Betrieb ist noch nicht bei Smakelo, hier gibt es also nichts zu bestellen."
+  claim_body: "{name} ist aus OpenStreetMap und Foursquare Open Source Places gelistet. Sag uns, wer du bist und was du möchtest: den Eintrag korrigiert, übergeben oder entfernt. Wir lesen jede dieser Nachrichten und geben deine Daten nicht weiter."
+  claim_send: Absenden
+  claim_sent: Abgeschickt. Jemand aus dem Team liest das und antwortet an die Adresse, die du angegeben hast - meist innerhalb von zwei Werktagen.
+  collect_from_farm: Am Hof abholen
+  join_share: Anteil nehmen
+  rating_summary: "{average} im Schnitt aus {count}"
+  reviews_closed: "{name} ist noch nicht bei Smakelo, deshalb sind Bewertungen hier geschlossen. Wenn du den Betrieb führst, beanspruche den Eintrag oben - dann öffnen sie noch am selben Tag."
+  review_prompt: Sag, wie es wirklich war. Bewertungen bleiben stehen, und der Betrieb kann direkt darunter antworten.
+  review_post: Abschicken
 meta:
   home_title: Smakelo - finde die guten Orte in deiner Nähe
   home_description: "Restaurants, Cafés, Bäckereien und Höfe rund um {region}. Lies die Bewertungen und bestelle dann Lieferung, Abholung oder eine wöchentliche Gemüsekiste."
@@ -276,6 +284,7 @@ review:
   title_placeholder: In einem Satz
   body_placeholder: Wie war es?
   dishes_placeholder: Was du bestellt hast (optional)
+  dishes_label: "Bestellt: {dishes}"
 saved:
   title: Gemerkt
   lede: In diesem Browser gespeichert. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste - und wer die Websitedaten löscht, löscht sie mit.
@@ -286,11 +295,9 @@ saved:
 
 orders:
   title: Deine Bestellungen
-  lede: Alles, was du aus diesem Browser bestellt hast.
-  empty: Noch keine Bestellungen.
+  lede: Aus diesem Browser aufgegeben. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste.
   empty_cta: Einen Ort zum Bestellen finden
   track: Verfolgen
-  reorder: Nochmal bestellen
   ordered_nothing: Du hast noch nichts bestellt.
   write_review: Bewertung schreiben
 
@@ -374,6 +381,7 @@ courier:
   state_active: Im Dienst
   state_offline: Offline
   state_on_delivery: Unterwegs mit einer Lieferung
+  away: "{distance} entfernt"
 footer:
   tagline: 'Restaurants, Cafés und Höfe in {regions}.'
   browse: Stöbern
@@ -429,7 +437,7 @@ kitchen:
   untitled: Ohne Titel
   reply_placeholder: Als Betrieb antworten
   reply: Antworten
-
+  minutes_ago: "{minutes} Min."
 manage:
   title: Verwalten
   needs_slug: Hänge ?business=<slug> an, um einen Betrieb zu verwalten.
@@ -439,6 +447,7 @@ manage:
   available_on: An
   available_off: Aus
   not_a_partner: Dort gibt es nichts zu verwalten. Nur die Partnerbetriebe haben eine Speisekarte.
+  off_the_menu: "{count} nicht auf der Karte"
 admin:
   title: Betrieb
   guards: Prüfungen
@@ -450,7 +459,6 @@ admin:
   hidden: Ausgeblendet
   put_back: Wieder einblenden
   take_down: Ausblenden
-  lede: Ob diese Seite ihre eigenen Zusagen noch einhält, geprüft an der Datenbank statt an dem Code, der sie durchsetzen soll.
   guards_lede: Was diese Seite über sich selbst zusagt, geprüft an dem, was tatsächlich gespeichert ist. Eine Prüfung, deren Stand niemand sehen kann, ist eine, von der man hinterher erfährt.
   listings_lede: "Einen Eintrag auszublenden nimmt ihn von der Entdecken-Seite, aus der Suche, von der Karte und von seiner eigenen Seite, und man kann dort nicht mehr bestellen. Die Zeile bleibt, damit er zurückkommen kann, falls sich herausstellt, dass die Anfrage von jemandem kam, der den Betrieb gar nicht führt."
 shares:
@@ -496,6 +504,8 @@ earnings:
   type_courier: Kurier
   type_platform: Plattform
   type_tax: Steuer
+  payout_note: "Eine Auszahlung schreibt eine negative Zeile, statt den Saldo zurückzusetzen - so bleibt die Geschichte dessen erhalten, was geschuldet und dann bezahlt wurde. Hier fließt kein Geld: diese Konten gehören erfundenen Betrieben."
+  order_ref: "Bestellung #{id}"
 tab:
   finding_table: Dein Tisch wird gesucht…
   scan_to_start: Scanne den Code auf deinem Tisch, um zu starten.
@@ -551,6 +561,14 @@ account:
   carry_shares_one: "{count} Anteil"
   carry_shares_many: "{count} Anteile"
   providers_note: Die ausgegrauten warten noch auf Schlüssel. E-Mail funktioniert jetzt schon.
+  tile_saved_one: gemerkter Ort
+  tile_saved_many: gemerkte Orte
+  tile_orders_one: Bestellung
+  tile_orders_many: Bestellungen
+  tile_reviews_one: Bewertung
+  tile_reviews_many: Bewertungen
+  tile_shares_one: Anteil
+  tile_shares_many: Anteile
 checkout:
   loading_menu: Speisekarte wird geladen…
   unavailable: Diese Speisekarte ist nicht verfügbar.
@@ -582,6 +600,7 @@ checkout:
   stripe_test: Stripe-Testmodus
   stripe_card: Karte 4242 4242 4242 4242, ein beliebiges künftiges Ablaufdatum, eine beliebige Prüfziffer. Es fließt kein Geld.
   pay_test_mode: Im Testmodus bezahlen
+  placed_body: "{name} hat sie, und die Küche hat angefangen. Von hier aus kannst du sie verfolgen."
 allergen:
   gluten: Gluten
   dairy: Milch

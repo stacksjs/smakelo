@@ -29,6 +29,7 @@ const clientStrings = JSON.stringify({
   'order.delivery': t('order.delivery'),
   'order.pickup': t('order.pickup'),
   'order.dine_in': t('order.dine_in'),
+  'manage.off_the_menu': t('manage.off_the_menu', { count: '{count}' }),
   'manage.available_on': t('manage.available_on'),
   'manage.available_off': t('manage.available_off'),
 })
@@ -79,7 +80,7 @@ const canonicalPath = '/manage'
           <section class="mt-10">
             <div class="flex flex-wrap gap-4 justify-between items-baseline">
               <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('business.menu') }}</h2>
-              <p :if="view().counts.unavailable > 0" class="text-[13px]" style="color: var(--accent)">{{ view().counts.unavailable }} off the menu</p>
+              <p :if="view().counts.unavailable > 0" class="text-[13px]" style="color: var(--accent)">{{ offMenu(view().counts.unavailable) }}</p>
             </div>
 
             <div class="mt-4 space-y-2">
@@ -209,6 +210,12 @@ const canonicalPath = '/manage'
         // shift the answer by a day.
         return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
           .format(new Date(Date.UTC(2024, 0, 7 + Number(dayOfWeek))))
+      }
+
+      /* How many dishes are switched off, with the count where the sentence
+         wants it. */
+      function offMenu(count) {
+        return say('manage.off_the_menu', '{count} off the menu').replace('{count}', count)
       }
 
       const view = state(null)

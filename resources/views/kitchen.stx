@@ -20,6 +20,7 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
  * silently falls back to English. The shared strings are in partials/head.stx.
  */
 const clientStrings = JSON.stringify({
+  'kitchen.minutes_ago': t('kitchen.minutes_ago', { minutes: '{minutes}' }),
   'kitchen.table': t('kitchen.table'),
   'kitchen.start_cooking': t('kitchen.start_cooking'),
   'kitchen.ready': t('kitchen.ready'),
@@ -96,7 +97,7 @@ const canonicalPath = '/kitchen'
                       </span>
                     </p>
                     <p class="text-[12px] tabular-nums" :style="order.minutesAgo >= 20 ? 'color: var(--accent); font-weight: 600' : 'color: var(--ink-soft)'">
-                      {{ order.minutesAgo }} min
+                      {{ minutesAgo(order.minutesAgo) }}
                     </p>
                   </div>
 
@@ -225,6 +226,11 @@ const canonicalPath = '/kitchen'
         */
       function readable(value) {
         return String(value ?? '').toLowerCase().replace(/_/g, ' ')
+      }
+
+      /* How long an order has been waiting. */
+      function minutesAgo(minutes) {
+        return say('kitchen.minutes_ago', '{minutes} min').replace('{minutes}', minutes)
       }
 
       function orderTypeLabel(value) {

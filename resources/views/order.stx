@@ -25,6 +25,7 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
  * silently falls back to English. The shared strings are in partials/head.stx.
  */
 const clientStrings = JSON.stringify({
+  'checkout.placed_body': t('checkout.placed_body', { name: '{name}' }),
   'checkout.contains': t('checkout.contains', { allergens: '{allergens}' }),
   'checkout.group_required': t('checkout.group_required'),
   'checkout.group_optional': t('checkout.group_optional'),
@@ -81,7 +82,7 @@ const canonicalPath = '/order'
           <div class="p-8 text-center rounded-[calc(2rem-0.375rem)]">
             <h1 class="text-[26px] font-semibold tracking-[-0.02em]">{{ t('checkout.order_placed') }}</h1>
             <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-              {{ menu().business.name }} has it, and the kitchen has started. You can follow it from here.
+              {{ placedBody(menu().business.name) }}
             </p>
 
             <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">{{ t('order.total') }}</p>
@@ -364,6 +365,12 @@ const canonicalPath = '/order'
           return rule
 
         return rule + say('checkout.group_up_to', ', up to {max}').replace('{max}', group.max)
+      }
+
+      /* The line under "order placed", with the restaurant's name where the
+         sentence wants it. */
+      function placedBody(name) {
+        return say('checkout.placed_body', '{name} has it, and the kitchen has started. You can follow it from here.').replace('{name}', name)
       }
 
       const chosenAddress = state(null)

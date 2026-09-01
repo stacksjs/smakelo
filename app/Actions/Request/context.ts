@@ -22,8 +22,6 @@ interface ServeContext {
   locale?: unknown
   search?: unknown
   query?: unknown
-  cookies?: unknown
-  path?: unknown
 }
 
 /** The context stx publishes for the request it is currently rendering. */
@@ -69,9 +67,3 @@ export function requestLocale(): string {
   return config.app?.locale ?? 'en'
 }
 
-/** The path being rendered, or an empty string outside a request. */
-export function requestPath(): string {
-  const path = serveContext()?.path
-
-  return typeof path === 'string' ? path : ''
-}

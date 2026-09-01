@@ -54,7 +54,7 @@
               <span class="inline-flex gap-2 items-center">
                 <span class="stars text-[15px]">★★★★★<span style="width: {{ vm.ratingPercent }}%">★★★★★</span></span>
                 <strong style="color: var(--ink)">{{ vm.ratingAverage }}</strong>
-                <span>{{ vm.ratingCount }} reviews</span>
+                <span>{{ vm.ratingLabel }}</span>
               </span>
             @endif
             <span>{{ vm.cuisine }}</span>
@@ -134,9 +134,7 @@
               <div class="p-8 rounded-[calc(2rem-0.375rem)]">
                 <h2 class="text-[20px] font-semibold tracking-[-0.02em]">{{ t('place.no_menu') }}</h2>
                 <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-                  {{ vm.name }} is listed so people can find it, with its address,
-                  hours and neighbourhood. It has not joined Smakelo yet, so there
-                  is nothing to order from here.
+                  {{ vm.notPartnerBody }}
                 </p>
                 <button
                   :if="!claim().open && !claim().sent"
@@ -152,10 +150,7 @@
 
                 <div :if="claim().open && !claim().sent" class="p-6 mt-6 rounded-[1.5rem]" style="background: var(--paper); border: 1px solid var(--line)">
                   <p class="text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-                    {{ vm.name }} is listed from OpenStreetMap and Foursquare Open
-                    Source Places. Tell us who you are and what you want: the listing
-                    corrected, handed to you, or taken down. We read every one of
-                    these, and we never pass your details on.
+                    {{ vm.claimBody }}
                   </p>
 
                   <input
@@ -188,13 +183,12 @@
                   <p :if="claim().error" class="mt-3 text-[13px]" style="color: var(--accent)">{{ claim().error }}</p>
 
                   <button @click="sendClaim()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
-                    Send it
+                    {{ t('place.claim_send') }}
                   </button>
                 </div>
 
                 <p :if="claim().sent" class="p-6 mt-6 text-[14px] leading-relaxed rounded-[1.5rem]" style="background: var(--accent-soft); color: var(--ink)">
-                  Sent. Somebody on the listings team will read it and reply to the
-                  address you gave, usually within two working days.
+                  {{ t('place.claim_sent') }}
                 </p>
               </div>
             </section>
@@ -244,10 +238,10 @@
 
               <div class="flex flex-wrap gap-4 mt-3 text-[14px]">
                 <label class="flex gap-2 items-center">
-                  <input type="radio" name="fulfilment" :checked="share().fulfilment === 'pickup'" @change="setShare('fulfilment', 'pickup')"> Collect from the farm
+                  <input type="radio" name="fulfilment" :checked="share().fulfilment === 'pickup'" @change="setShare('fulfilment', 'pickup')"> {{ t('place.collect_from_farm') }}
                 </label>
                 <label :if="share().plan.offersDelivery" class="flex gap-2 items-center">
-                  <input type="radio" name="fulfilment" :checked="share().fulfilment === 'delivery'" @change="setShare('fulfilment', 'delivery')"> Delivered
+                  <input type="radio" name="fulfilment" :checked="share().fulfilment === 'delivery'" @change="setShare('fulfilment', 'delivery')"> {{ t('shares.delivered') }}
                 </label>
               </div>
 
@@ -264,7 +258,7 @@
               <p :if="share().error" class="mt-3 text-[13px]" style="color: var(--accent)">{{ share().error }}</p>
 
               <button @click="joinShare()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--accent); color: #fff">
-                Take the share
+                {{ t('place.join_share') }}
               </button>
             </div>
 
@@ -279,7 +273,7 @@
             <div class="flex flex-wrap gap-4 justify-between items-baseline">
               <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('business.reviews') }}</h2>
               <p :if="stats() && stats().count > 0" class="text-[14px]" style="color: var(--ink-soft)">
-                {{ stats().average }} average from {{ stats().count }}
+                {{ ratingSummary(stats()) }}
               </p>
             </div>
 
@@ -320,7 +314,7 @@
 
                   <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">{{ review.body }}</p>
 
-                  <p :if="review.dishes" class="mt-3 text-[13px]" style="color: var(--ink-soft)">Ordered: {{ review.dishes }}</p>
+                  <p :if="review.dishes" class="mt-3 text-[13px]" style="color: var(--ink-soft)">{{ dishesLine(review.dishes) }}</p>
 
                   <div :if="review.ownerResponse" class="pl-4 mt-5 border-l" style="border-color: var(--line)">
                     <p class="text-[12px] font-medium tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('review.owner_response') }}</p>
@@ -345,8 +339,7 @@
               from open data agreed to nothing, and the page says so rather than
               hiding the composer without explanation. --}}
             <p :if="!canReview()" class="mt-8 max-w-lg text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-              {{ vm.name }} has not joined Smakelo yet, so reviews here are closed.
-              If you run it, claim the listing above and they open the same day.
+              {{ vm.reviewsClosed }}
             </p>
 
             <p :if="canReview() && wroteOne()" class="mt-8 text-[14px]" style="color: var(--ink-soft)">
@@ -357,8 +350,7 @@
               <div class="p-7 rounded-[calc(1.75rem-0.375rem)]">
                 <h3 class="text-[18px] font-semibold tracking-[-0.02em]">{{ t('review.write') }}</h3>
                 <p class="mt-2 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-                  Say what it was actually like. Reviews stay up, and the owner
-                  can reply to yours underneath it.
+                  {{ t('place.review_prompt') }}
                 </p>
 
                 <div class="flex gap-1 mt-5">
@@ -408,7 +400,7 @@
                 <p :if="composer().error" class="mt-3 text-[13px]" style="color: var(--accent)">{{ composer().error }}</p>
 
                 <button @click="postReview()" class="px-5 py-2.5 mt-5 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
-                  Post it
+                  {{ t('place.review_post') }}
                 </button>
               </div>
             </div>

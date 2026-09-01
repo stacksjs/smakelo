@@ -129,7 +129,7 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
   }
 
   const hoursByBusiness = await loadHours(rows.map(row => Number(row.id)))
-  const timezones = await marketTimezones()
+  const timezones = await markets()
   const now = new Date()
 
   const results: BusinessResult[] = []
@@ -153,7 +153,7 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
         continue
     }
 
-    const status = openStatus(hoursByBusiness.get(Number(row.id)) ?? [], timezones.get(Number(row.market_id)) ?? FALLBACK_TIMEZONE, now)
+    const status = openStatus(hoursByBusiness.get(Number(row.id)) ?? [], timezones.get(Number(row.market_id))?.timezone ?? FALLBACK_TIMEZONE, now)
 
     // `unknown` survives an open-now filter on purpose. A listing whose hours
     // nobody recorded is not a closed business, and dropping it would quietly
@@ -255,29 +255,23 @@ async function loadHours(businessIds: number[]): Promise<Map<number, OpeningInte
  * be anywhere, and a box in Frankfurt would otherwise decide that everything in
  * Santa Monica is shut.
  */
-async function marketTimezones(): Promise<Map<number, string>> {
-  const markets = await db.selectFrom('markets')
-    .select(['id', 'timezone'])
-    .execute() as Array<{ id: number, timezone: string }>
+async function markets(): Promise<Map<number, { timezone: string, currency: string }>> {
+  const rows = await db.selectFrom('markets')
+    .select(['id', 'timezone', 'currency'])
+    .execute() as Array<{ id: number, timezone: string, currency: string }>
 
-  return new Map(markets.map(market => [Number(market.id), market.timezone || FALLBACK_TIMEZONE]))
+  return new Map(rows.map(row => [Number(row.id), {
+    timezone: row.timezone || FALLBACK_TIMEZONE,
+    currency: row.currency || FALLBACK_CURRENCY,
+  }]))
 }
 
 const FALLBACK_TIMEZONE = 'America/Los_Angeles'
+const FALLBACK_CURRENCY = 'usd'
 
-/** The money one business takes. Its market's, not the site's. */
-async function currencyFor(marketId: unknown): Promise<string> {
-  const market = await db.selectFrom('markets')
-    .where('id', '=', Number(marketId))
-    .select(['currency'])
-    .executeTakeFirst() as { currency?: string } | undefined
-
-  return String(market?.currency ?? 'usd')
-}
-
-/** The clock one business keeps. */
-async function timezoneFor(marketId: unknown): Promise<string> {
-  return (await marketTimezones()).get(Number(marketId)) ?? FALLBACK_TIMEZONE
+/** The clock and the money one business keeps. One row, asked for once. */
+async function marketFor(marketId: unknown): Promise<{ timezone: string, currency: string }> {
+  return (await markets()).get(Number(marketId)) ?? { timezone: FALLBACK_TIMEZONE, currency: FALLBACK_CURRENCY }
 }
 
 /** One business with everything its page needs. */
@@ -301,8 +295,8 @@ export async function businessBySlug(slug: string): Promise<{
 
   const businessId = Number(business.id)
   const hours = (await loadHours([businessId])).get(businessId) ?? []
-  const status = openStatus(hours, await timezoneFor(business.market_id))
-  const currency = await currencyFor(business.market_id)
+  const market = await marketFor(business.market_id)
+  const status = openStatus(hours, market.timezone)
 
   const products = await db.selectFrom('products')
     .where('business_id', '=', businessId)
@@ -337,7 +331,7 @@ export async function businessBySlug(slug: string): Promise<{
     .selectAll()
     .execute() as Array<Record<string, unknown>>
 
-  return { business, currency, hours, status, menu, reviews }
+  return { business, currency: market.currency, hours, status, menu, reviews }
 }
 
 /**

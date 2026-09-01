@@ -46,7 +46,6 @@ types:
 
 region:
   label: Where
-  switch: Somewhere else
   los-angeles: Los Angeles
   wuppertal: Wuppertal
   gescher: Gescher
@@ -69,9 +68,8 @@ business:
   price_tier: Price
   no_reviews: No reviews yet.
   hours_unknown: Hours not recorded
-  listing_only: Listed, not taking orders
-  photo_credit: Listing from OpenStreetMap
   save_name: "Save {name}"
+  rating_from: "{average} from {count}"
 home:
   title: Find the good places near you.
   lede: Restaurants, coffee shops, bakeries and farms. Read what people actually said, then order from the ones that deliver.
@@ -182,6 +180,16 @@ place:
   every_day: "{day}s"
   share_lede: You are buying a share of the season, not a list of vegetables. What is in the box is whatever came ready that week, which in a good year is more than you expected and in a bad one is three kinds of squash.
   reviewed_once: You have reviewed this place. One each.
+  not_partner_body: "{name} is listed so people can find it, with its address, hours and neighbourhood. It has not joined Smakelo yet, so there is nothing to order from here."
+  claim_body: "{name} is listed from OpenStreetMap and Foursquare Open Source Places. Tell us who you are and what you want: the listing corrected, handed to you, or taken down. We read every one of these, and we never pass your details on."
+  claim_send: Send it
+  claim_sent: Sent. Somebody on the listings team will read it and reply to the address you gave, usually within two working days.
+  collect_from_farm: Collect from the farm
+  join_share: Take the share
+  rating_summary: "{average} average from {count}"
+  reviews_closed: "{name} has not joined Smakelo yet, so reviews here are closed. If you run it, claim the listing above and they open the same day."
+  review_prompt: Say what it was actually like. Reviews stay up, and the owner can reply to yours underneath it.
+  review_post: Post it
 meta:
   home_title: Smakelo - find the good places near you
   home_description: "Find restaurants, coffee shops, bakeries and farms around {region}. Read the reviews, then order delivery, pickup or a weekly farm box."
@@ -277,6 +285,7 @@ review:
   title_placeholder: Sum it up
   body_placeholder: What was it like?
   dishes_placeholder: What you ordered (optional)
+  dishes_label: "Ordered: {dishes}"
 saved:
   title: Saved
   lede: Kept in this browser. There are no accounts here, so a different browser is a different list, and clearing your site data clears it.
@@ -287,11 +296,9 @@ saved:
 
 orders:
   title: Your orders
-  lede: Everything you have ordered from this browser.
-  empty: No orders yet.
+  lede: Placed from this browser. There are no accounts here, so a different browser is a different list.
   empty_cta: Find somewhere to order from
   track: Track
-  reorder: Order again
   ordered_nothing: You have not ordered anything yet.
   write_review: Write a review
 
@@ -375,6 +382,7 @@ courier:
   state_active: On shift
   state_offline: Offline
   state_on_delivery: On a delivery
+  away: "{distance} away"
 footer:
   tagline: 'Restaurants, coffee shops and farms in {regions}.'
   browse: Browse
@@ -430,7 +438,7 @@ kitchen:
   untitled: Untitled
   reply_placeholder: Reply as the owner
   reply: Reply
-
+  minutes_ago: "{minutes} min"
 manage:
   title: Manage
   needs_slug: Add ?business=<slug> to manage a business.
@@ -440,6 +448,7 @@ manage:
   available_on: On
   available_off: Off
   not_a_partner: Nothing to manage there. Only the partner businesses have a menu.
+  off_the_menu: "{count} off the menu"
 admin:
   title: Operations
   guards: Guards
@@ -451,7 +460,6 @@ admin:
   hidden: Hidden
   put_back: Put it back
   take_down: Take it down
-  lede: Whether this site is still keeping its own promises, checked against the database rather than against the code meant to enforce them.
   guards_lede: What this site promises about itself, checked against what is actually stored. A guard nobody can see the state of is one you find out about afterwards.
   listings_lede: "Hiding a listing takes it off the discover page, the search, the map and its own page, and stops it being ordered from. The row stays, so it can come back if the request turns out to have come from somebody who did not run the place after all."
 shares:
@@ -497,6 +505,8 @@ earnings:
   type_courier: Courier
   type_platform: Platform
   type_tax: Tax
+  payout_note: "Paying out writes a negative row rather than clearing the balance, so the history of what was owed and then paid survives. No money moves here: these accounts belong to invented businesses."
+  order_ref: "Order #{id}"
 tab:
   finding_table: Finding your table…
   scan_to_start: Scan the code on your table to start.
@@ -552,6 +562,14 @@ account:
   carry_shares_one: "{count} share"
   carry_shares_many: "{count} shares"
   providers_note: The greyed-out ones are waiting on keys. Email works now.
+  tile_saved_one: saved place
+  tile_saved_many: saved places
+  tile_orders_one: order
+  tile_orders_many: orders
+  tile_reviews_one: review
+  tile_reviews_many: reviews
+  tile_shares_one: share
+  tile_shares_many: shares
 checkout:
   loading_menu: Loading the menu…
   unavailable: That menu is not available.
@@ -583,6 +601,7 @@ checkout:
   stripe_test: Stripe test mode
   stripe_card: Card 4242 4242 4242 4242, any future expiry, any CVC. No money moves.
   pay_test_mode: Pay in test mode
+  placed_body: "{name} has it, and the kitchen has started. You can follow it from here."
 allergen:
   gluten: gluten
   dairy: dairy

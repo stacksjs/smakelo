@@ -97,6 +97,8 @@ const clientStrings = JSON.stringify({
   'place.cadence_weekly': t('place.cadence_weekly'),
   'place.cadence_biweekly': t('place.cadence_biweekly'),
   'place.cadence_monthly': t('place.cadence_monthly'),
+  'place.rating_summary': t('place.rating_summary', { average: '{average}', count: '{count}' }),
+  'review.dishes_label': t('review.dishes_label', { dishes: '{dishes}' }),
   'place.every_day': t('place.every_day', { day: '{day}' }),
   'place.box_ready_on': t('place.box_ready_on', { price: '{price}', day: '{day}' }),
 })
@@ -155,7 +157,8 @@ const canonicalPath = vm.canonicalPath
       const {
         setComposer, setShare, setClaim,
         toggleSave, postReview, vote, joinShare, sendClaim,
-        stars, cadence, barsFrom, say, helpfulCount, joinedLine, everyDay, boxLine, load,
+        stars, cadence, barsFrom, say, helpfulCount, joinedLine, everyDay, boxLine,
+        ratingSummary, dishesLine, load,
       } = placeHandlers({ slug: point.slug || '', saved, reviews, stats, canReview, loadingReviews, composer, plans, share, claim })
 
       placeMap(mapEl, point)

@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type { TranslationMessages } from '@stacksjs/i18n'
-import { addTranslations, t as translateKey } from '@stacksjs/i18n'
+import { addTranslations, configure, t as translateKey } from '@stacksjs/i18n'
+import { config } from '@stacksjs/config'
 import { projectPath } from '@stacksjs/path'
 import { requestLocale } from '../Request/context'
 
@@ -48,6 +49,17 @@ function loadTranslations(): void {
     return
 
   loaded = true
+
+  /*
+   * The fallback the app is configured with, not the translator's own default.
+   * They happen to be the same word today, which is exactly why this is worth
+   * setting: a change to config/app.ts would otherwise be honoured by a server
+   * and ignored by a build.
+   */
+  configure({
+    locale: config.app?.locale ?? 'en',
+    fallbackLocale: config.app?.fallbackLocale ?? config.app?.locale ?? 'en',
+  })
 
   const directory = projectPath('locales')
 

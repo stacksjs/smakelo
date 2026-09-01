@@ -64,38 +64,52 @@ export default defineCommand((cli) => {
  * because the framework's default schema is wider than what this demo uses.
  */
 async function clearDemoRows(): Promise<void> {
+  /*
+   * Children before parents, derived from the schema rather than remembered.
+   *
+   * The order below is what `pragma foreign_key_list` says: start from every
+   * table the demo writes to, walk to everything that points at it, and delete
+   * a table only once nothing references it any more. Kept as a literal so it
+   * is reviewable, and checked against the schema rather than against memory -
+   * the previous list was short by eight tables, one of which (`review_votes`)
+   * fills up the moment somebody marks a review helpful.
+   */
   const tables = [
-    // Ledger and delivery, which reference orders and couriers.
-    'ledger_entries',
-    'payments',
-    'transactions',
-    'order_idempotency',
-    'delivery_stops',
-    'delivery_routes',
-    'courier_pings',
-    // Orders and the rows hanging off them.
-    'order_item_modifiers',
-    'order_items',
-    'review_photos',
-    'business_reviews',
-    'orders',
-    'couriers',
-    // Menus.
-    'modifiers',
-    'modifier_groups',
-    'product_variants',
-    'product_units',
-    'products',
-    // Everything else that points at a business.
-    'csa_subscriptions',
-    'csa_plans',
-    'claims',
-    'favorites',
     'business_hours',
     'business_photos',
+    'review_photos',
+    'review_votes',
+    'claims',
+    'favorites',
+    'delivery_stops',
+    'license_keys',
+    'order_idempotency',
+    'order_item_modifiers',
+    'payments',
+    'transactions',
+    'ledger_entries',
+    'cart_items',
+    'loyalty_rewards',
+    'modifiers',
+    'product_units',
+    'product_variants',
+    'reviews',
+    'waitlist_products',
+    'csa_subscriptions',
+    'courier_pings',
+    'driver_pings',
+    'business_reviews',
+    'order_items',
+    'carts',
+    'modifier_groups',
+    'csa_plans',
+    'delivery_routes',
+    'orders',
+    'coupons',
     'tabs',
     'tables',
-    // The parents.
+    'couriers',
+    'products',
     'businesses',
     'markets',
   ]

@@ -27,6 +27,12 @@ export interface Region {
   name: string
   /** The market slug in `markets`, which carries currency, tax and timezone. */
   market: string
+  /**
+   * What that market prices in, repeated here so a page can say it without a
+   * query. It is the same value the `markets` row carries, and `buddy
+   * seed:demo` is where the two are written together.
+   */
+  currency: 'usd' | 'eur'
   /** The language somebody in this region most likely reads. */
   locale: string
   latitude: number
@@ -54,6 +60,7 @@ export const REGIONS: Region[] = [
     slug: 'los-angeles',
     name: 'Los Angeles',
     market: 'los-angeles',
+    currency: 'usd',
     locale: 'en',
     latitude: 34.0195,
     longitude: -118.4912,
@@ -71,6 +78,7 @@ export const REGIONS: Region[] = [
     slug: 'wuppertal',
     name: 'Wuppertal',
     market: 'nordrhein-westfalen',
+    currency: 'eur',
     locale: 'de',
     // The Schwebebahn line runs the length of the valley; this is about the
     // middle of it, between Elberfeld and Barmen.
@@ -85,6 +93,7 @@ export const REGIONS: Region[] = [
     slug: 'gescher',
     name: 'Gescher',
     market: 'nordrhein-westfalen',
+    currency: 'eur',
     locale: 'de',
     latitude: 51.9556,
     longitude: 7.0053,
@@ -99,6 +108,11 @@ export const REGIONS: Region[] = [
 ]
 
 export const DEFAULT_REGION: Region = REGIONS[0] as Region
+
+/** The symbol a region prints in front of a price. */
+export function currencySymbol(region: Region): string {
+  return region.currency === 'eur' ? '€' : '$'
+}
 
 /** The region with this slug, or nothing. */
 export function regionBySlug(slug: string | undefined | null): Region | undefined {
