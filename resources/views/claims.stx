@@ -26,6 +26,9 @@ const clientStrings = JSON.stringify({
   'claims.said_nothing': t('claims.said_nothing'),
 })
 
+/* The empty state's own sentence; see partials/operator-empty.stx. */
+const operatorNothing = t('operator.not_operations')
+
 const pageTitle = t('meta.claims_title')
 const pageDescription = t('meta.claims_description')
 const canonicalPath = '/claims'
@@ -44,7 +47,7 @@ const canonicalPath = '/claims'
       <div class="pt-12 pb-24 sm:pb-40">
         <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('claims.title') }}</h1>
 
-        <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+        <p :if="allowed()" class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
           {{ t('claims.lede') }}
         </p>
 
@@ -53,7 +56,11 @@ const canonicalPath = '/claims'
           claims screen needs. --}}
         <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
-        <section class="mt-10">
+        <div class="mt-6">
+          @include('operator-empty')
+        </div>
+
+        <section :if="allowed()" class="mt-10">
           <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('claims.waiting') }}</h2>
 
           <p :if="!loading() && pending().length === 0" class="mt-4 text-[15px]" style="color: var(--ink-soft)">{{ t('claims.nothing_waiting') }}</p>
@@ -79,7 +86,7 @@ const canonicalPath = '/claims'
           </div>
         </section>
 
-        <section :if="decided().length > 0" class="mt-12">
+        <section :if="allowed() && decided().length > 0" class="mt-12">
           <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('claims.decided') }}</h2>
           <ul class="mt-4 space-y-2 text-[14px]">
             <li :for="claim in decided()" class="flex gap-4 justify-between">
@@ -92,7 +99,7 @@ const canonicalPath = '/claims'
     </main>
 
     <script client>
-      import { send } from '../functions/session'
+      import { get, me, send } from '../functions/session'
 
       /*
        * A string this script writes, in the language the server served.
@@ -110,13 +117,35 @@ const canonicalPath = '/claims'
       const error = state('')
       const erroredOn = state(0)
 
+      /* Who is signed in; see functions/session.ts. */
+      const signedIn = state(false)
+      const allowed = state(false)
+      const denied = state(false)
+
+      /* Claims are about the platform rather than about one business, so there
+         is nothing to switch between - but partials/operator-empty is shared
+         with the screens that have. */
+      const mine = state([])
+      const slug = state('')
+
+      function operatorLink() {
+        return '/claims'
+      }
+
       const pending = derived(() => claims().filter(claim => claim.status === 'pending'))
       const decided = derived(() => claims().filter(claim => claim.status !== 'pending'))
 
       async function load() {
-        const { data } = await (await fetch('/api/claims')).json()
+        const account = await me()
 
-        claims.set(data)
+        signedIn.set(Boolean(account))
+
+        const response = await apiGet('/api/claims')
+
+        // A refusal here is "your account does not open this screen", not
+        // "that claim is somebody else's": there is no claim in the URL.
+        allowed.set(response.ok)
+        claims.set(response.ok ? (await response.json()).data : [])
         loading.set(false)
       }
 

@@ -5,11 +5,12 @@
  * One screen serves the merchant, the courier and the platform, because they
  * are asking the same question of the same ledger and giving each a bespoke
  * arithmetic is how three screens end up disagreeing about one order. What
- * differs is only which rows you are allowed to see, which in a real
- * deployment comes from the session rather than from `?party=` in the URL.
+ * differs is only which rows you are allowed to see, and that comes from the
+ * session: a merchant lands on their own statement, a courier on theirs, and
+ * only operations sees the list of every balance.
  *
- * Reached as `/earnings?party=business:3`, or with no party for the operator's
- * overview of every balance.
+ * `?party=business:3` still addresses one statement directly, which is what
+ * the merchant screen's earnings link uses; the server checks it is yours.
  */
 import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
@@ -44,6 +45,9 @@ const clientStrings = JSON.stringify({
   'earnings.type_tax': t('earnings.type_tax'),
 })
 
+/* The empty state's own sentence; see partials/operator-empty.stx. */
+const operatorNothing = t('earnings.none_of_yours')
+
 const pageTitle = t('meta.earnings_title')
 const pageDescription = t('meta.earnings_description')
 const canonicalPath = '/earnings'
@@ -66,7 +70,10 @@ const canonicalPath = '/earnings'
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
         {{-- Everyone's balance, for the operator. --}}
-        <div :if="!loading() && !party()">
+        @include('operator-empty')
+
+        {{-- Every balance. Operations only: a merchant lands on their own. --}}
+        <div :if="!loading() && !party() && canSeeAll()">
           <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('earnings.balances') }}</h1>
 
           <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
@@ -106,7 +113,8 @@ const canonicalPath = '/earnings'
 
         {{-- One party's statement. --}}
         <div :if="!loading() && party() && statement()">
-          <a href="/earnings" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">← {{ t('earnings.all_balances') }}</a>
+          {{-- Only operations has a list of every balance to go back to. --}}
+          <a :if="canSeeAll()" href="/earnings" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">← {{ t('earnings.all_balances') }}</a>
 
           <h1 class="mt-4 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ partyName(statement().party) }}</h1>
           <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ partyKind(statement().party.partyType) }}</p>
@@ -157,12 +165,12 @@ const canonicalPath = '/earnings'
           </section>
         </div>
 
-        <p :if="!loading() && party() && !statement()" class="text-[15px]">{{ t('earnings.no_statement') }}</p>
+        <p :if="!loading() && party() && !denied() && !statement()" class="text-[15px]">{{ t('earnings.no_statement') }}</p>
       </div>
     </main>
 
     <script client>
-      import { money, send } from '../functions/session'
+      import { get, may, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.
@@ -178,6 +186,27 @@ const canonicalPath = '/earnings'
 
       const party = state('')
       const balances = state([])
+
+      /* Who is signed in, and whether they read everybody's ledger or one. */
+      const signedIn = state(false)
+      const canSeeAll = state(false)
+      const canRecordPayouts = state(false)
+      const denied = state(false)
+
+      /* What this page resolved; see partials/operator-empty.stx. */
+      const allowed = derived(() => Boolean(statement()) || canSeeAll())
+
+      /* The ledger is about a party rather than a business, so there is
+         nothing to switch between - but partials/operator-empty is shared with
+         the screens that do. */
+      const mine = state([])
+
+      function operatorLink() {
+        return '/earnings'
+      }
+
+      /* What operator-empty checks for "you asked for nothing in particular". */
+      const slug = derived(() => party())
       const statement = state(null)
       /*
        * What to call a party.
@@ -274,7 +303,18 @@ const canonicalPath = '/earnings'
         ]
       })
 
+      /*
+       * Whether to offer the payout button.
+       *
+       * Recording a payout is operations' verb, not the payee's - a merchant
+       * looking at money owed to them cannot also be the one who marks it
+       * paid. The server has always enforced that; until it was checked here
+       * too, a merchant was shown a button whose only outcome was a refusal.
+       */
       const canPayOut = derived(() => {
+        if (!canRecordPayouts())
+          return false
+
         const current = statement()
 
         return Boolean(current)
@@ -284,21 +324,47 @@ const canonicalPath = '/earnings'
       })
 
       async function load() {
-        const asked = new URLSearchParams(location.search).get('party') || ''
+        const account = await me()
+
+        signedIn.set(Boolean(account))
+        canSeeAll.set(may(account, 'earnings.read.all'))
+        canRecordPayouts.set(may(account, 'payouts.record'))
+
+        /*
+         * With no party asked for, operations gets the list of every balance
+         * and everybody else goes straight to the one statement that is
+         * theirs. `me` already worked out which that is - it is the same
+         * decision the account page's links are built from.
+         */
+        const own = account
+          ? (account.surfaces.find(surface => surface.key === 'earnings') || {}).href || ''
+          : ''
+
+        const asked = new URLSearchParams(location.search).get('party')
+          || (!canSeeAll() && own.includes('?party=') ? own.split('?party=')[1] : '')
 
         party.set(asked)
 
         if (!asked) {
-          const { data } = await (await fetch('/api/money/balances')).json()
+          if (!canSeeAll()) {
+            // Nothing to show and nothing to fetch: signed out, or an account
+            // that is neither a business nor a courier. operator-empty says which.
+            loading.set(false)
+            return
+          }
 
-          balances.set(data)
+          const response = await apiGet('/api/money/balances')
+
+          balances.set(response.ok ? (await response.json()).data : [])
+          denied.set(response.status === 401 || response.status === 403)
           loading.set(false)
           return
         }
 
         const [partyType, partyId] = asked.split(':')
-        const response = await fetch(`/api/money/${encodeURIComponent(partyType)}/${encodeURIComponent(partyId)}`)
+        const response = await apiGet(`/api/money/${encodeURIComponent(partyType)}/${encodeURIComponent(partyId)}`)
 
+        denied.set(response.status === 401 || response.status === 403)
         statement.set(response.ok ? (await response.json()).data : null)
         loading.set(false)
       }

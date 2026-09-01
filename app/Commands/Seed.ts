@@ -1,8 +1,13 @@
 import { defineCommand, log } from '@stacksjs/cli'
 import { db } from '@stacksjs/database'
+import { nextPackingDay } from '../Actions/Csa/membership'
 import { dispatchOrder } from '../Actions/Delivery/dispatch'
 import { advanceOrder } from '../Actions/Merchant/board'
 import { placeOrder } from '../Actions/Order/place'
+import type { Role } from '../Permissions'
+import { createBqbRbacStore, createPermission, createRole, givePermissionToRole, register, setRbacStore, syncRoles } from '@stacksjs/auth'
+import { GUARD, PERMISSION_DESCRIPTIONS, PERMISSIONS, permissions, ROLE_DESCRIPTIONS, ROLES } from '../Permissions'
+import { DEMO_PASSWORD } from '../Actions/Account/surfaces'
 import { resolveRegion } from '../Actions/Business/regions'
 import { ALL_BUSINESSES } from '../../database/data/businesses'
 import { MENUS } from '../../database/data/menus'
@@ -35,9 +40,11 @@ export default defineCommand((cli) => {
       const tableCount = await seedTables(businessIds)
       const courierCount = await seedCouriers()
       const planCount = await seedCsaPlans(businessIds)
+      const memberCount = await seedCsaMembers()
       const history = await seedOrders()
+      const people = await seedAccounts(businessIds)
 
-      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares, ${history.orders} orders (${history.dispatched} dispatched)`)
+      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares (${memberCount} members), ${history.orders} orders (${history.dispatched} dispatched), ${people.accounts} accounts across ${people.teams} teams`)
     })
 })
 
@@ -112,6 +119,21 @@ async function clearDemoRows(): Promise<void> {
     'products',
     'businesses',
     'markets',
+    // The people. A customer row is created for every visitor who orders, so
+    // these accumulate across seeds until something removes them.
+    'addresses',
+    'gift_cards',
+    'waitlist_restaurants',
+    'customers',
+    // Accounts and the tenancy around them.
+    'team_members',
+    'team_invitations',
+    'teams',
+    'user_roles',
+    'user_permissions',
+    'role_permissions',
+    'roles',
+    'permissions',
   ]
 
   for (const table of tables) {
@@ -131,7 +153,26 @@ async function clearDemoRows(): Promise<void> {
     }
   }
 
-  log.info(`Cleared ${tables.length} tables`)
+  /*
+   * The demo's own accounts, and only those.
+   *
+   * `users` is not in the list above and should not be: somebody who signed up
+   * on a running demo has an account that this command has no business
+   * deleting. The seeded ones are recognisable - every address is on
+   * `.test`, a domain reserved by RFC 2606 precisely so it can never be a
+   * real one - and they have to go, or a name changed in ACCOUNTS is a name
+   * the database keeps forever.
+   */
+  const demoUsers = await db.selectFrom('users')
+    .where('email', 'like', '%.test')
+    .select(['id'])
+    .execute() as Array<{ id: number }>
+
+  for (const user of demoUsers) {
+    await db.deleteFrom('users').where('id', '=', Number(user.id)).execute()
+  }
+
+  log.info(`Cleared ${tables.length} tables and ${demoUsers.length} demo accounts`)
 }
 
 /**
@@ -247,6 +288,242 @@ async function seedBusinesses(marketIds: Record<string, number>): Promise<Record
   }
 
   return ids
+}
+
+/**
+ * The demo's accounts, and what each of them is.
+ *
+ * The operator screens used to be open to anybody who knew a slug, with a
+ * comment saying so: "there are no merchant accounts here, and gating it would
+ * mean inventing a login for a business that does not exist." These are that
+ * login. Every one is fictional, on a `.test` domain that cannot receive mail,
+ * and they share one password because the point is to be able to look.
+ *
+ * A business belongs to a team and a person belongs to that team, which is the
+ * framework's own tenancy shape and the reason `businesses.team_id` was
+ * already in the schema. The role says what kind of verbs somebody has; the
+ * team says whose menu it is. Both are checked, always, in
+ * `app/Actions/Account/access.ts`.
+ */
+/* Lives with the endpoint that publishes it, so the sign-in page and the
+   seeder cannot drift apart. */
+export { DEMO_PASSWORD }
+
+interface DemoAccount {
+  email: string
+  name: string
+  role: Role
+  /** The team they own, and the businesses it operates. */
+  team?: { name: string, description: string, businesses: string[] }
+  /** The seeded courier this person is, by name. */
+  courier?: string
+}
+
+const ACCOUNTS: DemoAccount[] = [
+  {
+    email: 'ops@smakelo.test',
+    name: 'Nadia Osei',
+    role: 'admin',
+  },
+  {
+    email: 'nonna@smakelo.test',
+    name: 'Pia Marchetti',
+    role: 'merchant',
+    team: {
+      name: 'Nonna Pia',
+      description: 'One room on Broadway, twelve pastas.',
+      businesses: ['nonna-pia'],
+    },
+  },
+  {
+    /*
+     * Two restaurants under one account, on purpose: it is the case that
+     * breaks an operator screen which assumes a person has exactly one
+     * business, and the only way to see whether the switcher works.
+     */
+    email: 'tworooms@smakelo.test',
+    name: 'Dora Ellis',
+    role: 'merchant',
+    team: {
+      name: 'Two Rooms',
+      description: 'A Oaxacan kitchen on Main and a raw bar on Broadway.',
+      businesses: ['marisol-cocina', 'the-salted-anchor'],
+    },
+  },
+  {
+    /* A German operator, so the German pages have somebody to be run by. */
+    email: 'laterne@smakelo.test',
+    name: 'Sabine Wirtz',
+    role: 'merchant',
+    team: {
+      name: 'Zur Schwebenden Laterne',
+      description: 'Bergische Küche am Luisenviertel.',
+      businesses: ['zur-schwebenden-laterne'],
+    },
+  },
+  {
+    email: 'cardoon@smakelo.test',
+    name: 'Iris Calloway',
+    role: 'farmer',
+    team: {
+      name: 'Cardoon Farm',
+      description: 'Twelve acres in Moorpark, and the boxes that come off them.',
+      businesses: ['cardoon-farm'],
+    },
+  },
+  {
+    email: 'berkelaue@smakelo.test',
+    name: 'Jost Wiggering',
+    role: 'farmer',
+    team: {
+      name: 'Hofladen Berkelaue',
+      description: 'Vierzehn Hektar an der Berkel.',
+      businesses: ['hofladen-berkelaue'],
+    },
+  },
+  {
+    email: 'courier@smakelo.test',
+    name: 'Rosa Delgado',
+    role: 'courier',
+    courier: 'Rosa Delgado',
+  },
+  {
+    email: 'customer@smakelo.test',
+    name: 'Alex Rivera',
+    role: 'customer',
+  },
+]
+
+/**
+ * Roles, the permissions they carry, and the people who hold them.
+ *
+ * The grants are written in `app/Permissions.ts` and projected into
+ * `role_permissions` here rather than being authored in the table: source is
+ * where a change to what a merchant may do belongs, and a projection means
+ * anything reading the database sees the same answer as the code does.
+ */
+async function seedAccounts(businessIds: Record<string, number>): Promise<{ accounts: number, teams: number }> {
+  setRbacStore(createBqbRbacStore())
+
+  for (const role of ROLES)
+    await createRole(role, GUARD, ROLE_DESCRIPTIONS[role]).catch(() => undefined)
+
+  for (const permission of PERMISSIONS)
+    await createPermission(permission, GUARD, PERMISSION_DESCRIPTIONS[permission]).catch(() => undefined)
+
+  for (const role of ROLES)
+    for (const permission of permissions.forRole(role))
+      await givePermissionToRole(role, permission, GUARD).catch(() => undefined)
+
+  /*
+   * Every partner gets a team, whether or not anybody signs in as it.
+   *
+   * A partner with no team cannot be managed by anyone at all, which is the
+   * right answer for a business that has not claimed its listing - but the
+   * team is what a future claim would join, so it exists from the start.
+   */
+  const namedTeams = new Map(ACCOUNTS.flatMap(account => account.team ? account.team.businesses.map(slug => [slug, account.team as NonNullable<DemoAccount['team']>]) : []))
+  const teamIdBySlug: Record<string, number> = {}
+  let teams = 0
+
+  for (const seed of ALL_BUSINESSES) {
+    if (!seed.partner)
+      continue
+
+    const named = namedTeams.get(seed.slug)
+    const name = named?.name ?? seed.name
+    const description = named?.description ?? `The team that operates ${seed.name}.`
+
+    let team = await db.selectFrom('teams').where('name', '=', name).select(['id']).executeTakeFirst() as { id: number } | undefined
+
+    if (!team) {
+      await db.insertInto('teams').values({
+        uuid: crypto.randomUUID(),
+        name,
+        description,
+        member_count: 0,
+        status: 'active',
+      } as never).executeTakeFirst()
+
+      team = await db.selectFrom('teams').where('name', '=', name).select(['id']).executeTakeFirst() as { id: number }
+      teams++
+    }
+
+    teamIdBySlug[seed.slug] = Number(team.id)
+
+    await db.updateTable('businesses')
+      .set({ team_id: Number(team.id) } as never)
+      .where('id', '=', businessIds[seed.slug] as number)
+      .execute()
+  }
+
+  let accounts = 0
+
+  for (const account of ACCOUNTS) {
+    const existing = await db.selectFrom('users').where('email', '=', account.email).select(['id']).executeTakeFirst() as { id: number } | undefined
+
+    if (!existing) {
+      // The framework's own registration, so the stored hash is the one
+      // `/login` will check against. The session it opens is discarded.
+      await register({ name: account.name, email: account.email, password: DEMO_PASSWORD } as never)
+      accounts++
+    }
+
+    const user = await db.selectFrom('users').where('email', '=', account.email).select(['id']).executeTakeFirst() as { id: number }
+
+    await syncRoles(Number(user.id), [account.role], GUARD)
+
+    for (const slug of account.team?.businesses ?? []) {
+      const teamId = teamIdBySlug[slug]
+
+      if (!teamId)
+        continue
+
+      const member = await db.selectFrom('team_members')
+        .where('team_id', '=', teamId)
+        .where('user_id', '=', Number(user.id))
+        .select(['id'])
+        .executeTakeFirst() as { id: number } | undefined
+
+      if (member)
+        continue
+
+      await db.insertInto('team_members').values({
+        uuid: crypto.randomUUID(),
+        team_id: teamId,
+        user_id: Number(user.id),
+        role: 'owner',
+        status: 'active',
+      } as never).executeTakeFirst()
+
+      await db.updateTable('teams')
+        .set({ member_count: 1 } as never)
+        .where('id', '=', teamId)
+        .execute()
+    }
+
+    /* A courier is a person rather than a business, so it links by user id. */
+    if (account.courier) {
+      await db.updateTable('couriers')
+        .set({ user_id: Number(user.id) } as never)
+        .where('name', '=', account.courier)
+        .execute()
+    }
+
+    /* And a customer carries the orders this browser has already placed. */
+    if (account.role === 'customer') {
+      const customer = await db.selectFrom('customers').select(['id']).executeTakeFirst() as { id: number } | undefined
+
+      if (customer) {
+        await db.updateTable('customers')
+          .set({ user_id: Number(user.id) } as never)
+          .where('id', '=', Number(customer.id))
+          .execute()
+      }
+    }
+  }
+
+  return { accounts, teams }
 }
 
 /**
@@ -715,6 +992,26 @@ async function seedCsaPlans(businessIds: Record<string, number>): Promise<number
       offersDelivery: false,
     },
     {
+      slug: 'hofladen-berkelaue',
+      name: 'Kleine Kiste',
+      description: 'Sechs, sieben Sorten Gemüse, je nachdem was reif ist. Manche Wochen sind das drei Sorten Kohl.',
+      priceCents: 2400,
+      cadence: 'weekly',
+      feeds: 'Ein bis zwei Personen',
+      dayOfWeek: 5,
+      offersDelivery: true,
+    },
+    {
+      slug: 'hofladen-berkelaue',
+      name: 'Familienkiste',
+      description: 'Zehn bis zwölf Sorten. Für vier, oder für zwei, die viel kochen und nichts wegwerfen.',
+      priceCents: 3900,
+      cadence: 'weekly',
+      feeds: 'Vier Personen',
+      dayOfWeek: 5,
+      offersDelivery: true,
+    },
+    {
       slug: 'two-crows-orchard',
       name: 'Fruit Share',
       description: 'Ten pounds of stone fruit in summer, citrus in winter, and a fortnight in spring when there is neither.',
@@ -764,6 +1061,77 @@ async function seedCsaPlans(businessIds: Record<string, number>): Promise<number
       day_of_week: plan.dayOfWeek,
       offers_delivery: plan.offersDelivery ? 1 : 0,
       is_active: 1,
+    } as never).executeTakeFirst()
+
+    count += 1
+  }
+
+  return count
+}
+
+/**
+ * Who has taken a share.
+ *
+ * A farm's screen is about its members, and a farm with none is a screen that
+ * demonstrates nothing - which is what this was until the accounts made the
+ * farm side reachable. One of them is paused, because a paused share is the
+ * whole reason "members" and "boxes to pack" are two different numbers.
+ *
+ * The people are invented, on the same reserved `.invalid` domain the seeded
+ * reviewers use, so the operations page's "no real contact details" guard
+ * still passes over them.
+ */
+async function seedCsaMembers(): Promise<number> {
+  const members = [
+    { plan: 'Small Share', name: 'Devi Raman', fulfilment: 'delivery', status: 'active', delivered: 9 },
+    { plan: 'Small Share', name: 'Tomas Lindgren', fulfilment: 'pickup', status: 'active', delivered: 4 },
+    { plan: 'Family Share', name: 'Grace Abara', fulfilment: 'delivery', status: 'active', delivered: 14 },
+    { plan: 'Family Share', name: 'Ruth Okonkwo', fulfilment: 'pickup', status: 'paused', delivered: 11, pausedUntil: '2026-09-21' },
+    { plan: 'Every Other Week', name: 'Malik Haddad', fulfilment: 'pickup', status: 'active', delivered: 6 },
+    { plan: 'Fruit Share', name: 'Nell Bright', fulfilment: 'pickup', status: 'active', delivered: 7 },
+    { plan: 'Kleine Kiste', name: 'Annika Vosskuhl', fulfilment: 'delivery', status: 'active', delivered: 8 },
+    { plan: 'Familienkiste', name: 'Henning Terbrack', fulfilment: 'pickup', status: 'active', delivered: 12 },
+    { plan: 'Familienkiste', name: 'Marlies Determann', fulfilment: 'delivery', status: 'paused', delivered: 5, pausedUntil: '2026-09-14' },
+  ]
+
+  let count = 0
+
+  for (const member of members) {
+    const plan = await db.selectFrom('csa_plans')
+      .where('name', '=', member.plan)
+      .select(['id', 'day_of_week'])
+      .executeTakeFirst() as { id: number, day_of_week: number } | undefined
+
+    if (!plan)
+      continue
+
+    const customerId = await reviewerId(member.name)
+
+    if (!customerId)
+      continue
+
+    const existing = await db.selectFrom('csa_subscriptions')
+      .where('csa_plan_id', '=', Number(plan.id))
+      .where('customer_id', '=', customerId)
+      .select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
+
+    if (existing)
+      continue
+
+    await db.insertInto('csa_subscriptions').values({
+      uuid: crypto.randomUUID(),
+      csa_plan_id: Number(plan.id),
+      customer_id: customerId,
+      status: member.status,
+      fulfilment: member.fulfilment,
+      delivery_address: member.fulfilment === 'delivery' ? 'On file with the farm' : '',
+      // The real next packing day for the plan's own day of the week, so the
+      // dates on the screen are dates a person would actually be handed a box.
+      next_box_at: nextPackingDay(Number(plan.day_of_week ?? 3)),
+      paused_until: member.pausedUntil ?? '',
+      boxes_delivered: member.delivered,
+      note: '',
     } as never).executeTakeFirst()
 
     count += 1

@@ -280,3 +280,150 @@ function localDate(date: Date): string {
 
   return `${date.getFullYear()}-${month}-${day}`
 }
+
+export interface SeasonPlan {
+  id: number
+  name: string
+  priceCents: number
+  cadence: string
+  dayOfWeek: number
+  /** Members on this plan, by state. */
+  active: number
+  paused: number
+  cancelled: number
+  /** What the active members are worth per box, in cents. */
+  perBoxCents: number
+}
+
+export interface SeasonMember {
+  id: number
+  name: string
+  planName: string
+  status: string
+  fulfilment: string
+  nextBoxAt: string
+  pausedUntil: string
+  boxesDelivered: number
+}
+
+export interface Season {
+  plans: SeasonPlan[]
+  members: SeasonMember[]
+  /** Boxes to pack for the next packing day, which is the number a farm acts on. */
+  boxesNext: number
+  activeMembers: number
+  pausedMembers: number
+}
+
+/**
+ * A farm's own view of its season.
+ *
+ * The customer side of this feature has been here since the shares page: who
+ * has a box, when the next one comes, and whether it is paused. The farm side
+ * was not, which made `shares.manage` a permission that opened nothing - and
+ * left the one operator on this platform whose business is a subscription with
+ * no way to see the subscriptions.
+ *
+ * The number a farm actually acts on is at the top: how many boxes to pack.
+ * Everything else on the screen explains that number.
+ */
+export async function seasonFor(businessSlug: string): Promise<Season | null> {
+  const business = await db.selectFrom('businesses')
+    .where('slug', '=', String(businessSlug))
+    .select(['id'])
+    .executeTakeFirst() as { id: number } | undefined
+
+  if (!business)
+    return null
+
+  const plans = await db.selectFrom('csa_plans')
+    .where('business_id', '=', Number(business.id))
+    .orderBy('price_cents', 'asc')
+    .selectAll()
+    .execute() as Array<Record<string, unknown>>
+
+  if (plans.length === 0)
+    return { plans: [], members: [], boxesNext: 0, activeMembers: 0, pausedMembers: 0 }
+
+  const byPlan = new Map(plans.map(plan => [Number(plan.id), plan]))
+
+  const subscriptions = await db.selectFrom('csa_subscriptions')
+    .where('csa_plan_id', 'in', [...byPlan.keys()])
+    .orderBy('id', 'desc')
+    .selectAll()
+    .execute() as Array<Record<string, unknown>>
+
+  /*
+   * The member's name, from the customer row.
+   *
+   * One query for the lot rather than one per subscription: a farm with a
+   * hundred members is a farm this screen should still open for.
+   */
+  const customerIds = [...new Set(subscriptions.map(row => Number(row.customer_id)).filter(Boolean))]
+
+  const customers = customerIds.length === 0
+    ? []
+    : await db.selectFrom('customers')
+        .where('id', 'in', customerIds)
+        .select(['id', 'name'])
+        .execute() as Array<{ id: number, name: string }>
+
+  const nameById = new Map(customers.map(row => [Number(row.id), String(row.name ?? '')]))
+
+  const counts = new Map<number, { active: number, paused: number, cancelled: number }>()
+
+  for (const id of byPlan.keys())
+    counts.set(id, { active: 0, paused: 0, cancelled: 0 })
+
+  const members: SeasonMember[] = []
+
+  for (const row of subscriptions) {
+    const plan = byPlan.get(Number(row.csa_plan_id))
+    const status = String(row.status)
+    const tally = counts.get(Number(row.csa_plan_id))
+
+    if (tally && (status === 'active' || status === 'paused' || status === 'cancelled'))
+      tally[status]++
+
+    members.push({
+      id: Number(row.id),
+      name: nameById.get(Number(row.customer_id)) || '',
+      planName: String(plan?.name ?? ''),
+      status,
+      fulfilment: String(row.fulfilment),
+      nextBoxAt: String(row.next_box_at ?? ''),
+      pausedUntil: String(row.paused_until ?? ''),
+      boxesDelivered: Number(row.boxes_delivered ?? 0),
+    })
+  }
+
+  const planRows: SeasonPlan[] = plans.map((plan) => {
+    const tally = counts.get(Number(plan.id)) ?? { active: 0, paused: 0, cancelled: 0 }
+
+    return {
+      id: Number(plan.id),
+      name: String(plan.name),
+      priceCents: Number(plan.price_cents ?? 0),
+      cadence: String(plan.cadence),
+      dayOfWeek: Number(plan.day_of_week ?? 3),
+      active: tally.active,
+      paused: tally.paused,
+      cancelled: tally.cancelled,
+      perBoxCents: tally.active * Number(plan.price_cents ?? 0),
+    }
+  })
+
+  /*
+   * Boxes to pack: the active members, not the subscriptions.
+   *
+   * A paused share is the whole reason this count is not just "how many people
+   * signed up" - somebody away in August is still a member and is not a box.
+   */
+  return {
+    plans: planRows,
+    members: members.filter(member => member.status !== 'cancelled'),
+    boxesNext: planRows.reduce((total, plan) => total + plan.active, 0),
+    activeMembers: planRows.reduce((total, plan) => total + plan.active, 0),
+    pausedMembers: planRows.reduce((total, plan) => total + plan.paused, 0),
+  }
+}

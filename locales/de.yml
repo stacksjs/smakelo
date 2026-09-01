@@ -305,6 +305,7 @@ table:
   tab_open_lede: Deine Rechnung ist offen. Bestell eine Runde, und die nächste, wenn du so weit bist.
   codes_lede: Einer pro Tisch. Ausdrucken, ausschneiden, aufstellen. Ein Scan öffnet die Speisekarte und eröffnet eine Rechnung für diesen Tisch; wer denselben Code danach scannt, kommt auf dieselbe Rechnung statt eine zweite anzufangen.
   print: Drucken
+  no_codes: Hier sind noch keine Tische angelegt, also gibt es nichts zu drucken.
 
 partner:
   payouts: Auszahlungen
@@ -335,7 +336,6 @@ courier:
   shift_start: Online gehen
   shift_end: Offline gehen
   navigate: Navigation
-  who_are_you: Wer bist du?
   no_such_courier: Diesen Kurier gibt es nicht.
   sharing_position: Standort wird geteilt
   position_private: Standort nicht geteilt
@@ -357,11 +357,8 @@ courier:
   deliveries: Lieferungen
   fees: Gebühren
   tips: Trinkgeld
-  pick_one: Die Kuriere hier sind erfunden, also wähle einen aus. Eine echte App wüsste es.
-  state_active: Im Dienst
-  state_offline: Offline
-  state_on_delivery: Unterwegs mit einer Lieferung
   away: "{distance} entfernt"
+  not_a_courier: Dieses Konto fährt keine Bestellungen aus.
 
 footer:
   tagline: "Restaurants, Cafés und Höfe in {regions}."
@@ -399,7 +396,6 @@ claims:
 
 kitchen:
   loading_board: Board wird geladen…
-  needs_slug: Hänge ?business=<slug> an, um ein Board zu sehen.
   no_board: Für diesen Betrieb gibt es kein Board.
   orders: Bestellungen
   orders_word: Bestellungen
@@ -421,7 +417,6 @@ kitchen:
 
 manage:
   title: Verwalten
-  needs_slug: Hänge ?business=<slug> an, um einen Betrieb zu verwalten.
   table_codes: Tischcodes
   hours_to: bis
   how_people_order: Wie bestellt werden kann
@@ -490,6 +485,7 @@ earnings:
   type_tax: Steuer
   payout_note: "Eine Auszahlung schreibt eine negative Zeile, statt den Saldo zurückzusetzen - so bleibt die Geschichte dessen erhalten, was geschuldet und dann bezahlt wurde. Hier fließt kein Geld: diese Konten gehören erfundenen Betrieben."
   order_ref: "Bestellung #{id}"
+  none_of_yours: Zu diesem Konto gibt es keine Abrechnung. Abrechnungen gehören zu einem Betrieb oder einem Kurier.
 
 account:
   title: Dein Konto
@@ -532,6 +528,28 @@ account:
   tile_reviews_many: Bewertungen
   tile_shares_one: Anteil
   tile_shares_many: Anteile
+  signed_in_as: Angemeldet als {name}
+  operator_head: Was du betreibst
+  operator_body: Die Seiten, die dieses Konto öffnet.
+  surface_kitchen: Bestelltafel
+  surface_manage: Karte und Zeiten
+  surface_codes: Tischcodes
+  surface_courier: Kurierseite
+  surface_earnings: Einnahmen
+  surface_admin: Betrieb
+  surface_claims: Ansprüche
+  role_admin: Betrieb
+  role_merchant: Restaurant
+  role_farmer: Hof
+  role_courier: Kurier
+  role_customer: Gast
+  demo_head: Konten zum Ausprobieren
+  demo_body: "Das hier ist eine Demo, also steht die Haustür offen. Jedes Konto unten ist erfunden, auf einer Domain, die keine Post empfangen kann, und alle teilen sich ein Passwort."
+  demo_password: "Passwort für alle: {password}"
+  demo_use: Eintragen
+  demo_nothing_run: Bestellen, Orte merken, Bewertungen schreiben.
+  demo_runs_operations: Prüfungen, Einträge, Ansprüche, alle Abrechnungen.
+  demo_runs_courier: Bestellungen ausfahren.
 
 checkout:
   loading_menu: Speisekarte wird geladen…
@@ -605,3 +623,32 @@ guard:
   robots_missing: robots.txt fehlt oder verbietet das Crawlen nicht mehr.
   holding: hält
   broken: gebrochen
+
+# Die Betreiberseiten: Restaurant, Hof, Kurier, Betrieb.
+operator:
+  sign_in_first: Melde dich an, um diese Seite zu öffnen.
+  go_to_account: Zu deinem Konto
+  not_yours: Das gehört nicht zu deinem Konto. Bitte die Betreiberin, dich hinzuzufügen.
+  nothing_to_manage: Auf diesem Konto gibt es noch nichts zu verwalten.
+  pick_business: Welches?
+  switch_business: Wechseln
+  not_operations: Dieses Konto öffnet die Betriebsseiten nicht.
+
+# Die Saison aus Sicht des Hofes: Kisten zu packen, und für wen.
+season:
+  title: Die Saison
+  boxes_next: Kisten zu packen
+  members_active: Mitglieder
+  members_paused: pausiert
+  plans: Abos
+  who: Wer eine Kiste hat
+  nobody: Noch hat niemand eine Kiste genommen.
+  per_box: "{amount} pro Kiste"
+  active_count: "{count} in diesem Abo"
+  paused_count: "{count} pausiert"
+  next_box: "Nächste Kiste {date}"
+  paused_until: "Pausiert bis {date}"
+  boxes_delivered: "{count} geliefert"
+  member_unnamed: Ein Mitglied
+  status_active: Aktiv
+  status_paused: Pausiert

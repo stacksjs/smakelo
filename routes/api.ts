@@ -1,19 +1,23 @@
+import { config } from '@stacksjs/config'
 import { response, route } from '@stacksjs/router'
 import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
 import { menuFor } from '../app/Actions/Order/menu'
 import { createOrder, ordersForVisitor, quoteOrder, trackOrder } from '../app/Actions/Order/api'
-import { closeTab, sessionForToken } from '../app/Actions/Dine/tables'
+import { closeTab, sessionForToken, tableCodesFor } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
 import { accountState, linkVisitorToUser } from '../app/Actions/Account/session'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
+import type { Viewer } from '../app/Actions/Account/access'
+import { can, canActOnBusiness, canReadStatement, courierFor, viewerFor } from '../app/Actions/Account/access'
+import { DEMO_PASSWORD, demoAccounts, meState } from '../app/Actions/Account/surfaces'
 import { runGuards } from '../app/Actions/Admin/guards'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
 import { addressesFor, removeAddress, saveAddress } from '../app/Actions/Customer/addresses'
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
-import { join, membershipsFor, plansFor, setMembershipState } from '../app/Actions/Csa/membership'
+import { join, membershipsFor, plansFor, seasonFor, setMembershipState } from '../app/Actions/Csa/membership'
 import { favoritesFor, toggleFavorite } from '../app/Actions/Favorite/favorites'
 import { subscribe } from '../app/Actions/Subscriber/subscribe'
 import { respondToReview, reviewsFor, statsFor, submitReview, voteOnReview } from '../app/Actions/Review/write'
@@ -187,17 +191,72 @@ route.post('/tabs/{id}/close', async (request: any) => {
 })
 
 /**
+ * Who is asking, and whether they may.
+ *
+ * Every operator route goes through these two. The comment this replaces said
+ * the merchant board was "unauthenticated, and that is a demo decision rather
+ * than a design one: there are no merchant accounts here... A real deployment
+ * puts this behind the team that owns the business." There are accounts now,
+ * and this is that team check.
+ *
+ * A refusal is 401 when nobody is signed in and 403 when somebody is, because
+ * those are different problems: one is answered by signing in and the other
+ * never is.
+ */
+async function viewerOf(request: any): Promise<Viewer | null> {
+  const header = String(request?.headers?.get?.('authorization') ?? '')
+
+  return await viewerFor(await userIdFromBearer(header))
+}
+
+/** Whether the courier in the path is the courier this user is. */
+async function isThisCourier(viewer: Viewer | null, courierId: number): Promise<boolean> {
+  const courier = await courierFor(viewer)
+
+  return courier ? courier.id === Number(courierId) : false
+}
+
+/** Which business an order was placed at, for gating the board's actions. */
+async function businessSlugForOrder(orderId: number): Promise<string | null> {
+  const { db } = await import('@stacksjs/database')
+
+  const order = await db.selectFrom('orders')
+    .where('id', '=', Number(orderId))
+    .select(['business_id'])
+    .executeTakeFirst() as { business_id: number } | undefined
+
+  if (!order)
+    return null
+
+  const business = await db.selectFrom('businesses')
+    .where('id', '=', Number(order.business_id))
+    .select(['slug'])
+    .executeTakeFirst() as { slug: string } | undefined
+
+  return business ? String(business.slug) : null
+}
+
+function refuse(viewer: Viewer | null) {
+  return viewer
+    ? response.json({ message: 'That is not yours to do.' }, 403)
+    : response.json({ message: 'Sign in first.' }, 401)
+}
+
+/**
  * The merchant's orders board.
  *
  * `GET /api/merchant/{slug}/board`
  *
- * Unauthenticated, and that is a demo decision rather than a design one: there
- * are no merchant accounts here, and gating it would mean inventing a login for
- * a business that does not exist. A real deployment puts this behind the team
- * that owns the business.
+ * Behind the team that owns the business, which is what the comment here used
+ * to say a real deployment would do.
  */
 route.get('/merchant/{slug}/board', async (request: any) => {
   const slug = String(request?.getParam?.('slug') ?? request?.params?.slug ?? '')
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, slug, 'business.board'))
+    return refuse(viewer)
+
   const board = await boardFor(slug)
 
   if (!board)
@@ -213,6 +272,12 @@ route.get('/merchant/{slug}/board', async (request: any) => {
  */
 route.post('/merchant/orders/{id}/status', async (request: any) => {
   const orderId = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const viewer = await viewerOf(request)
+  const slug = await businessSlugForOrder(orderId)
+
+  if (!slug || !await canActOnBusiness(viewer, slug, 'business.board'))
+    return refuse(viewer)
+
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
   const result = await advanceOrder(orderId, String(body?.status ?? ''))
 
@@ -227,17 +292,27 @@ route.post('/merchant/orders/{id}/status', async (request: any) => {
  *
  * `GET /api/courier/{id}/console` and `GET /api/couriers-list`
  *
- * Unauthenticated for the same reason as the merchant board: there are no
- * courier accounts in a demo whose couriers are invented. A real deployment
- * resolves the courier from the session, which is what the framework's own
- * ping and stop actions already do.
+ * A courier is a person rather than a business, so this resolves through
+ * `couriers.user_id` rather than a team: the id in the path must be the
+ * courier the caller is. The roster stays available to operations, which is
+ * the one caller with a reason to see couriers it is not.
  */
-route.get('/couriers-list', async () => {
+route.get('/couriers-list', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'earnings.read.all'))
+    return refuse(viewer)
+
   return response.json({ data: await allCouriers() })
 })
 
 route.get('/courier/{id}/console', async (request: any) => {
   const id = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const viewer = await viewerOf(request)
+
+  if (!await isThisCourier(viewer, id))
+    return refuse(viewer)
+
   const data = await consoleFor(id)
 
   if (!data)
@@ -249,6 +324,11 @@ route.get('/courier/{id}/console', async (request: any) => {
 /** `POST /api/courier/{id}/shift` */
 route.post('/courier/{id}/shift', async (request: any) => {
   const id = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const viewer = await viewerOf(request)
+
+  if (!await isThisCourier(viewer, id))
+    return refuse(viewer)
+
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
   const result = await setShift(id, Boolean(body?.online))
 
@@ -317,7 +397,12 @@ route.post('/courier/stops/{id}/{action}', async (request: any) => {
  * Every figure is a sum over the ledger, never recomputed from orders: one
  * place decides what a party is owed, and every screen reads it.
  */
-route.get('/money/balances', async () => {
+route.get('/money/balances', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'earnings.read.all'))
+    return refuse(viewer)
+
   return response.json({ data: await outstandingBalances() })
 })
 
@@ -327,6 +412,11 @@ route.get('/money/{partyType}/{id}', async (request: any) => {
 
   if (!['business', 'courier', 'platform', 'tax'].includes(partyType))
     return response.json({ message: 'Party must be business, courier, platform or tax.' }, 422)
+
+  const viewer = await viewerOf(request)
+
+  if (!await canReadStatement(viewer, partyType, partyId))
+    return refuse(viewer)
 
   const statement = await statementFor(partyType as PartyType, partyId)
 
@@ -340,6 +430,10 @@ route.get('/money/{partyType}/{id}', async (request: any) => {
 route.post('/money/{partyType}/{id}/payout', async (request: any) => {
   const partyType = String(request?.getParam?.('partyType') ?? '')
   const partyId = Number(request?.getParam?.('id') ?? 0)
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'payouts.record'))
+    return refuse(viewer)
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
 
   if (!['business', 'courier'].includes(partyType))
@@ -484,12 +578,22 @@ route.post('/businesses/{slug}/claim', async (request: any) => {
 })
 
 route.get('/claims', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'claims.read'))
+    return refuse(viewer)
+
   const status = request?.query?.status ? String(request.query.status) : undefined
 
   return response.json({ data: await claims(status as 'pending' | 'approved' | 'rejected' | undefined) })
 })
 
 route.post('/claims/{id}/{decision}', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'claims.decide'))
+    return refuse(viewer)
+
   const result = await decideClaim(
     Number(request?.getParam?.('id') ?? 0),
     String(request?.getParam?.('decision') ?? '') as 'approved' | 'rejected',
@@ -588,7 +692,74 @@ route.post('/csa/{id}/{action}', async (request: any) => {
  * not a design: every action already takes the business first, so a real
  * deployment swaps the source of that argument and nothing else.
  */
+/**
+ * `GET /api/manage/{slug}/shares` - a farm's own view of its season.
+ *
+ * Behind `shares.manage`, which only a farm holds. Until this existed that
+ * permission opened nothing: the shares feature had a customer side and no
+ * operator side, so the one kind of business here that sells a subscription
+ * could not see the subscriptions.
+ */
+/**
+ * `GET /api/manage/{slug}/codes` - a business's table codes.
+ *
+ * Behind `business.codes` and the team that owns the business. The printable
+ * sheet used to carry these in the page itself, which made every restaurant's
+ * codes readable by anyone who guessed the URL - and a table code is what
+ * opens a tab at that table.
+ *
+ * The QR is still an SVG rendered here rather than in the browser: it prints
+ * at any size without going soft and gives a phone camera a real vector. Only
+ * the delivery changed.
+ */
+route.get('/manage/{slug}/codes', async (request: any) => {
+  const slug = String(request?.getParam?.('slug') ?? '')
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, slug, 'business.codes'))
+    return refuse(viewer)
+
+  /*
+   * The site's origin, not this API's.
+   *
+   * A diner scans one of these at the table and has to land on the site.
+   * Taking the origin off the incoming request gave them the API's own port,
+   * which is a QR code pointing at a JSON endpoint.
+   */
+  const configured = String(config.app?.url ?? '')
+  const origin = configured
+    ? (/^https?:\/\//.test(configured) ? configured : `https://${configured}`)
+    : 'http://localhost:3000'
+
+  const codes = await tableCodesFor(slug, origin)
+
+  if (!codes)
+    return response.json({ message: 'No such business.' }, 404)
+
+  return response.json({ data: codes })
+})
+
+route.get('/manage/{slug}/shares', async (request: any) => {
+  const slug = String(request?.getParam?.('slug') ?? '')
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, slug, 'shares.manage'))
+    return refuse(viewer)
+
+  const season = await seasonFor(slug)
+
+  if (!season)
+    return response.json({ message: 'No such business.' }, 404)
+
+  return response.json({ data: season })
+})
+
 route.get('/manage/{slug}', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, String(request?.getParam?.('slug') ?? ''), 'business.manage'))
+    return refuse(viewer)
+
   const view = await manageView(String(request?.getParam?.('slug') ?? ''))
 
   if (!view)
@@ -598,6 +769,11 @@ route.get('/manage/{slug}', async (request: any) => {
 })
 
 route.post('/manage/{slug}/items/{id}', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, String(request?.getParam?.('slug') ?? ''), 'business.manage'))
+    return refuse(viewer)
+
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
 
   const result = await updateItem(
@@ -617,6 +793,11 @@ route.post('/manage/{slug}/items/{id}', async (request: any) => {
 })
 
 route.post('/manage/{slug}/hours', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, String(request?.getParam?.('slug') ?? ''), 'business.manage'))
+    return refuse(viewer)
+
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
 
   const result = await updateHours(
@@ -634,6 +815,11 @@ route.post('/manage/{slug}/hours', async (request: any) => {
 })
 
 route.post('/manage/{slug}/fulfilment', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!await canActOnBusiness(viewer, String(request?.getParam?.('slug') ?? ''), 'business.manage'))
+    return refuse(viewer)
+
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
 
   const result = await updateFulfilment(String(request?.getParam?.('slug') ?? ''), {
@@ -655,15 +841,30 @@ route.post('/manage/{slug}/fulfilment', async (request: any) => {
  * is supposed to enforce it, because a promise nobody can see the state of is
  * one you find out about afterwards.
  */
-route.get('/admin/guards', async () => {
+route.get('/admin/guards', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'guards.read'))
+    return refuse(viewer)
+
   return response.json({ data: await runGuards() })
 })
 
 route.get('/admin/listings', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'listings.curate'))
+    return refuse(viewer)
+
   return response.json({ data: await listings(String(request?.query?.q ?? '')) })
 })
 
 route.post('/admin/listings/{slug}/{action}', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'listings.curate'))
+    return refuse(viewer)
+
   const action = String(request?.getParam?.('action') ?? '')
 
   if (!['hide', 'restore'].includes(action))
@@ -765,6 +966,34 @@ route.get('/account', async (request: any) => {
   const userId = await userIdFromBearer(header)
 
   return response.json({ data: await accountState(userId, visitorOf(request)) })
+})
+
+/**
+ * `GET /api/me` - who is signed in, what they run, and what that opens.
+ *
+ * The operator screens ask this instead of taking a slug out of the URL. See
+ * app/Actions/Account/surfaces.ts.
+ */
+route.get('/me', async (request: any) => {
+  const viewer = await viewerOf(request)
+  const state = await meState(viewer)
+
+  if (!state)
+    return response.json({ message: 'Sign in first.' }, 401)
+
+  return response.json({ data: state })
+})
+
+/**
+ * `GET /api/demo-accounts` - the invented accounts this demo was seeded with.
+ *
+ * Public on purpose: every one is fictional, on a domain that cannot receive
+ * mail, and they exist so the merchant, farm, courier and operations screens
+ * can be opened by somebody who was not handed credentials. A site with real
+ * customers would not serve this.
+ */
+route.get('/demo-accounts', async () => {
+  return response.json({ data: { password: DEMO_PASSWORD, accounts: await demoAccounts() } })
 })
 
 /** `POST /api/account/link` - carry this browser's history onto an account. */

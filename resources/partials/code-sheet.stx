@@ -7,63 +7,58 @@
  * - a page that forgets renders key names. Its own import cannot be forgotten.
  */
 import { t } from '../../app/Actions/Locale/translate'
+
+/* The empty state's own sentence; see partials/operator-empty.stx. */
+const operatorNothing = t('operator.nothing_to_manage')
 </script>
 
 {{-- Printable table codes.
 
   Included by every generated view under resources/views/codes/, each of which
-  supplies `codes` (see app/Actions/Dine/tables.ts). The codes are SVG rendered
-  on the server by ts-qr-codes, so this page prints at any size without going
-  soft, and a phone camera has a real vector to read rather than a scaled
-  bitmap. --}}
-<!DOCTYPE html>
-<html lang="{{ currentLocale() }}">
-  <head>
-    @include('head')
-    <style>
-      /* The sheet is for printing. Everything that is not a code gets out of
-         the way, and each card is kept whole across a page break. */
-      @media print {
-        .no-print { display: none !important; }
-        body { background: #fff; }
-        .code-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd; }
-      }
-    </style>
-  </head>
+  supplies `codeSlug` and the signals this markup binds to.
 
-  <body>
-    <div class="no-print">
-      @include('chrome')
-    </div>
+  The codes arrive from `/api/manage/{slug}/codes` rather than in the page.
+  They used to be rendered into it, which meant every restaurant's table codes
+  were readable by anyone who guessed the URL - and a table code is what opens
+  a tab at that table. The QR is still an SVG built on the server, so it prints
+  at any size without going soft and a phone camera reads a real vector; only
+  the delivery changed.
 
-    <main class="mx-auto px-4 sm:px-8 max-w-5xl">
+  The document skeleton and the client script are in the generated view rather
+  than here, for the same reason they are for place-body: stx stamps its setup
+  marker onto the `<body>` of the page it compiles and registers a scope
+  against it, and with those inside a partial it found neither - so every
+  binding on this sheet resolved against nothing. --}}
+    <main class="mx-auto px-4 sm:px-8 max-w-5xl" data-stx-content>
       <section class="pt-10 pb-8 no-print">
         <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('manage.table_codes') }}</h1>
-        <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-          {{ t('table.codes_lede') }}
-        </p>
-        <button onclick="window.print()" class="inline-flex gap-2 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
-          {{ t('table.print') }}
-        </button>
+
+        @include('operator-empty')
+
+        <div :if="sheet().length > 0">
+          <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+            {{ t('table.codes_lede') }}
+          </p>
+          <button onclick="window.print()" class="inline-flex gap-2 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
+            {{ t('table.print') }}
+          </button>
+        </div>
+
+        <p :if="!loading() && signedIn() && !denied() && sheet().length === 0" class="mt-3 text-[15px]" style="color: var(--ink-soft)">{{ t('table.no_codes') }}</p>
       </section>
 
       <section class="grid grid-cols-1 gap-5 pb-24 sm:grid-cols-2 lg:grid-cols-3">
-        @foreach (codes as code)
-          <div class="code-card p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-            <div class="p-6 text-center rounded-[calc(1.5rem-0.375rem)]">
-              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('kitchen.table') }}</p>
-              <p class="text-[38px] font-semibold leading-none tracking-[-0.03em]">{{ code.label }}</p>
+        <div :for="code in sheet()" class="code-card p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+          <div class="p-6 text-center rounded-[calc(1.5rem-0.375rem)]">
+            <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('kitchen.table') }}</p>
+            <p class="text-[38px] font-semibold leading-none tracking-[-0.03em]">{{ code.label }}</p>
 
-              <div class="flex justify-center mt-5">
-                {!! code.svg !!}
-              </div>
+            {{-- The SVG the server built, dropped in whole. --}}
+            <div class="flex justify-center mt-5" :html="code.svg"></div>
 
-              <p class="mt-4 text-[13px] font-medium">{{ t('table.scan_prompt') }}</p>
-              <p class="mt-1 text-[11px] break-all" style="color: var(--ink-soft)">{{ code.url }}</p>
-            </div>
+            <p class="mt-4 text-[13px] font-medium">{{ t('table.scan_prompt') }}</p>
+            <p class="mt-1 text-[11px] break-all" style="color: var(--ink-soft)">{{ code.url }}</p>
           </div>
-        @endforeach
+        </div>
       </section>
     </main>
-  </body>
-</html>

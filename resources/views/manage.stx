@@ -8,7 +8,9 @@
  * either further down or somewhere else, because a portal that makes the
  * urgent things slow gets replaced by a phone call to the platform.
  *
- * Reached as `/manage?business=<slug>`.
+ * Reached from the account, which knows which businesses are this
+ * merchant's. `?business=<slug>` still works and is what a switcher links to;
+ * somebody who runs one place never sees it.
  */
 import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
@@ -32,7 +34,22 @@ const clientStrings = JSON.stringify({
   'manage.off_the_menu': t('manage.off_the_menu', { count: '{count}' }),
   'manage.available_on': t('manage.available_on'),
   'manage.available_off': t('manage.available_off'),
+  'season.boxes_next': t('season.boxes_next'),
+  'season.members_active': t('season.members_active'),
+  'season.members_paused': t('season.members_paused'),
+  'season.per_box': t('season.per_box', { amount: '{amount}' }),
+  'season.active_count': t('season.active_count', { count: '{count}' }),
+  'season.paused_count': t('season.paused_count', { count: '{count}' }),
+  'season.next_box': t('season.next_box', { date: '{date}' }),
+  'season.paused_until': t('season.paused_until', { date: '{date}' }),
+  'season.boxes_delivered': t('season.boxes_delivered', { count: '{count}' }),
+  'season.member_unnamed': t('season.member_unnamed'),
+  'season.status_active': t('season.status_active'),
+  'season.status_paused': t('season.status_paused'),
 })
+
+/* The empty state's own sentence; see partials/operator-empty.stx. */
+const operatorNothing = t('operator.nothing_to_manage')
 
 const pageTitle = t('meta.manage_title')
 const pageDescription = t('meta.manage_description')
@@ -55,9 +72,9 @@ const canonicalPath = '/manage'
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
-        <p :if="!loading() && !slug()" class="text-[15px]">{{ t('manage.needs_slug') }}</p>
+        @include('operator-empty')
 
-        <p :if="!loading() && slug() && !view()" class="text-[15px]">
+        <p :if="!loading() && slug() && !denied() && !view()" class="text-[15px]">
           {{ t('manage.not_a_partner') }}
         </p>
 
@@ -66,6 +83,16 @@ const canonicalPath = '/manage'
             <div>
               <p class="text-[13px]" style="color: var(--ink-soft)">{{ view().business.name }}</p>
               <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('manage.title') }}</h1>
+
+              {{-- Only when there is something to switch to. --}}
+              <div :if="mine().length > 1" class="flex flex-wrap gap-1.5 mt-3">
+                <a
+                  :for="place in mine()"
+                  :href="'/manage?business=' + place.slug"
+                  class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
+                  :style="place.slug === slug() ? 'background: var(--accent-soft); color: var(--accent)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+                >{{ place.name }}</a>
+              </div>
             </div>
 
             <div class="flex flex-wrap gap-2 text-[13px]">
@@ -160,6 +187,53 @@ const canonicalPath = '/manage'
             </div>
           </section>
 
+          {{-- A farm's season.
+
+            Only farms have one, and only a farm's account holds the permission
+            that fills it, so the section is absent rather than empty for a
+            restaurant. The number a farm acts on - boxes to pack - leads,
+            because "how many members" and "how many boxes" are different
+            numbers the moment somebody pauses for August. --}}
+          <section :if="season()" class="mt-12">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('season.title') }}</h2>
+
+            <div class="grid grid-cols-1 gap-3 mt-4 sm:grid-cols-3">
+              <div :for="tile in seasonTiles()" class="p-5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+                <p class="text-[26px] font-semibold tracking-[-0.02em] tabular-nums">{{ tile.count }}</p>
+                <p class="mt-0.5 text-[13px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
+              </div>
+            </div>
+
+            <h3 class="mt-8 text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('season.plans') }}</h3>
+
+            <div class="mt-3 space-y-2">
+              <div :for="plan in season().plans" class="flex flex-wrap gap-4 justify-between items-baseline p-4 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+                <div>
+                  <p class="text-[15px] font-medium">{{ plan.name }}</p>
+                  <p class="mt-0.5 text-[12px]" style="color: var(--ink-soft)">{{ planLine(plan) }}</p>
+                </div>
+                <p class="text-[15px] tabular-nums">{{ perBox(plan) }}</p>
+              </div>
+            </div>
+
+            <h3 class="mt-8 text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('season.who') }}</h3>
+
+            <p :if="season().members.length === 0" class="mt-3 text-[15px]" style="color: var(--ink-soft)">{{ t('season.nobody') }}</p>
+
+            <div class="mt-3 space-y-2">
+              <div :for="member in season().members" class="flex flex-wrap gap-4 justify-between items-baseline p-4 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+                <div class="min-w-0">
+                  <p class="text-[15px] font-medium truncate">{{ memberName(member) }}</p>
+                  <p class="mt-0.5 text-[12px]" style="color: var(--ink-soft)">{{ memberLine(member) }}</p>
+                </div>
+                <span
+                  class="px-3 py-1 text-[11px] rounded-full shrink-0"
+                  :style="member.status === 'active' ? 'background: var(--accent-soft); color: var(--accent)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+                >{{ memberStatus(member) }}</span>
+              </div>
+            </div>
+          </section>
+
           <section class="mt-12">
             <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('manage.how_people_order') }}</h2>
 
@@ -179,7 +253,7 @@ const canonicalPath = '/manage'
     </main>
 
     <script client>
-      import { send } from '../functions/session'
+      import { get, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.
@@ -194,6 +268,20 @@ const canonicalPath = '/manage'
       }
 
       const slug = state('')
+
+      /* Who is signed in, and what they run; see functions/session.ts. */
+      const mine = state([])
+      const signedIn = state(false)
+      const denied = state(false)
+
+      /* What this page resolved; see partials/operator-empty.stx. */
+      const allowed = derived(() => Boolean(view()))
+
+      /* Where the chooser in partials/operator-empty points. */
+      function operatorLink(slug) {
+        return `/manage?business=${encodeURIComponent(slug)}`
+      }
+
       /*
        * A weekday, in the language being served.
        *
@@ -220,6 +308,9 @@ const canonicalPath = '/manage'
 
       const view = state(null)
       const loading = state(true)
+
+      /* A farm's season, or null for a business that does not sell one. */
+      const season = state(null)
 
       // Edits in flight, keyed by id, so a field the merchant has typed into
       // is not thrown away when the list re-renders.
@@ -248,6 +339,87 @@ const canonicalPath = '/manage'
         ]
       })
 
+      /*
+       * A date, as somebody reading this screen would write it.
+       *
+       * The API sends an ISO day, which is right for a wire and wrong for a
+       * farm looking at when the next box goes out. `Intl` puts it in the
+       * language being served, which is the same reason the weekday names
+       * above come from there.
+       */
+      function day(iso) {
+        if (!iso)
+          return ''
+
+        const locale = (window.Smakelo && window.Smakelo.locale) || 'en'
+        const parsed = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`)
+
+        return Number.isNaN(parsed.getTime())
+          ? String(iso)
+          : new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(parsed)
+      }
+
+      function fill(key, english, values) {
+        let text = say(key, english)
+
+        for (const [name, value] of Object.entries(values))
+          text = text.replace(`{${name}}`, value)
+
+        return text
+      }
+
+      /* The three numbers a farm acts on, in the order it acts on them. */
+      const seasonTiles = derived(() => {
+        const current = season()
+
+        if (!current)
+          return []
+
+        return [
+          { count: current.boxesNext, label: say('season.boxes_next', 'boxes to pack') },
+          { count: current.activeMembers, label: say('season.members_active', 'members') },
+          { count: current.pausedMembers, label: say('season.members_paused', 'paused') },
+        ]
+      })
+
+      function perBox(plan) {
+        return fill('season.per_box', '{amount} a box', {
+          amount: money(plan.priceCents, view().business.currency),
+        })
+      }
+
+      function planLine(plan) {
+        const parts = [fill('season.active_count', '{count} on this plan', { count: plan.active })]
+
+        if (plan.paused > 0)
+          parts.push(fill('season.paused_count', '{count} paused', { count: plan.paused }))
+
+        return parts.join(' · ')
+      }
+
+      /* A member whose name this site never asked for is still a member. */
+      function memberName(member) {
+        return member.name || say('season.member_unnamed', 'A member')
+      }
+
+      function memberLine(member) {
+        const parts = [member.planName]
+
+        if (member.status === 'paused' && member.pausedUntil)
+          parts.push(fill('season.paused_until', 'Paused until {date}', { date: day(member.pausedUntil) }))
+        else if (member.nextBoxAt)
+          parts.push(fill('season.next_box', 'Next box {date}', { date: day(member.nextBoxAt) }))
+
+        if (member.boxesDelivered > 0)
+          parts.push(fill('season.boxes_delivered', '{count} delivered', { count: member.boxesDelivered }))
+
+        return parts.filter(Boolean).join(' · ')
+      }
+
+      function memberStatus(member) {
+        return say(`season.status_${member.status}`, member.status)
+      }
+
       // Minutes from midnight, which is how the hours are stored, shown the way
       // a person reads a clock.
       function clock(minutes) {
@@ -264,7 +436,18 @@ const canonicalPath = '/manage'
       }
 
       async function load() {
-        const asked = new URLSearchParams(location.search).get('business') || ''
+        const account = await me()
+
+        signedIn.set(Boolean(account))
+        mine.set(account ? account.businesses : [])
+
+        /*
+         * The URL wins when it names one, so a switcher and a bookmark both
+         * work. With nothing asked for, a merchant who runs one place is taken
+         * straight to it and one who runs several is offered the list.
+         */
+        const asked = new URLSearchParams(location.search).get('business')
+          || (mine().length === 1 ? mine()[0].slug : '')
 
         slug.set(asked)
 
@@ -273,10 +456,29 @@ const canonicalPath = '/manage'
           return
         }
 
-        const response = await fetch(`/api/manage/${encodeURIComponent(asked)}`)
+        const response = await apiGet(`/api/manage/${encodeURIComponent(asked)}`)
 
+        // 401 and 403 are not "no such business": they are "not yours", and
+        // saying so is the difference between a fixable problem and a dead end.
+        denied.set(response.status === 401 || response.status === 403)
         view.set(response.ok ? (await response.json()).data : null)
         loading.set(false)
+
+        if (response.ok)
+          loadSeason(asked)
+      }
+
+      /*
+       * The season, for a business that has one.
+       *
+       * A 403 here is the ordinary answer for a restaurant - the permission
+       * belongs to farms - so it leaves the section absent rather than raising
+       * anything.
+       */
+      async function loadSeason(asked) {
+        const response = await apiGet(`/api/manage/${encodeURIComponent(asked)}/shares`)
+
+        season.set(response.ok ? (await response.json()).data : null)
       }
 
       async function toggle(item) {

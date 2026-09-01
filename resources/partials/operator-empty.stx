@@ -1,0 +1,57 @@
+<script server>
+import { t } from '../../app/Actions/Locale/translate'
+</script>
+
+{{--
+  Why an operator screen has nothing on it.
+
+  Six screens - the menu, the board, the codes, the courier, the earnings, the
+  operations page - can all be empty for the same four reasons, and each of
+  them used to answer with its own sentence. Two of those sentences told a
+  restaurant owner to add `?business=<slug>` to the URL.
+
+  The page supplies the state: `loading`, `signedIn`, `slug`, `denied`,
+  `mine`, `allowed`, and an `operatorLink(slug)` for the chooser. A partial
+  inherits the including page's scope, so these are the page's own client
+  signals.
+
+  `allowed` is what the page actually resolved - a board, a statement, a set of
+  guards. Without it the operations screen answered its own admin with "this
+  account does not open the operations screens": operations runs no business,
+  so `mine` is empty and the last branch below fired over a page that had
+  loaded perfectly well.
+
+  `operatorNothing` is the page's own sentence for "you run nothing", because
+  that is the one line the six screens cannot share: a courier screen telling
+  somebody there is nothing to manage would be answering a question they did
+  not ask.
+--}}
+
+{{-- Signed out. The only one of the four with an obvious next step. --}}
+<div :if="!loading() && !signedIn()" class="max-w-md">
+  <p class="text-[15px]">{{ t('operator.sign_in_first') }}</p>
+  <a href="/account" class="inline-block px-5 py-2.5 mt-4 text-[14px] rounded-full transition-all duration-500" style="background: var(--ink); color: var(--paper)">{{ t('operator.go_to_account') }}</a>
+</div>
+
+{{-- Signed in, asked for something that is somebody else's. --}}
+<p :if="!loading() && signedIn() && denied()" class="max-w-md text-[15px]">{{ t('operator.not_yours') }}</p>
+
+{{-- Signed in, runs nothing. A customer who found the URL. --}}
+<p :if="!loading() && signedIn() && !denied() && !allowed() && !slug() && mine().length === 0" class="max-w-md text-[15px]">{{ operatorNothing }}</p>
+
+{{-- Signed in, runs several, has not said which. --}}
+<div :if="!loading() && signedIn() && !denied() && !allowed() && !slug() && mine().length > 1">
+  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('operator.pick_business') }}</h2>
+
+  <div class="mt-4 space-y-2">
+    <a
+      :for="place in mine()"
+      :href="operatorLink(place.slug)"
+      class="block p-5 rounded-[1.25rem] transition-all duration-500"
+      style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)"
+    >
+      <p class="text-[15px] font-medium">{{ place.name }}</p>
+      <p class="mt-0.5 text-[12px]" style="color: var(--ink-soft)">{{ place.city }}</p>
+    </a>
+  </div>
+</div>

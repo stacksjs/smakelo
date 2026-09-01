@@ -6,7 +6,9 @@
  * what do I make next. Tablet-first, high contrast, big targets, and it polls
  * so a screen left open all service stays current without anybody touching it.
  *
- * Reached as `/kitchen?business=<slug>`.
+ * Reached from the account, which knows whose kitchen this is.
+ * `?business=<slug>` still works and is what the switcher links to; somebody
+ * who runs one place never sees it.
  */
 import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
@@ -37,6 +39,9 @@ const clientStrings = JSON.stringify({
   'status.cancelled': t('status.cancelled'),
 })
 
+/* The empty state's own sentence; see partials/operator-empty.stx. */
+const operatorNothing = t('operator.nothing_to_manage')
+
 const pageTitle = t('meta.kitchen_title')
 const pageDescription = t('meta.kitchen_description')
 const canonicalPath = '/kitchen'
@@ -61,15 +66,25 @@ const canonicalPath = '/kitchen'
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('kitchen.loading_board') }}</p>
 
-        <p :if="!loading() && !slug()" class="text-[15px]">{{ t('kitchen.needs_slug') }}</p>
+        @include('operator-empty')
 
-        <p :if="!loading() && slug() && !board()" class="text-[15px]">{{ t('kitchen.no_board') }}</p>
+        <p :if="!loading() && slug() && !denied() && !board()" class="text-[15px]">{{ t('kitchen.no_board') }}</p>
 
         <div :if="board()">
           <div class="flex flex-wrap gap-4 justify-between items-baseline">
             <div>
               <p class="text-[13px]" style="color: var(--ink-soft)">{{ board().business.name }}</p>
               <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('kitchen.orders') }}</h1>
+
+              {{-- Only when there is something to switch to. --}}
+              <div :if="mine().length > 1" class="flex flex-wrap gap-1.5 mt-3">
+                <a
+                  :for="place in mine()"
+                  :href="'/kitchen?business=' + place.slug"
+                  class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
+                  :style="place.slug === slug() ? 'background: var(--accent-soft); color: var(--accent)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+                >{{ place.name }}</a>
+              </div>
             </div>
 
             <div class="flex gap-6 text-[13px]" style="color: var(--ink-soft)">
@@ -182,7 +197,7 @@ const canonicalPath = '/kitchen'
     </main>
 
     <script client>
-      import { money, send } from '../functions/session'
+      import { get, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.
@@ -197,6 +212,19 @@ const canonicalPath = '/kitchen'
       }
 
       const slug = state('')
+
+      /* Who is signed in, and what they run; see functions/session.ts. */
+      const mine = state([])
+      const signedIn = state(false)
+      const denied = state(false)
+
+      /* What this page resolved; see partials/operator-empty.stx. */
+      const allowed = derived(() => Boolean(board()))
+
+      /* Where the chooser in partials/operator-empty points. */
+      function operatorLink(slug) {
+        return `/kitchen?business=${encodeURIComponent(slug)}`
+      }
       const board = state(null)
       const reviews = state([])
       const loading = state(true)
@@ -246,7 +274,15 @@ const canonicalPath = '/kitchen'
       }
 
       async function load() {
-        const asked = new URLSearchParams(location.search).get('business') || ''
+        const account = await me()
+
+        signedIn.set(Boolean(account))
+        mine.set(account ? account.businesses : [])
+
+        // The URL wins when it names one; otherwise a merchant who runs one
+        // place lands on it and one who runs several is offered the list.
+        const asked = new URLSearchParams(location.search).get('business')
+          || (mine().length === 1 ? mine()[0].slug : '')
 
         slug.set(asked)
 
@@ -255,16 +291,21 @@ const canonicalPath = '/kitchen'
           return
         }
 
-        const response = await fetch(`/api/merchant/${encodeURIComponent(asked)}/board`)
+        const response = await apiGet(`/api/merchant/${encodeURIComponent(asked)}/board`)
 
+        denied.set(response.status === 401 || response.status === 403)
         board.set(response.ok ? (await response.json()).data : null)
         loading.set(false)
 
         if (response.ok)
           loadReviews(asked)
 
-        // A board left open all service should stay current on its own.
-        setTimeout(load, 8000)
+        // A board left open all service should stay current on its own. Not
+        // when it has nothing to show: re-polling a 403 every eight seconds
+        // for the rest of the day is a busy loop with a login page in front
+        // of it.
+        if (response.ok)
+          setTimeout(load, 8000)
       }
 
       async function loadReviews(businessSlug) {

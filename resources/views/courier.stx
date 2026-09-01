@@ -6,10 +6,11 @@
  * shows only what is true right now: on shift or not, what is being carried,
  * where the next stop is, and what the day has paid. Big targets, few words.
  *
- * `?courier=<id>` picks who you are, because this demo has no courier accounts
- * and inventing a login for an invented person would be theatre. A real
- * deployment resolves the courier from the session, which is what the
- * framework's own ping and stop endpoints already do.
+ * Who you are comes from the session: a courier account is linked to its
+ * courier row through `couriers.user_id`, and the console will only answer
+ * for the courier you actually are. There used to be a picker here listing
+ * every courier on the platform, which was a reasonable thing for a demo with
+ * no accounts and an unreasonable one now that it has them.
  */
 import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
@@ -44,10 +45,10 @@ const clientStrings = JSON.stringify({
   'courier.fees': t('courier.fees'),
   'courier.tips': t('courier.tips'),
   'courier.away': t('courier.away', { distance: '{distance}' }),
-  'courier.state_active': t('courier.state_active'),
-  'courier.state_offline': t('courier.state_offline'),
-  'courier.state_on_delivery': t('courier.state_on_delivery'),
 })
+
+/* The empty state's own sentence; see partials/operator-empty.stx. */
+const operatorNothing = t('courier.not_a_courier')
 
 const pageTitle = t('meta.courier_title')
 const pageDescription = t('meta.courier_description')
@@ -70,27 +71,9 @@ const canonicalPath = '/courier'
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
-        {{-- No courier chosen: pick one, since these people are invented. --}}
-        <div :if="!loading() && !courierId()">
-          <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">{{ t('courier.who_are_you') }}</h1>
-          <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-            {{ t('courier.pick_one') }}
-          </p>
+        @include('operator-empty')
 
-          <div class="mt-8 space-y-2">
-            <a
-              :for="person in roster()"
-              :href="'/courier?courier=' + person.id"
-              class="flex justify-between items-center p-5 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
-              style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)"
-            >
-              <span class="text-[15px] font-medium">{{ person.name }}</span>
-              <span class="text-[12px]" style="color: var(--ink-soft)">{{ shiftState(person.status) }}</span>
-            </a>
-          </div>
-        </div>
-
-        <p :if="!loading() && courierId() && !view()" class="text-[15px]">{{ t('courier.no_such_courier') }}</p>
+        <p :if="!loading() && courierId() && !denied() && !view()" class="text-[15px]">{{ t('courier.no_such_courier') }}</p>
 
         {{-- On shift. --}}
         <div :if="view()">
@@ -198,7 +181,7 @@ const canonicalPath = '/courier'
 
     <script client>
       import { startTracking } from '../functions/courier-tracking'
-      import { money, send } from '../functions/session'
+      import { get, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.
@@ -221,15 +204,28 @@ const canonicalPath = '/courier'
         return say('courier.away', '{distance} away').replace('{distance}', km(metres))
       }
 
-      function shiftState(status) {
-        const key = String(status ?? '')
-
-        return say(`courier.state_${key}`, key.replace(/_/g, ' '))
-      }
-
       const courierId = state(0)
-      const roster = state([])
       const view = state(null)
+
+      /* Who is signed in; see functions/session.ts. */
+      const signedIn = state(false)
+      const denied = state(false)
+
+      /* What this page resolved; see partials/operator-empty.stx. */
+      const allowed = derived(() => Boolean(view()))
+
+      /* The courier screen has no business in its URL, but operator-empty is
+         shared with the screens that do. */
+      const slug = derived(() => String(courierId() || ''))
+
+      /* The courier screen is about a person, so there is never a business to
+         switch between - but partials/operator-empty is shared with the ones
+         that do have several. */
+      const mine = state([])
+
+      function operatorLink() {
+        return '/courier'
+      }
       const loading = state(true)
       const error = state('')
 
@@ -286,20 +282,28 @@ const canonicalPath = '/courier'
       }
 
       async function load() {
+        const account = await me()
+
+        signedIn.set(Boolean(account))
+
+        /*
+         * The session decides who this is. The parameter is still read so an
+         * existing link keeps working, but it cannot make you somebody else:
+         * the console answers 403 for any courier but your own.
+         */
         const asked = Number(new URLSearchParams(location.search).get('courier') || 0)
+          || Number(account && account.courier ? account.courier.id : 0)
 
         courierId.set(asked)
 
         if (!asked) {
-          const { data } = await (await fetch('/api/couriers-list')).json()
-
-          roster.set(data)
           loading.set(false)
           return
         }
 
-        const response = await fetch(`/api/courier/${asked}/console`)
+        const response = await apiGet(`/api/courier/${asked}/console`)
 
+        denied.set(response.status === 401 || response.status === 403)
         view.set(response.ok ? (await response.json()).data : null)
         loading.set(false)
       }

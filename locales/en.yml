@@ -306,6 +306,7 @@ table:
   tab_open_lede: Your tab is open. Order a round, then order another when you are ready.
   codes_lede: One per table. Print, cut, and stand them up. Scanning opens the menu and starts a tab for that table; a second person scanning the same code joins the same bill rather than starting a rival one.
   print: Print
+  no_codes: No tables set up here yet, so there is nothing to print.
 
 partner:
   payouts: Payouts
@@ -336,7 +337,6 @@ courier:
   shift_start: Go online
   shift_end: Go offline
   navigate: Navigate
-  who_are_you: Who are you?
   no_such_courier: No such courier.
   sharing_position: Sharing your position
   position_private: Position not shared
@@ -358,11 +358,8 @@ courier:
   deliveries: Deliveries
   fees: Fees
   tips: Tips
-  pick_one: The couriers here are invented, so pick one. A real app would know.
-  state_active: On shift
-  state_offline: Offline
-  state_on_delivery: On a delivery
   away: "{distance} away"
+  not_a_courier: This account does not carry orders.
 
 footer:
   tagline: "Restaurants, coffee shops and farms in {regions}."
@@ -400,7 +397,6 @@ claims:
 
 kitchen:
   loading_board: Loading the board…
-  needs_slug: Add ?business=<slug> to see a board.
   no_board: No board for that business.
   orders: Orders
   orders_word: orders
@@ -422,7 +418,6 @@ kitchen:
 
 manage:
   title: Manage
-  needs_slug: Add ?business=<slug> to manage a business.
   table_codes: Table codes
   hours_to: to
   how_people_order: How people can order
@@ -491,6 +486,7 @@ earnings:
   type_tax: Tax
   payout_note: "Paying out writes a negative row rather than clearing the balance, so the history of what was owed and then paid survives. No money moves here: these accounts belong to invented businesses."
   order_ref: "Order #{id}"
+  none_of_yours: There is no statement on this account. Statements belong to a business or a courier.
 
 account:
   title: Your account
@@ -533,6 +529,28 @@ account:
   tile_reviews_many: reviews
   tile_shares_one: share
   tile_shares_many: shares
+  signed_in_as: Signed in as {name}
+  operator_head: What you run
+  operator_body: The screens this account opens.
+  surface_kitchen: Orders board
+  surface_manage: Menu and hours
+  surface_codes: Table codes
+  surface_courier: Courier screen
+  surface_earnings: Earnings
+  surface_admin: Operations
+  surface_claims: Claims
+  role_admin: Operations
+  role_merchant: Restaurant
+  role_farmer: Farm
+  role_courier: Courier
+  role_customer: Customer
+  demo_head: Accounts you can try
+  demo_body: "This is a demonstration, so it publishes its own front door. Every account below is invented, on a domain that cannot receive mail, and they all share one password."
+  demo_password: "Password for all of them: {password}"
+  demo_use: Fill this in
+  demo_nothing_run: Ordering, saving places, writing reviews.
+  demo_runs_operations: Guards, listings, claims, every ledger.
+  demo_runs_courier: Carrying orders.
 
 checkout:
   loading_menu: Loading the menu…
@@ -606,3 +624,33 @@ guard:
   robots_missing: robots.txt is missing or no longer disallows crawling.
   holding: holding
   broken: broken
+
+# The operator screens: the merchant's, the farm's, the courier's, operations'.
+# Shared, because "sign in first" reads the same on all six of them.
+operator:
+  sign_in_first: Sign in to open this screen.
+  go_to_account: Go to your account
+  not_yours: That is not on your account. Ask whoever runs it to add you.
+  nothing_to_manage: There is nothing on this account to manage yet.
+  pick_business: Which one?
+  switch_business: Switch
+  not_operations: This account does not open the operations screens.
+
+# A farm's own view of its season: the boxes to pack, and who they are for.
+season:
+  title: The season
+  boxes_next: boxes to pack
+  members_active: members
+  members_paused: paused
+  plans: Plans
+  who: Who has a share
+  nobody: Nobody has taken a share yet.
+  per_box: "{amount} a box"
+  active_count: "{count} on this plan"
+  paused_count: "{count} paused"
+  next_box: "Next box {date}"
+  paused_until: "Paused until {date}"
+  boxes_delivered: "{count} delivered"
+  member_unnamed: A member
+  status_active: Active
+  status_paused: Paused

@@ -31,6 +31,11 @@ declare global {
   const clearAuthToken: typeof autoImports.clearAuthToken
   const send: typeof autoImports.send
   const money: typeof autoImports.money
+  const apiGet: typeof autoImports.apiGet
+  const me: typeof autoImports.me
+  const forgetMe: typeof autoImports.forgetMe
+  const may: typeof autoImports.may
+  const codeSheet: typeof autoImports.codeSheet
   const startTracking: typeof autoImports.startTracking
 }
 

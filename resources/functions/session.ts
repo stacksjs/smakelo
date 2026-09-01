@@ -107,3 +107,68 @@ export function money(cents: number, currency = 'usd'): string {
 
   return `${symbol}${(Math.abs(Number(cents) || 0) / 100).toFixed(2)}`
 }
+
+/** GET, carrying the same tokens `send` does. */
+export function apiGet(url: string): Promise<Response> {
+  const headers: Record<string, string> = { 'x-visitor': visitorToken() }
+  const bearer = authToken()
+
+  if (bearer)
+    headers.Authorization = `Bearer ${bearer}`
+
+  return fetch(url, { headers, credentials: 'same-origin' })
+}
+
+/**
+ * Who is signed in, what they run, and which screens that opens.
+ *
+ * The operator pages used to take their subject out of the URL - `/manage`
+ * wanted `?business=<slug>` - which asked a restaurant owner to know a slug.
+ * Now they ask this and resolve themselves.
+ *
+ * Cached for the life of the page: five surfaces call it on load and the
+ * answer cannot change between them.
+ */
+let pending: Promise<MeState | null> | null = null
+
+export interface MeState {
+  user: { id: number, name: string, email: string }
+  roles: string[]
+  permissions: string[]
+  businesses: Array<{ id: number, slug: string, name: string, type: string, city: string, role: string }>
+  courier: { id: number, name: string } | null
+  surfaces: Array<{ key: string, href: string, businessSlug?: string }>
+}
+
+export function me(): Promise<MeState | null> {
+  if (!pending) {
+    pending = (async () => {
+      if (!authToken())
+        return null
+
+      try {
+        const response = await apiGet('/api/me')
+
+        if (!response.ok)
+          return null
+
+        return (await response.json()).data as MeState
+      }
+      catch {
+        return null
+      }
+    })()
+  }
+
+  return pending
+}
+
+/** Forget the cached account, after signing in or out. */
+export function forgetMe(): void {
+  pending = null
+}
+
+/** Whether a permission is among the ones this account holds. */
+export function may(state: MeState | null, permission: string): boolean {
+  return Boolean(state?.permissions.includes(permission))
+}

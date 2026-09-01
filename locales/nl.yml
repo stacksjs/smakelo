@@ -305,6 +305,7 @@ table:
   tab_open_lede: Je rekening staat open. Bestel een ronde, en de volgende wanneer je zover bent.
   codes_lede: Eén per tafel. Printen, uitknippen, neerzetten. Scannen opent het menu en opent een rekening voor die tafel; wie daarna dezelfde code scant komt op diezelfde rekening in plaats van een tweede te beginnen.
   print: Printen
+  no_codes: Hier zijn nog geen tafels aangemaakt, dus valt er niets te printen.
 
 partner:
   payouts: Uitbetalingen
@@ -335,7 +336,6 @@ courier:
   shift_start: Online gaan
   shift_end: Offline gaan
   navigate: Navigeren
-  who_are_you: Wie ben je?
   no_such_courier: Die koerier bestaat niet.
   sharing_position: Locatie wordt gedeeld
   position_private: Locatie niet gedeeld
@@ -357,11 +357,8 @@ courier:
   deliveries: Bezorgingen
   fees: Vergoedingen
   tips: Fooien
-  pick_one: De koeriers hier zijn verzonnen, dus kies er een. Een echte app zou het weten.
-  state_active: In dienst
-  state_offline: Offline
-  state_on_delivery: Onderweg met een bezorging
   away: "{distance} verderop"
+  not_a_courier: Dit account bezorgt geen bestellingen.
 
 footer:
   tagline: "Restaurants, koffiezaken en boerderijen in {regions}."
@@ -399,7 +396,6 @@ claims:
 
 kitchen:
   loading_board: Bord wordt geladen…
-  needs_slug: Voeg ?business=<slug> toe om een bord te zien.
   no_board: Voor die zaak is er geen bord.
   orders: Bestellingen
   orders_word: bestellingen
@@ -421,7 +417,6 @@ kitchen:
 
 manage:
   title: Beheren
-  needs_slug: Voeg ?business=<slug> toe om een zaak te beheren.
   table_codes: Tafelcodes
   hours_to: tot
   how_people_order: Hoe mensen kunnen bestellen
@@ -490,6 +485,7 @@ earnings:
   type_tax: Belasting
   payout_note: "Uitbetalen schrijft een negatieve regel in plaats van het saldo op nul te zetten, zodat de geschiedenis van wat verschuldigd was en toen betaald werd blijft bestaan. Hier gaat geen geld heen: deze rekeningen horen bij verzonnen zaken."
   order_ref: "Bestelling #{id}"
+  none_of_yours: Bij dit account hoort geen afrekening. Afrekeningen horen bij een zaak of een koerier.
 
 account:
   title: Je account
@@ -532,6 +528,28 @@ account:
   tile_reviews_many: reviews
   tile_shares_one: aandeel
   tile_shares_many: aandelen
+  signed_in_as: Ingelogd als {name}
+  operator_head: Wat je runt
+  operator_body: De schermen die dit account opent.
+  surface_kitchen: Bestelbord
+  surface_manage: Kaart en tijden
+  surface_codes: Tafelcodes
+  surface_courier: Koeriersscherm
+  surface_earnings: Verdiensten
+  surface_admin: Beheer
+  surface_claims: Claims
+  role_admin: Beheer
+  role_merchant: Zaak
+  role_farmer: Boerderij
+  role_courier: Koerier
+  role_customer: Gast
+  demo_head: Accounts om te proberen
+  demo_body: "Dit is een demo, dus de voordeur staat open. Elk account hieronder is verzonnen, op een domein dat geen post kan ontvangen, en ze delen één wachtwoord."
+  demo_password: "Wachtwoord voor allemaal: {password}"
+  demo_use: Invullen
+  demo_nothing_run: Bestellen, plekken bewaren, recensies schrijven.
+  demo_runs_operations: Controles, vermeldingen, claims, alle afrekeningen.
+  demo_runs_courier: Bestellingen bezorgen.
 
 checkout:
   loading_menu: Menu wordt geladen…
@@ -605,3 +623,32 @@ guard:
   robots_missing: robots.txt ontbreekt of verbiedt crawlen niet meer.
   holding: houdt stand
   broken: gebroken
+
+# De schermen voor wie iets runt: zaak, boerderij, koerier, beheer.
+operator:
+  sign_in_first: Log in om dit scherm te openen.
+  go_to_account: Naar je account
+  not_yours: Dat staat niet op jouw account. Vraag degene die het runt om je toe te voegen.
+  nothing_to_manage: Op dit account valt nog niets te beheren.
+  pick_business: Welke?
+  switch_business: Wisselen
+  not_operations: Dit account opent de beheerschermen niet.
+
+# Het seizoen zoals de boerderij het ziet: de kratten en voor wie ze zijn.
+season:
+  title: Het seizoen
+  boxes_next: kratten te vullen
+  members_active: leden
+  members_paused: gepauzeerd
+  plans: Abonnementen
+  who: Wie een krat heeft
+  nobody: Nog niemand heeft een krat genomen.
+  per_box: "{amount} per krat"
+  active_count: "{count} op dit abonnement"
+  paused_count: "{count} gepauzeerd"
+  next_box: "Volgend krat {date}"
+  paused_until: "Gepauzeerd tot {date}"
+  boxes_delivered: "{count} geleverd"
+  member_unnamed: Een lid
+  status_active: Actief
+  status_paused: Gepauzeerd

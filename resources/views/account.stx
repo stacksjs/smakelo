@@ -51,6 +51,22 @@ const clientStrings = JSON.stringify({
   'account.tile_reviews_many': t('account.tile_reviews_many'),
   'account.tile_shares_one': t('account.tile_shares_one'),
   'account.tile_shares_many': t('account.tile_shares_many'),
+  'account.surface_kitchen': t('account.surface_kitchen'),
+  'account.surface_manage': t('account.surface_manage'),
+  'account.surface_codes': t('account.surface_codes'),
+  'account.surface_courier': t('account.surface_courier'),
+  'account.surface_earnings': t('account.surface_earnings'),
+  'account.surface_admin': t('account.surface_admin'),
+  'account.surface_claims': t('account.surface_claims'),
+  'account.role_admin': t('account.role_admin'),
+  'account.role_merchant': t('account.role_merchant'),
+  'account.role_farmer': t('account.role_farmer'),
+  'account.role_courier': t('account.role_courier'),
+  'account.role_customer': t('account.role_customer'),
+  'account.demo_password': t('account.demo_password', { password: '{password}' }),
+  'account.demo_nothing_run': t('account.demo_nothing_run'),
+  'account.demo_runs_operations': t('account.demo_runs_operations'),
+  'account.demo_runs_courier': t('account.demo_runs_courier'),
 })
 
 const pageTitle = t('meta.account_title')
@@ -87,6 +103,34 @@ const canonicalPath = '/account'
               <p class="text-[12px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
             </a>
           </div>
+
+          {{-- What this account runs, if it runs anything.
+
+            The screens behind these links are the reason an account exists at
+            all for a merchant, a farm or a courier - and until this section
+            was here the only way to reach them was to know the URL and the
+            slug that goes in it. --}}
+          <section :if="surfaces().length > 0" class="mt-12">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('account.operator_head') }}</h2>
+            <p class="mt-2 text-[14px]" style="color: var(--ink-soft)">{{ t('account.operator_body') }}</p>
+
+            <div class="grid grid-cols-1 gap-2 mt-5 sm:grid-cols-2">
+              <a
+                :for="surface in surfaces()"
+                :href="surface.href"
+                class="flex gap-3 items-center p-4 rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
+                style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)"
+              >
+                <span class="flex justify-center items-center w-9 h-9 rounded-[0.7rem] shrink-0" style="background: var(--accent-soft); color: var(--accent)">
+                  <i class="w-4 h-4" :class="surface.icon"></i>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-[14px] font-medium truncate">{{ surface.label }}</span>
+                  <span :if="surface.where" class="block text-[12px] truncate" style="color: var(--ink-soft)">{{ surface.where }}</span>
+                </span>
+              </a>
+            </div>
+          </section>
 
           <button @click="signOut()" class="px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]" style="border: 1px solid var(--line); color: var(--ink-soft)">
             {{ t('nav.sign_out') }}
@@ -206,12 +250,41 @@ const canonicalPath = '/account'
             {{ t('account.agree_prefix') }} <a href="/terms" class="underline underline-offset-4">{{ t('account.terms') }}</a>
             {{ t('account.agree_middle') }} <a href="/privacy" class="underline underline-offset-4">{{ t('account.privacy') }}</a>{{ t('account.agree_suffix') }}
           </p>
+
+          {{-- The front door, held open.
+
+            Every account below is invented and none of the addresses can
+            receive mail. They are published because the merchant, farm,
+            courier and operations screens are the substance of this thing and
+            a demonstration that hides its own credentials is only demonstrating
+            the parts nobody needed to sign in for. --}}
+          <section :if="demo().length > 0" class="pt-8 mt-10" style="border-top: 1px solid var(--line)">
+            <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('account.demo_head') }}</h2>
+            <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ t('account.demo_body') }}</p>
+            <p class="mt-1 text-[13px] tabular-nums" style="color: var(--ink-soft)">{{ passwordLine() }}</p>
+
+            <div class="mt-5 space-y-2">
+              <button
+                :for="account in demo()"
+                type="button"
+                @click="useDemo(account)"
+                class="flex gap-4 justify-between items-center p-4 w-full text-left rounded-[1.25rem] transition-transform duration-500 hover:-translate-y-0.5"
+                style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)"
+              >
+                <span class="min-w-0">
+                  <span class="block text-[14px] font-medium truncate">{{ account.name }}</span>
+                  <span class="block text-[12px] truncate" style="color: var(--ink-soft)">{{ account.runsLine }}</span>
+                </span>
+                <span class="px-3 py-1 text-[11px] rounded-full shrink-0" style="background: var(--accent-soft); color: var(--accent)">{{ account.roleLabel }}</span>
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </main>
 
     <script client>
-      import { authToken, clearAuthToken, send, setAuthToken, visitorToken } from '../functions/session'
+      import { authToken, clearAuthToken, forgetMe, get, me, send, setAuthToken, visitorToken } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.
@@ -234,6 +307,11 @@ const canonicalPath = '/account'
         { name: 'apple', label: say('account.continue_apple', 'Continue with Apple'), icon: 'i-hugeicons-apple', configured: false },
       ])
       const carries = state({ saved: 0, orders: 0, reviews: 0, shares: 0 })
+
+      /* What this account runs, and the accounts anybody may try. */
+      const account = state(null)
+      const demo = state([])
+      const demoPassword = state('')
       const mode = state('login')
       const name = state('')
       const email = state('')
@@ -260,6 +338,49 @@ const canonicalPath = '/account'
       function tileLabel(kind, count, one, many) {
         return say(`account.tile_${kind}_${count === 1 ? 'one' : 'many'}`, count === 1 ? one : many)
       }
+
+      /* An icon per operator screen, so the list reads at a glance rather
+         than as six lines of similar text. */
+      const SURFACE_ICONS = {
+        kitchen: 'i-hugeicons-restaurant-01',
+        manage: 'i-hugeicons-menu-restaurant',
+        codes: 'i-hugeicons-qr-code',
+        courier: 'i-hugeicons-delivery-truck-01',
+        earnings: 'i-hugeicons-coins-01',
+        admin: 'i-hugeicons-dashboard-square-01',
+        claims: 'i-hugeicons-legal-document-01',
+      }
+
+      /*
+       * The screens this account opens.
+       *
+       * The server decided which those are - it is the same list the operator
+       * pages resolve themselves from - so this only puts words and an icon on
+       * them. A link that names a business says which, because a merchant who
+       * runs two needs to tell the two rows apart.
+       */
+      const surfaces = derived(() => {
+        const current = account()
+
+        if (!current)
+          return []
+
+        const names = {}
+
+        for (const place of current.businesses)
+          names[place.slug] = place.name
+
+        return current.surfaces.map(surface => ({
+          href: surface.href,
+          label: say(`account.surface_${surface.key}`, surface.key),
+          where: surface.businessSlug ? names[surface.businessSlug] || surface.businessSlug : '',
+          icon: SURFACE_ICONS[surface.key] || 'i-hugeicons-link-square-02',
+        }))
+      })
+
+      const passwordLine = derived(() =>
+        say('account.demo_password', 'Password for all of them: {password}').replace('{password}', demoPassword()),
+      )
 
       const tiles = derived(() => [
         { label: tileLabel('saved', carries().saved, 'saved place', 'saved places'), count: carries().saved, href: '/saved', icon: 'i-hugeicons-bookmark-02' },
@@ -312,6 +433,57 @@ const canonicalPath = '/account'
         error.set('')
       }
 
+      /*
+       * Fill the form in rather than signing in outright.
+       *
+       * One tap short of being signed in as somebody else, on purpose: the
+       * password is on the screen above, and a button that logs you straight
+       * into an operations account teaches nothing about what actually
+       * happened.
+       */
+      function useDemo(entry) {
+        mode.set('login')
+        email.set(entry.email)
+        password.set(demoPassword())
+        error.set('')
+      }
+
+      /*
+       * What an account is for, in one line.
+       *
+       * A merchant and a farm are named by what they run. Operations and a
+       * courier are not: operations runs no business, and a courier's own name
+       * came back as the thing they run, so the row read "Rosa Delgado / Rosa
+       * Delgado".
+       */
+      function runsLine(entry) {
+        if (entry.role === 'admin')
+          return say('account.demo_runs_operations', 'Guards, listings, claims, every ledger.')
+
+        if (entry.role === 'courier')
+          return say('account.demo_runs_courier', 'Carrying orders.')
+
+        return entry.runs.length > 0
+          ? entry.runs.join(', ')
+          : say('account.demo_nothing_run', 'Ordering, saving places, writing reviews.')
+      }
+
+      async function loadDemo() {
+        const response = await apiGet('/api/demo-accounts')
+
+        if (!response.ok)
+          return
+
+        const { data } = await response.json()
+
+        demoPassword.set(data.password)
+        demo.set(data.accounts.map(entry => ({
+          ...entry,
+          roleLabel: say(`account.role_${entry.role}`, entry.role),
+          runsLine: runsLine(entry),
+        })))
+      }
+
       async function load() {
         const headers = { 'x-visitor': visitorToken() }
         const token = authToken()
@@ -329,6 +501,10 @@ const canonicalPath = '/account'
         user.set(data.user)
         providers.set(data.providers)
         carries.set(data.carries)
+
+        // What this account runs, for the list of screens above. Only worth
+        // asking once there is an account to ask about.
+        account.set(data.user ? await me() : null)
       }
 
       async function submit() {
@@ -357,6 +533,9 @@ const canonicalPath = '/account'
 
         setAuthToken(payload.access_token)
 
+        // The cached answer was "signed out"; it is now wrong.
+        forgetMe()
+
         // Carry this browser's saved places and orders onto the account, so
         // signing up after ordering as a guest does not look like starting over.
         await send('/api/account/link')
@@ -366,7 +545,9 @@ const canonicalPath = '/account'
 
       async function signOut() {
         clearAuthToken()
+        forgetMe()
         user.set(null)
+        account.set(null)
         password.set('')
 
         // Back to signing in, not to making a second account. Somebody who has
@@ -377,6 +558,7 @@ const canonicalPath = '/account'
       }
 
       load()
+      loadDemo()
     </script>
     @include('footer')
   </body>
