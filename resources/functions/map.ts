@@ -69,11 +69,18 @@ export function keepSized(map: any, element: HTMLElement): void {
  * because the glyphs are rasterised from a browser font rather than shipped as
  * pictures of letters.
  *
- * Tiles are OpenFreeMap - free, keyless, credit-only. The URL is versioned and
- * the version rotates, so it is read from their TileJSON at load rather than
- * pinned here and left to go stale.
+ * The tiles are ours too. They were fetched once by `buddy build:tiles` and
+ * are served from this origin, so no third party sits in the request path of
+ * a map - nothing to rate-limit us, change its terms, or go down for data that
+ * does not change. The data underneath is OpenStreetMap's, under ODbL, which
+ * is what the line beneath every map credits.
+ *
+ * `MAX_ZOOM` is the deepest zoom stored. Past it the map overzooms, which for
+ * vector tiles means drawing the same geometry larger rather than magnifying a
+ * bitmap: sharp, with the detail the stored zoom had.
  */
-const TILEJSON = 'https://tiles.openfreemap.org/planet'
+const TILES = '/tiles/{z}/{x}/{y}.pbf'
+const MAX_ZOOM = 13
 
 function prefersDark(): boolean {
   try {
@@ -100,18 +107,11 @@ export async function basemap(vectorTileLayerFactory: any, map: any, element: HT
 
   paint(paletteNow())
 
-  const meta = await fetch(TILEJSON).then(response => response.json()).catch(() => null)
-
-  // No tiles, no map - but the ground colour is already down, so the pane is a
-  // flat surface rather than a white hole with controls floating on it.
-  if (!meta?.tiles?.[0])
-    return
-
   const layer = vectorTileLayerFactory({
-    url: meta.tiles[0],
+    url: TILES,
     // Past this there are no tiles to fetch; the grid keeps going and draws a
     // slice of the deepest ancestor, which is what every vector map does.
-    sourceMaxZoom: Number(meta.maxzoom) || 14,
+    sourceMaxZoom: MAX_ZOOM,
     maxZoom: 19,
     renderer: 'canvas2d',
     layers: basemapStyle(paletteNow()),

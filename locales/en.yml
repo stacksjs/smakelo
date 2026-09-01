@@ -132,7 +132,7 @@ discover:
   centre_on_me: Centre on me
   highest_price: Highest price tier
   order_results: Order the results
-  attribution: Map tiles by CARTO, data from OpenStreetMap contributors.
+  attribution: Map data from OpenStreetMap contributors.
   popup_order: Order or read reviews
   popup_details: See details
 

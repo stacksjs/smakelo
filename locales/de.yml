@@ -131,7 +131,7 @@ discover:
   centre_on_me: Auf mich zentrieren
   highest_price: Höchste Preisstufe
   order_results: Ergebnisse sortieren
-  attribution: Kartenkacheln von CARTO, Daten von OpenStreetMap-Mitwirkenden.
+  attribution: Kartendaten von OpenStreetMap-Mitwirkenden.
   popup_order: Bestellen oder Bewertungen lesen
   popup_details: Details ansehen
 
