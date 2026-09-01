@@ -2,6 +2,7 @@ import type { OpeningInterval, OpenState } from './hours'
 import { db } from '@stacksjs/database'
 import { boundingBox, distanceInMeters } from './geo'
 import { visualFor } from './identity'
+import { dishPhotoFor } from './imagery'
 import { openStatus } from './hours'
 
 /**
@@ -321,7 +322,17 @@ export async function businessBySlug(slug: string): Promise<{
     const position = Number(category?.display_order ?? 99)
     const section = sections.get(name) ?? { position, items: [] }
 
-    section.items.push(product)
+    // A photograph of the kind of dish, keyed on its own name so a pizzeria's
+    // salad is a salad; see Business/imagery.ts.
+    const dish = dishPhotoFor(String(product.name ?? ''), String(business.cuisine ?? ''))
+
+    section.items.push({
+      ...product,
+      photo: dish.photo,
+      photoSrcset: dish.photoSrcset,
+      photoBlur: dish.photoBlur,
+    })
+
     sections.set(name, section)
   }
 

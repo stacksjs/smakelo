@@ -94,7 +94,20 @@ export interface PlaceViewModel {
   prepTimeMinutes: number
   fulfilment: string[]
   week: Array<{ name: string, text: string }>
-  menu: Array<{ section: string, items: Array<{ name: string, description: string, price: string }> }>
+  menu: Array<{
+    section: string
+    items: Array<{
+      id: number
+      name: string
+      description: string
+      price: string
+      /** In cents, for the basket - the string above is for reading. */
+      priceCents: number
+      photo: string
+      photoSrcset: string
+      photoBlur: string
+    }>
+  }>
   reviews: Array<{
     title: string
     body: string
@@ -152,9 +165,14 @@ export function placeViewModel(found: any, locale = 'en'): PlaceViewModel {
     menu: (found?.menu ?? []).map((section: any) => ({
       section: String(section.section),
       items: section.items.map((item: any) => ({
+        id: Number(item.id ?? 0),
         name: String(item.name),
         description: String(item.description ?? ''),
         price: money(item.price, currency),
+        priceCents: Number(item.price ?? 0),
+        photo: String(item.photo ?? ''),
+        photoSrcset: String(item.photoSrcset ?? ''),
+        photoBlur: String(item.photoBlur ?? ''),
       })),
     })),
     reviews: (found?.reviews ?? []).map((review: any) => ({

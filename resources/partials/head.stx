@@ -168,6 +168,46 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
      See resources/functions/basemap-style.ts for the colours. */
 
+  /* --- The logo ------------------------------------------------------------
+
+     A mark for a business that has never uploaded one.
+
+     Derived, like the hue and the monogram it is built from, and deliberately
+     not dressed up as a real logo: nobody designed this, and a generated mark
+     pretending otherwise would be inventing a brand for a real place. It is a
+     rounded tile in the business's own colour with its initials on it - the
+     same two things every card and avatar on the site already uses, at the one
+     size where a page has room for them.
+
+     It sits over the cover photograph on the place page, so it carries a ring
+     in the page colour to hold it off whatever is behind it. */
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: hsl(var(--h) 46% 24%);
+    background:
+      radial-gradient(circle at 30% 26%, hsl(var(--h) 62% 88%), transparent 60%),
+      linear-gradient(140deg, hsl(var(--h) 54% 82%), hsl(var(--h2) 48% 74%));
+    box-shadow: 0 0 0 4px var(--paper), 0 10px 24px -12px rgba(20, 17, 15, 0.5);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .logo-mark {
+      color: hsl(var(--h) 60% 86%);
+      background:
+        radial-gradient(circle at 30% 26%, hsl(var(--h) 40% 34%), transparent 60%),
+        linear-gradient(140deg, hsl(var(--h) 34% 26%), hsl(var(--h2) 30% 20%));
+    }
+  }
+
   /* --- Markers --------------------------------------------------------------
 
      Two shapes, because the two maps ask different questions.
