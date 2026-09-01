@@ -307,14 +307,22 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
 
   basemap(vectorTileLayer, map, element)
 
-  // Filled, the way a partner's pin is on the discover map: you are looking at
-  // this one place, so it is the one thing on the map worth the accent colour.
+  /*
+   * A pin rather than the dot the results map uses.
+   *
+   * There, a dot is right: sixty of them, and the shape only has to say which
+   * ones take orders. Here there is one marker and it is the answer to the
+   * only question the map is asked, so it gets a shape with a point.
+   *
+   * Anchored at the tip, not the middle. A pin centred on its coordinate is
+   * pointing at a spot half its own height further up the street.
+   */
   new Marker([point.lat, point.lng], {
     icon: divIcon({
       className: 'pin-wrap',
-      html: '<span class="pin pin-partner"></span>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
+      html: '<span class="pin-shadow"></span><span class="pin-marker"></span>',
+      iconSize: [30, 38],
+      iconAnchor: [15, 38],
     }),
   }).addTo(map)
 
