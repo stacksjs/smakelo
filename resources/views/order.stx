@@ -13,13 +13,49 @@
  * the same `priceOrder` that placement runs, so what the customer is shown and
  * what they are charged cannot drift apart.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'checkout.contains': t('checkout.contains', { allergens: '{allergens}' }),
+  'checkout.group_required': t('checkout.group_required'),
+  'checkout.group_optional': t('checkout.group_optional'),
+  'checkout.group_up_to': t('checkout.group_up_to', { max: '{max}' }),
+  'allergen.gluten': t('allergen.gluten'),
+  'allergen.dairy': t('allergen.dairy'),
+  'allergen.egg': t('allergen.egg'),
+  'allergen.fish': t('allergen.fish'),
+  'allergen.shellfish': t('allergen.shellfish'),
+  'allergen.crustaceans': t('allergen.crustaceans'),
+  'allergen.nuts': t('allergen.nuts'),
+  'allergen.soy': t('allergen.soy'),
+  'allergen.sesame': t('allergen.sesame'),
+  'allergen.celery': t('allergen.celery'),
+  'checkout.home': t('checkout.home'),
+  'checkout.none': t('checkout.none'),
+  'checkout.could_not_place': t('checkout.could_not_place'),
+  'checkout.talking_to_stripe': t('checkout.talking_to_stripe'),
+  'checkout.paid_test_mode': t('checkout.paid_test_mode'),
+  'order.delivery': t('order.delivery'),
+  'order.pickup': t('order.pickup'),
+  'order.dine_in': t('order.dine_in'),
+})
+
 const pageTitle = t('meta.checkout_title')
 const pageDescription = t('meta.checkout_description')
 const canonicalPath = '/order'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -30,16 +66,7 @@ const canonicalPath = '/order'
     <main class="mx-auto px-4 sm:px-8 max-w-6xl" data-stx-content>
       <div class="pt-10 pb-24 sm:pb-40">
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ JSON.stringify({
-          'checkout.home': t('checkout.home'),
-          'checkout.none': t('checkout.none'),
-          'checkout.could_not_place': t('checkout.could_not_place'),
-          'checkout.talking_to_stripe': t('checkout.talking_to_stripe'),
-          'checkout.paid_test_mode': t('checkout.paid_test_mode'),
-          'order.delivery': t('order.delivery'),
-          'order.pickup': t('order.pickup'),
-          'order.dine_in': t('order.dine_in'),
-        }) }}"></div>
+        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('checkout.loading_menu') }}</p>
 
@@ -71,16 +98,16 @@ const canonicalPath = '/order'
 
             <div :if="payment() && payment().configured" class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
               <p class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-                Stripe test mode
+                {{ t('checkout.stripe_test') }}
               </p>
               <p class="mt-3 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-                Card 4242 4242 4242 4242, any future expiry, any CVC. No money moves.
+                {{ t('checkout.stripe_card') }}
               </p>
 
               <div id="card-element" class="p-4 mt-4 rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)"></div>
 
               <button @click="pay()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--accent); color: #fff">
-                Pay in test mode
+                {{ t('checkout.pay_test_mode') }}
               </button>
 
               <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">{{ payStatus() }}</p>
@@ -182,7 +209,7 @@ const canonicalPath = '/order'
                         <div class="flex-1 min-w-0">
                           <p class="text-[15px] font-medium">{{ item.name }}</p>
                           <p class="mt-1.5 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ item.description }}</p>
-                          <p :if="item.allergens.length > 0" class="mt-2 text-[12px]" style="color: var(--ink-soft)">Contains {{ item.allergens.join(', ') }}</p>
+                          <p :if="item.allergens.length > 0" class="mt-2 text-[12px]" style="color: var(--ink-soft)">{{ allergenLine(item.allergens) }}</p>
                         </div>
                         <p class="text-[15px] font-medium tabular-nums shrink-0">{{ money(item.priceCents, currency()) }}</p>
                       </div>
@@ -190,7 +217,7 @@ const canonicalPath = '/order'
                       <div :for="group in item.groups" class="mt-4">
                         <p class="text-[12px] font-medium" style="color: var(--ink-soft)">
                           {{ group.name }}
-                          <span style="opacity:.7">{{ group.min > 0 ? 'required' : 'optional' }}{{ group.max > 1 ? ', up to ' + group.max : '' }}</span>
+                          <span style="opacity:.7">{{ groupRule(group) }}</span>
                         </p>
 
                         <div class="flex flex-wrap gap-2 mt-2">
@@ -204,7 +231,7 @@ const canonicalPath = '/order'
                       </div>
 
                       <button @click="addToCart(item)" class="inline-flex gap-2 items-center px-4 py-2 mt-5 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
-                        Add
+                        {{ t('order.add_to_cart') }}
                       </button>
                     </div>
                   </div>
@@ -312,6 +339,33 @@ const canonicalPath = '/order'
       const payStatus = state('')
 
       const addresses = state([])
+      /*
+       * What a dish contains, named in the language being read.
+       *
+       * The allergens arrive as the codes the menu was written with - gluten,
+       * celery, egg - which are the same in every language and readable in
+       * none of them beyond English. An unknown code falls through as itself
+       * rather than disappearing: a missing allergen is the one kind of
+       * missing word that matters.
+       */
+      function allergenLine(allergens) {
+        const named = (allergens || []).map(code => say(`allergen.${code}`, String(code)))
+
+        return say('checkout.contains', 'Contains {allergens}').replace('{allergens}', named.join(', '))
+      }
+
+      /* Whether a modifier group must be answered, and how many it takes. */
+      function groupRule(group) {
+        const rule = group.min > 0
+          ? say('checkout.group_required', 'required')
+          : say('checkout.group_optional', 'optional')
+
+        if (!(group.max > 1))
+          return rule
+
+        return rule + say('checkout.group_up_to', ', up to {max}').replace('{max}', group.max)
+      }
+
       const chosenAddress = state(null)
       const addressLine = state('')
       const addressLabel = state(say('checkout.home', 'Home'))

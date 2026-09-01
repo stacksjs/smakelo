@@ -838,7 +838,7 @@
   already translated, as one small object.
 
   Carried on a data attribute rather than written into a `<script>`: stx does
-  not interpolate inside script tags, so a `{{ locale }}` in one reaches the
+  not interpolate inside script tags, so a `{{ currentLocale() }}` in one reaches the
   browser as the four literal characters. Every other server-to-client handoff
   in this app goes through a data attribute for the same reason.
 
@@ -855,7 +855,7 @@
 <div
   id="smakelo-i18n"
   hidden
-  data-locale="{{ locale }}"
+  data-locale="{{ currentLocale() }}"
   data-i18n-strings="{{ JSON.stringify({
     'search.open_now': t('search.open_now'),
     'search.takes_orders': t('search.takes_orders'),

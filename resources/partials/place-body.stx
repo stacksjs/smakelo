@@ -12,18 +12,7 @@
       {{-- What this partial's script writes, already translated. Every place
         page includes this file, so the strings ride with it rather than being
         repeated across four hundred generated pages. --}}
-      <div hidden data-i18n-strings="{{ JSON.stringify({
-        'business.save': t('business.save'),
-        'business.saved': t('business.saved'),
-        'review.untitled': t('review.untitled'),
-        'review.helpful': t('review.helpful'),
-        'review.helpful_yours': t('review.helpful_yours'),
-        'review.helpful_count': t('review.helpful_count', { count: '{count}' }),
-        'place.joined_head': t('place.joined_head', { date: '{date}' }),
-        'place.cadence_weekly': t('place.cadence_weekly'),
-        'place.cadence_biweekly': t('place.cadence_biweekly'),
-        'place.cadence_monthly': t('place.cadence_monthly'),
-      }) }}"></div>
+      <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
       <a href="/" class="inline-flex gap-2 items-center pt-10 text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">
         <i class="w-3.5 h-3.5 i-hugeicons-arrow-left-01"></i>
@@ -99,7 +88,7 @@
             moves to a line of text - which is where the licence wants it and
             where it is not sitting on top of the map. --}}
           <p class="mt-3 text-[11px]" style="color: var(--ink-soft)">
-            Map tiles by CARTO, data from OpenStreetMap contributors.
+            {{ t('discover.attribution') }}
           </p>
         </div>
       </section>
@@ -215,9 +204,7 @@
           <section :if="plans().length > 0" class="mt-16">
             <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('place.take_share') }}</h2>
             <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-              You are buying a share of the season, not a list of vegetables. What
-              is in the box is whatever came ready that week, which in a good year
-              is more than you expected and in a bad one is three kinds of squash.
+              {{ t('place.share_lede') }}
             </p>
 
             <div class="grid grid-cols-1 gap-4 mt-8 sm:grid-cols-2">
@@ -232,7 +219,7 @@
 
                   <div class="flex flex-wrap gap-2 items-center pt-5 mt-auto">
                     <span class="px-2.5 py-1 text-[11px] rounded-full" style="background: var(--accent-soft); color: var(--accent)">{{ cadence(plan.cadence) }}</span>
-                    <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ plan.dayName }}s</span>
+                    <span class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ everyDay(plan.dayOfWeek) }}</span>
                     <span :if="plan.feeds" class="px-2.5 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ plan.feeds }}</span>
                     <button @click="setShare('plan', plan)" class="px-4 py-2 ml-auto text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">{{ t('place.join') }}</button>
                   </div>
@@ -243,7 +230,7 @@
             <div :if="share().plan && !share().joined" class="p-6 mt-4 rounded-[1.5rem]" style="background: var(--paper); border: 1px solid var(--line)">
               <p class="text-[15px] font-semibold">{{ share().plan.name }}</p>
               <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">
-                {{ money(share().plan.priceCents) }} a box, ready on {{ share().plan.dayName }}s. Pause it whenever you are away.
+                {{ boxLine(share().plan) }}
               </p>
 
               <input
@@ -363,7 +350,7 @@
             </p>
 
             <p :if="canReview() && wroteOne()" class="mt-8 text-[14px]" style="color: var(--ink-soft)">
-              You have reviewed this place. One each.
+              {{ t('place.reviewed_once') }}
             </p>
 
             <div :if="canReview() && !wroteOne()" class="p-1.5 mt-10 rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">

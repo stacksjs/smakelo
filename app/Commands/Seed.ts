@@ -25,13 +25,8 @@ export default defineCommand((cli) => {
     .command('seed:demo', 'Load the curated Los Angeles and Nordrhein-Westfalen demo data')
     .option('--fresh', 'Delete existing demo rows first', { default: false })
     .action(async (options: { fresh?: boolean }) => {
-      if (options.fresh) {
-        // Children first: nothing here relies on cascade being configured.
-        for (const table of ['csa_subscriptions', 'csa_plans', 'ledger_entries', 'delivery_stops', 'delivery_routes', 'courier_pings', 'order_item_modifiers', 'order_items', 'orders', 'couriers', 'modifiers', 'modifier_groups', 'review_photos', 'business_reviews', 'business_hours', 'business_photos', 'products', 'tabs', 'tables', 'businesses', 'markets'])
-          await db.deleteFrom(table as never).execute().catch(() => undefined)
-
-        log.info('Cleared existing demo rows')
-      }
+      if (options.fresh)
+        await clearDemoRows()
 
       const marketIds = await seedMarkets()
       const businessIds = await seedBusinesses(marketIds)
@@ -45,6 +40,85 @@ export default defineCommand((cli) => {
       log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares, ${history.orders} orders (${history.dispatched} dispatched)`)
     })
 })
+
+/**
+ * Empty every table the demo writes to, children before parents.
+ *
+ * The list used to be shorter and every failure was swallowed by a bare
+ * `.catch(() => undefined)`, which hid the thing it should have shouted
+ * about: `DELETE FROM businesses` was failing on a foreign key the whole
+ * time, because `claims`, `favorites` and `csa_plans` still pointed at rows
+ * it was trying to remove.
+ *
+ * The consequences were quiet and total. Nothing was deleted, so the seeder's
+ * "does this slug exist already?" check answered yes for all 452 businesses
+ * and skipped every one of them - and with them the opening hours, which are
+ * only written when a business is created. `--fresh` therefore emptied
+ * `business_hours` and never refilled it, and the whole site went from
+ * knowing when 181 places open to knowing when none of them do. It still
+ * reported success.
+ *
+ * So the list is now complete - checked against `pragma foreign_key_list` for
+ * everything that references a table below - and a delete that fails says so
+ * and stops. A table this app has no migration for is the one tolerated case,
+ * because the framework's default schema is wider than what this demo uses.
+ */
+async function clearDemoRows(): Promise<void> {
+  const tables = [
+    // Ledger and delivery, which reference orders and couriers.
+    'ledger_entries',
+    'payments',
+    'transactions',
+    'order_idempotency',
+    'delivery_stops',
+    'delivery_routes',
+    'courier_pings',
+    // Orders and the rows hanging off them.
+    'order_item_modifiers',
+    'order_items',
+    'review_photos',
+    'business_reviews',
+    'orders',
+    'couriers',
+    // Menus.
+    'modifiers',
+    'modifier_groups',
+    'product_variants',
+    'product_units',
+    'products',
+    // Everything else that points at a business.
+    'csa_subscriptions',
+    'csa_plans',
+    'claims',
+    'favorites',
+    'business_hours',
+    'business_photos',
+    'tabs',
+    'tables',
+    // The parents.
+    'businesses',
+    'markets',
+  ]
+
+  for (const table of tables) {
+    try {
+      await db.deleteFrom(table as never).execute()
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+
+      // A table the app has no migration for is fine to skip. Anything else -
+      // a foreign key still pointing here, most likely - means the next line
+      // of this command would seed on top of rows it believes are gone.
+      if (/no such table/i.test(message))
+        continue
+
+      throw new Error(`Could not clear ${table}: ${message}. Seeding on top of rows that were meant to be gone produces a database that looks seeded and is not, so this stops here.`)
+    }
+  }
+
+  log.info(`Cleared ${tables.length} tables`)
+}
 
 /**
  * The markets.

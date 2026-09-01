@@ -11,13 +11,47 @@
  * account should not have to guess which page to be on, and the difference
  * between the two forms is one field.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'account.title': t('account.title'),
+  'account.make_account': t('account.make_account'),
+  'account.sign_in': t('account.sign_in'),
+  'account.one_moment': t('account.one_moment'),
+  'account.make_the_account': t('account.make_the_account'),
+  'account.already_have': t('account.already_have'),
+  'account.no_account_yet': t('account.no_account_yet'),
+  'account.make_one': t('account.make_one'),
+  'account.continue_google': t('account.continue_google'),
+  'account.continue_apple': t('account.continue_apple'),
+  'account.did_not_work': t('account.did_not_work'),
+  'account.carries_none': t('account.carries_none'),
+  'account.carries_prefix': t('account.carries_prefix'),
+  'account.carry_saved': t('account.carry_saved', { count: '{count}' }),
+  'account.carry_orders_one': t('account.carry_orders_one', { count: '{count}' }),
+  'account.carry_orders_many': t('account.carry_orders_many', { count: '{count}' }),
+  'account.carry_reviews_one': t('account.carry_reviews_one', { count: '{count}' }),
+  'account.carry_reviews_many': t('account.carry_reviews_many', { count: '{count}' }),
+  'account.carry_shares_one': t('account.carry_shares_one', { count: '{count}' }),
+  'account.carry_shares_many': t('account.carry_shares_many', { count: '{count}' }),
+})
+
 const pageTitle = t('meta.account_title')
 const pageDescription = t('meta.account_description')
 const canonicalPath = '/account'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -27,28 +61,7 @@ const canonicalPath = '/account'
 
     <main class="mx-auto px-4 sm:px-8 max-w-lg" data-stx-content>
       {{-- What this page's own script writes, already translated. --}}
-      <div hidden data-i18n-strings="{{ JSON.stringify({
-        'account.title': t('account.title'),
-        'account.make_account': t('account.make_account'),
-        'account.sign_in': t('account.sign_in'),
-        'account.one_moment': t('account.one_moment'),
-        'account.make_the_account': t('account.make_the_account'),
-        'account.already_have': t('account.already_have'),
-        'account.no_account_yet': t('account.no_account_yet'),
-        'account.make_one': t('account.make_one'),
-        'account.continue_google': t('account.continue_google'),
-        'account.continue_apple': t('account.continue_apple'),
-        'account.did_not_work': t('account.did_not_work'),
-        'account.carries_none': t('account.carries_none'),
-        'account.carries_prefix': t('account.carries_prefix'),
-        'account.carry_saved': t('account.carry_saved', { count: '{count}' }),
-        'account.carry_orders_one': t('account.carry_orders_one', { count: '{count}' }),
-        'account.carry_orders_many': t('account.carry_orders_many', { count: '{count}' }),
-        'account.carry_reviews_one': t('account.carry_reviews_one', { count: '{count}' }),
-        'account.carry_reviews_many': t('account.carry_reviews_many', { count: '{count}' }),
-        'account.carry_shares_one': t('account.carry_shares_one', { count: '{count}' }),
-        'account.carry_shares_many': t('account.carry_shares_many', { count: '{count}' }),
-      }) }}"></div>
+      <div hidden data-i18n-strings="{{ clientStrings }}"></div>
       <div class="pt-14 pb-24 sm:pb-40">
         {{-- Signed in. --}}
         <div :if="user()">

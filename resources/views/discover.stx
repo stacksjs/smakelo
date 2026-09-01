@@ -7,6 +7,8 @@
  * enhancement rather than a dependency. Someone on a slow connection still gets
  * the whole list; the pins arrive when they arrive.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+import { requestQuery } from '../../app/Actions/Request/context'
 import { formatDistance } from '../../app/Actions/Business/geo'
 import { searchBusinesses } from '../../app/Actions/Business/search'
 import { REGIONS, resolveRegion } from '../../app/Actions/Business/regions'
@@ -45,7 +47,7 @@ function typeLabel(type) {
  * template is reached - which in stx is silent, and renders the whole page
  * around undefined values rather than reporting anything.
  */
-const region = resolveRegion(query?.region, locale)
+const region = resolveRegion(requestQuery().region, currentLocale())
 
 /*
  * The places this site covers, as a row of links.
@@ -258,7 +260,7 @@ function openLabel(business) {
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>

@@ -18,12 +18,17 @@ export interface PlanRow {
   priceCents: number
   cadence: string
   feeds: string
+  /*
+    * The day as a number, and no name for it.
+    *
+    * This used to also carry `dayName`, built from an English constant, which
+    * put the language on the wrong side of the wire: the same payload is read
+    * by a page that may be rendering in German. The screen names the day from
+    * this number and its own locale.
+    */
   dayOfWeek: number
-  dayName: string
   offersDelivery: boolean
 }
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export async function plansFor(businessSlug: string): Promise<PlanRow[]> {
   const business = await db.selectFrom('businesses')
@@ -49,7 +54,6 @@ export async function plansFor(businessSlug: string): Promise<PlanRow[]> {
     cadence: String(row.cadence),
     feeds: String(row.feeds ?? ''),
     dayOfWeek: Number(row.day_of_week ?? 3),
-    dayName: DAY_NAMES[Number(row.day_of_week ?? 3)] ?? '',
     offersDelivery: Number(row.offers_delivery) === 1,
   }))
 }

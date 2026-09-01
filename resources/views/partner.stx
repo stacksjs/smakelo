@@ -8,6 +8,8 @@
  * business owner would land on - which is why there is no sign-up form
  * collecting their details for a demo that will never call them back.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
 const pageTitle = t('meta.partner_title')
 const pageDescription = t('meta.partner_description')
 const canonicalPath = '/partner'
@@ -80,7 +82,7 @@ const surfaces = [
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>

@@ -177,6 +177,10 @@ place:
   cadence_weekly: Jede Woche
   cadence_biweekly: Alle zwei Wochen
   cadence_monthly: Einmal im Monat
+  box_ready_on: "{price} pro Kiste, jeden {day} fertig. Pausiere jederzeit, wenn du weg bist."
+  every_day: "jeden {day}"
+  share_lede: Du kaufst einen Anteil an der Saison, keine Gemüseliste. In der Kiste ist, was in dieser Woche reif geworden ist - in einem guten Jahr mehr als erwartet, in einem schlechten dreierlei Kürbis.
+  reviewed_once: Du hast diesen Ort schon bewertet. Eine pro Person.
 meta:
   home_title: Smakelo - finde die guten Orte in deiner Nähe
   home_description: "Restaurants, Cafés, Bäckereien und Höfe rund um {region}. Lies die Bewertungen und bestelle dann Lieferung, Abholung oder eine wöchentliche Gemüsekiste."
@@ -210,6 +214,8 @@ meta:
   checkout_description: Bei einem Smakelo-Partner bestellen.
   track_title: Verfolgen - Smakelo
   track_description: Wo deine Bestellung ist.
+  codes_title: Tischcodes - Smakelo
+  codes_description: Druckbare Codes für jeden Tisch.
 order:
   add_to_cart: Hinzufügen
   cart: Warenkorb
@@ -364,6 +370,10 @@ courier:
   deliveries: Lieferungen
   fees: Gebühren
   tips: Trinkgeld
+  pick_one: Die Kuriere hier sind erfunden, also wähle einen aus. Eine echte App wüsste es.
+  state_active: Im Dienst
+  state_offline: Offline
+  state_on_delivery: Unterwegs mit einer Lieferung
 footer:
   tagline: 'Restaurants, Cafés und Höfe in {regions}.'
   browse: Stöbern
@@ -426,7 +436,9 @@ manage:
   table_codes: Tischcodes
   hours_to: bis
   how_people_order: Wie bestellt werden kann
-
+  available_on: An
+  available_off: Aus
+  not_a_partner: Dort gibt es nichts zu verwalten. Nur die Partnerbetriebe haben eine Speisekarte.
 admin:
   title: Betrieb
   guards: Prüfungen
@@ -439,6 +451,8 @@ admin:
   put_back: Wieder einblenden
   take_down: Ausblenden
   lede: Ob diese Seite ihre eigenen Zusagen noch einhält, geprüft an der Datenbank statt an dem Code, der sie durchsetzen soll.
+  guards_lede: Was diese Seite über sich selbst zusagt, geprüft an dem, was tatsächlich gespeichert ist. Eine Prüfung, deren Stand niemand sehen kann, ist eine, von der man hinterher erfährt.
+  listings_lede: "Einen Eintrag auszublenden nimmt ihn von der Entdecken-Seite, aus der Suche, von der Karte und von seiner eigenen Seite, und man kann dort nicht mehr bestellen. Die Zeile bleibt, damit er zurückkommen kann, falls sich herausstellt, dass die Anfrage von jemandem kam, der den Betrieb gar nicht führt."
 shares:
   title: Anteile
   none: Du hast keine Anteile.
@@ -475,7 +489,13 @@ earnings:
   earned: Verdient
   outstanding: Offen
   pay_out: Auszahlen
-
+  lede: "Jede Bestellung schreibt eine Zeile pro Partei: das Essen dem Betrieb, die Liefergebühr und das gesamte Trinkgeld dem Kurier, die Servicegebühr der Plattform, und die Umsatzsteuer auf einen Stapel, der dem Staat gehört. Die Zeilen ergeben genau das, was die Kundschaft bezahlt hat. Nichts hier wird aus den Bestellungen neu berechnet, es wird aus diesen Zeilen summiert."
+  party_tax: Einbehaltene Umsatzsteuer zur Abführung
+  party_unassigned: Wartet auf einen Kurier
+  type_business: Betrieb
+  type_courier: Kurier
+  type_platform: Plattform
+  type_tax: Steuer
 tab:
   finding_table: Dein Tisch wird gesucht…
   scan_to_start: Scanne den Code auf deinem Tisch, um zu starten.
@@ -494,7 +514,10 @@ tab:
   round: Runde
   total: Gesamt
   test_mode: Testmodus. Es wurde nichts abgebucht.
-
+  scan_to_order: Zum Bestellen scannen
+  codes_lede: Einer pro Tisch. Ausdrucken, ausschneiden, aufstellen. Ein Scan öffnet die Speisekarte und eröffnet eine Rechnung für diesen Tisch; wer denselben Code danach scannt, kommt auf dieselbe Rechnung statt eine zweite anzufangen.
+  print: Drucken
+  tab_open_lede: Deine Rechnung ist offen. Bestell eine Runde, und die nächste, wenn du so weit bist.
 account:
   title: Dein Konto
   make_account: Konto erstellen
@@ -552,3 +575,50 @@ checkout:
   paid_test_mode: Bezahlt, im Testmodus. Es floss kein Geld.
   pick_a_place_prefix: Wähle zuerst einen Ort über
   pick_a_place_suffix: aus.
+  contains: "Enthält {allergens}"
+  group_required: erforderlich
+  group_optional: optional
+  group_up_to: ", bis zu {max}"
+  stripe_test: Stripe-Testmodus
+  stripe_card: Karte 4242 4242 4242 4242, ein beliebiges künftiges Ablaufdatum, eine beliebige Prüfziffer. Es fließt kein Geld.
+  pay_test_mode: Im Testmodus bezahlen
+allergen:
+  gluten: Gluten
+  dairy: Milch
+  egg: Ei
+  fish: Fisch
+  shellfish: Schalentiere
+  crustaceans: Krebstiere
+  nuts: Nüsse
+  soy: Soja
+  sesame: Sesam
+  celery: Sellerie
+
+guard:
+  payments_name: Nur Sandbox-Zahlungen
+  payments_matters: Die Betriebe, bei denen bestellt werden kann, sind erfunden. Ein Live-Schlüssel würde eine echte Karte im Namen eines Restaurants belasten, das es nicht gibt.
+  payments_live_key: Ein Live-Schlüssel von Stripe ist hinterlegt. Die Kasse weist ihn ab, aber er gehört nicht hierher.
+  payments_test_keys: Stripe-Testschlüssel hinterlegt. Die Kasse läuft in der Sandbox.
+  payments_no_provider: Kein Zahlungsanbieter hinterlegt. Die Kasse sagt das und verbucht die Bestellung als unbezahlt.
+  reviews_name: Keine Bewertungen bei echten Betrieben
+  reviews_matters: Die Einträge stammen aus offenen Daten. Erfundene Meinungen unter dem Namen eines echten Restaurants zu veröffentlichen ist das Einzige, was diese Seite niemals tun darf.
+  reviews_clean: Jede veröffentlichte Bewertung gehört zu einem der erfundenen Partner.
+  reviews_attached: "{count} Bewertung(en) hängen an einem echten Eintrag."
+  orders_name: Nur Partner nehmen Bestellungen an
+  orders_matters: Ein echter Betrieb weiß nichts von dieser Seite und kann nichts erfüllen, was hier bestellt wird.
+  orders_clean: Jede Bestellung gehört zu einem der erfundenen Partner.
+  orders_placed: "{count} Bestellung(en) wurden bei einem echten Eintrag aufgegeben."
+  contact_name: Keine echten Kontaktdaten gespeichert
+  contact_matters: Niemand hat zugestimmt, von einer Demonstration zu hören, und eine Adresse, die auflöst, ist eine Adresse, an die irgendwann etwas gesendet werden kann.
+  contact_reserved: "{count} Kundendatensatz/-sätze, alle auf reservierten Demo-Domains, die keine Post empfangen können."
+  contact_reachable: "{count} Kundendatensatz/-sätze tragen eine Adresse, die ein echtes Postfach erreichen könnte."
+  noindex_name: Seiten tragen noindex
+  noindex_matters: Erfundenes über ein echtes Restaurant, indexiert und weit oben, ist genau das Ergebnis, das diese Seite vermeiden soll.
+  noindex_present: Das head-Partial gibt auf jeder Seite noindex, nofollow aus.
+  noindex_missing: Das head-Partial gibt kein robots-Meta-Tag mehr aus.
+  robots_name: robots.txt verbietet das Crawlen
+  robots_matters: "Doppelt gesichert mit dem Meta-Tag: das eine verhindert die Indexierung, das andere hält vom Abruf ab."
+  robots_disallows: robots.txt verbietet alles und erklärt, warum.
+  robots_missing: robots.txt fehlt oder verbietet das Crawlen nicht mehr.
+  holding: hält
+  broken: gebrochen

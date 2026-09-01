@@ -7,13 +7,33 @@
  * delivery service makes for a link somebody opens on a phone without
  * signing in.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'status.pending': t('status.pending'),
+  'status.processing': t('status.processing'),
+  'status.out_for_delivery': t('status.out_for_delivery'),
+  'status.delivered': t('status.delivered'),
+  'tracking.about_minutes': t('tracking.about_minutes', { minutes: '{minutes}' }),
+  'tracking.your_address': t('tracking.your_address'),
+})
+
 const pageTitle = t('meta.track_title')
 const pageDescription = t('meta.track_description')
 const canonicalPath = '/track'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -24,14 +44,7 @@ const canonicalPath = '/track'
     <main class="mx-auto px-4 sm:px-8 max-w-4xl" data-stx-content>
       <div class="pt-12 pb-24 sm:pb-40">
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ JSON.stringify({
-          'status.pending': t('status.pending'),
-          'status.processing': t('status.processing'),
-          'status.out_for_delivery': t('status.out_for_delivery'),
-          'status.delivered': t('status.delivered'),
-          'tracking.about_minutes': t('tracking.about_minutes', { minutes: '{minutes}' }),
-          'tracking.your_address': t('tracking.your_address'),
-        }) }}"></div>
+        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('tracking.looking') }}</p>
 
@@ -139,7 +152,7 @@ const canonicalPath = '/track'
           return say('tracking.about_minutes', 'about {minutes} min').replace('{minutes}', minutes)
         }
 
-        return `about ${current.estimatedMinutes} min`
+        return say('tracking.about_minutes', 'about {minutes} min').replace('{minutes}', current.estimatedMinutes)
       })
 
       async function tick() {

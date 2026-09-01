@@ -13,6 +13,8 @@
  * is no signal-driven grid here, so the page is complete before any script
  * runs.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+import { requestQuery } from '../../app/Actions/Request/context'
 import { searchBusinesses } from '../../app/Actions/Business/search'
 import { REGIONS, resolveRegion } from '../../app/Actions/Business/regions'
 
@@ -39,7 +41,7 @@ function typeLabel(type: string): string {
  * language being served - German pages open on Wuppertal, English on Los
  * Angeles. See app/Actions/Business/regions.ts.
  */
-const region = resolveRegion(query?.region, locale)
+const region = resolveRegion(requestQuery().region, currentLocale())
 const regions = REGIONS
 
 const pageTitle = t('meta.home_title')
@@ -72,6 +74,18 @@ const total = everything.length
  */
 const partners = everything.filter(business => business.isPartner)
 const openNow = everything.filter(business => business.openState === 'open')
+
+/*
+ * Three lines that put a number inside a sentence.
+ *
+ * Built here rather than in the markup: stx reads a template expression whose
+ * argument object names a variable as a client binding, and leaves the whole
+ * call sitting in the page as literal text. Anything a template on this page
+ * interpolates is a plain value for that reason.
+ */
+const seeAllLabel = t('home.see_all', { count: total })
+const howOrderBody = t('home.how_order_body', { count: partners.length })
+const subscribeBody = t('home.subscribe_body', { count: partners.length })
 
 /*
  * The rows.
@@ -147,7 +161,7 @@ function typeIcon(type) {
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -245,7 +259,7 @@ function typeIcon(type) {
       <section class="pb-14">
         <div class="flex flex-wrap gap-4 justify-between items-baseline pb-5">
           <h2 class="rail-head text-[20px]"><i class="i-hugeicons-flash"></i>{{ t('home.open_lead') }} <span>{{ t('home.open_rest') }}</span></h2>
-          <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">{{ t('home.see_all', { count: total }) }}</a>
+          <a href="/discover" class="text-[13px] underline underline-offset-4" style="color: var(--ink-soft)">{{ seeAllLabel }}</a>
         </div>
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -402,7 +416,7 @@ function typeIcon(type) {
             </span>
             <h3 class="mt-4 text-[16px] font-semibold">{{ t('home.how_order_title') }}</h3>
             <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-              {{ t('home.how_order_body', { count: partners.length }) }}
+              {{ howOrderBody }}
             </p>
           </div>
         </div>
@@ -427,7 +441,7 @@ function typeIcon(type) {
             </h2>
 
             <p class="mt-3 text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-              {{ t('home.subscribe_body', { count: partners.length }) }}
+              {{ subscribeBody }}
             </p>
 
             <div :if="!subscribed()" class="flex flex-col gap-2 mt-7 sm:flex-row">

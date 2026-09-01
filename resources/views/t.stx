@@ -10,13 +10,33 @@
  * the code off the URL, which puts it on the per-request render path where stx
  * drops awaited values (stacksjs/stacks#2390).
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'tab.order_more': t('tab.order_more'),
+  'tab.see_menu': t('tab.see_menu'),
+  'tab.split_ways': t('tab.split_ways'),
+  'tab.each_round': t('tab.each_round'),
+  'tab.person': t('tab.person'),
+  'tab.round': t('tab.round'),
+})
+
 const pageTitle = t('meta.tab_title')
 const pageDescription = t('meta.tab_description')
 const canonicalPath = '/t'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -27,14 +47,7 @@ const canonicalPath = '/t'
     <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
       <div class="pt-10 pb-24 sm:pb-40">
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ JSON.stringify({
-          'tab.order_more': t('tab.order_more'),
-          'tab.see_menu': t('tab.see_menu'),
-          'tab.split_ways': t('tab.split_ways'),
-          'tab.each_round': t('tab.each_round'),
-          'tab.person': t('tab.person'),
-          'tab.round': t('tab.round'),
-        }) }}"></div>
+        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('tab.finding_table') }}</p>
 
@@ -47,7 +60,7 @@ const canonicalPath = '/t'
           <p class="text-[13px]" style="color: var(--ink-soft)">{{ session().business.name }}</p>
           <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('kitchen.table') }} {{ session().table.label }}</h1>
           <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-            Your tab is open. Order a round, then order another when you are ready.
+            {{ t('tab.tab_open_lede') }}
           </p>
 
           <a
@@ -168,10 +181,19 @@ const canonicalPath = '/t'
         : [])
 
       async function load() {
-        // Accept both shapes: `/t/<token>` from the printed code, and
-        // `/t?code=<token>` for anything that cannot rewrite.
-        const fromPath = location.pathname.replace(/^\/t\/?/, '').trim()
-        const found = fromPath || new URLSearchParams(location.search).get('code') || ''
+        /*
+         * Accept both shapes: `/t/<token>` from the printed code, and
+         * `/t?code=<token>` for anything that cannot rewrite.
+         *
+         * The optional locale segment is part of the pattern because the views
+         * server serves this page at `/de/t` and `/nl/t` too. Stripping a bare
+         * leading `/t` instead left the German path intact - `/de/t` came
+         * through as if it were the token, the API was asked for a table with
+         * that name, and the page said the code did not match a table. In
+         * English only, it worked.
+         */
+        const fromPath = location.pathname.match(/^(?:\/[a-z]{2})?\/t\/(.+)$/)?.[1] ?? ''
+        const found = decodeURIComponent(fromPath).trim() || new URLSearchParams(location.search).get('code') || ''
 
         token.set(found)
 

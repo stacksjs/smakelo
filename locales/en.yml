@@ -178,6 +178,10 @@ place:
   cadence_weekly: Every week
   cadence_biweekly: Every other week
   cadence_monthly: Once a month
+  box_ready_on: "{price} a box, ready on {day}s. Pause it whenever you are away."
+  every_day: "{day}s"
+  share_lede: You are buying a share of the season, not a list of vegetables. What is in the box is whatever came ready that week, which in a good year is more than you expected and in a bad one is three kinds of squash.
+  reviewed_once: You have reviewed this place. One each.
 meta:
   home_title: Smakelo - find the good places near you
   home_description: "Find restaurants, coffee shops, bakeries and farms around {region}. Read the reviews, then order delivery, pickup or a weekly farm box."
@@ -211,6 +215,8 @@ meta:
   checkout_description: Order from a Smakelo partner.
   track_title: Tracking - Smakelo
   track_description: Where your order is.
+  codes_title: Table codes - Smakelo
+  codes_description: Printable codes for every table.
 order:
   add_to_cart: Add
   cart: Cart
@@ -365,6 +371,10 @@ courier:
   deliveries: Deliveries
   fees: Fees
   tips: Tips
+  pick_one: The couriers here are invented, so pick one. A real app would know.
+  state_active: On shift
+  state_offline: Offline
+  state_on_delivery: On a delivery
 footer:
   tagline: 'Restaurants, coffee shops and farms in {regions}.'
   browse: Browse
@@ -427,7 +437,9 @@ manage:
   table_codes: Table codes
   hours_to: to
   how_people_order: How people can order
-
+  available_on: On
+  available_off: Off
+  not_a_partner: Nothing to manage there. Only the partner businesses have a menu.
 admin:
   title: Operations
   guards: Guards
@@ -440,6 +452,8 @@ admin:
   put_back: Put it back
   take_down: Take it down
   lede: Whether this site is still keeping its own promises, checked against the database rather than against the code meant to enforce them.
+  guards_lede: What this site promises about itself, checked against what is actually stored. A guard nobody can see the state of is one you find out about afterwards.
+  listings_lede: "Hiding a listing takes it off the discover page, the search, the map and its own page, and stops it being ordered from. The row stays, so it can come back if the request turns out to have come from somebody who did not run the place after all."
 shares:
   title: Shares
   none: You have no shares.
@@ -476,7 +490,13 @@ earnings:
   earned: Earned
   outstanding: Outstanding
   pay_out: Pay out
-
+  lede: "Every order writes one row per party: the food to the merchant, the delivery fee and the whole tip to the courier, the service fee to the platform, and the sales tax into a pile that belongs to the state. The rows add up to exactly what the customer paid. Nothing here is recomputed from the orders, it is summed from those rows."
+  party_tax: Sales tax held for remittance
+  party_unassigned: Awaiting a courier
+  type_business: Business
+  type_courier: Courier
+  type_platform: Platform
+  type_tax: Tax
 tab:
   finding_table: Finding your table…
   scan_to_start: Scan the code on your table to start.
@@ -495,7 +515,10 @@ tab:
   round: Round
   total: Total
   test_mode: Test mode. Nothing was charged.
-
+  scan_to_order: Scan to order
+  codes_lede: One per table. Print, cut, and stand them up. Scanning opens the menu and starts a tab for that table; a second person scanning the same code joins the same bill rather than starting a rival one.
+  print: Print
+  tab_open_lede: Your tab is open. Order a round, then order another when you are ready.
 account:
   title: Your account
   make_account: Make an account
@@ -553,3 +576,50 @@ checkout:
   paid_test_mode: Paid, in test mode. No money moved.
   pick_a_place_prefix: Pick a place from
   pick_a_place_suffix: first.
+  contains: "Contains {allergens}"
+  group_required: required
+  group_optional: optional
+  group_up_to: ", up to {max}"
+  stripe_test: Stripe test mode
+  stripe_card: Card 4242 4242 4242 4242, any future expiry, any CVC. No money moves.
+  pay_test_mode: Pay in test mode
+allergen:
+  gluten: gluten
+  dairy: dairy
+  egg: egg
+  fish: fish
+  shellfish: shellfish
+  crustaceans: crustaceans
+  nuts: nuts
+  soy: soy
+  sesame: sesame
+  celery: celery
+
+guard:
+  payments_name: Sandbox payments only
+  payments_matters: The businesses that can be ordered from are invented. A live key would charge a real card on behalf of a restaurant that does not exist.
+  payments_live_key: A live Stripe key is configured. Checkout will refuse it, but it should not be here.
+  payments_test_keys: Stripe test keys configured. Checkout runs in sandbox.
+  payments_no_provider: No payment provider configured. Checkout says so and records the order unpaid.
+  reviews_name: No reviews on real businesses
+  reviews_matters: The listings come from open data. Publishing invented opinions under a real restaurant's name is the one thing this site must never do.
+  reviews_clean: Every published review belongs to one of the invented partners.
+  reviews_attached: "{count} review(s) are attached to a real listing."
+  orders_name: Only partners take orders
+  orders_matters: A real business has no idea this site exists and cannot fulfil anything ordered through it.
+  orders_clean: Every order belongs to one of the invented partners.
+  orders_placed: "{count} order(s) were placed at a real listing."
+  contact_name: No real contact details stored
+  contact_matters: Nobody consented to hear from a demonstration, and an address that resolves is an address something can eventually send to.
+  contact_reserved: "{count} customer row(s), all on reserved demo domains that cannot receive mail."
+  contact_reachable: "{count} customer row(s) carry an address that could reach a real inbox."
+  noindex_name: Pages carry noindex
+  noindex_matters: Fiction about a real restaurant, indexed and ranking, is the outcome this site exists to avoid.
+  noindex_present: The head partial emits noindex, nofollow on every page.
+  noindex_missing: The head partial no longer emits a robots meta tag.
+  robots_name: robots.txt disallows crawling
+  robots_matters: "Belt and braces with the meta tag: one stops indexing, the other discourages the fetch."
+  robots_disallows: robots.txt disallows everything and explains why.
+  robots_missing: robots.txt is missing or no longer disallows crawling.
+  holding: holding
+  broken: broken

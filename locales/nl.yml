@@ -177,6 +177,10 @@ place:
   cadence_weekly: Elke week
   cadence_biweekly: Om de week
   cadence_monthly: Eén keer per maand
+  box_ready_on: "{price} per pakket, elke {day} klaar. Pauzeer wanneer je weg bent."
+  every_day: "elke {day}"
+  share_lede: Je koopt een aandeel in het seizoen, geen groentelijst. In het pakket zit wat die week rijp werd - in een goed jaar meer dan je dacht, in een slecht jaar drie soorten pompoen.
+  reviewed_once: Je hebt deze zaak al beoordeeld. Eén per persoon.
 meta:
   home_title: Smakelo - vind de goede plekken bij jou in de buurt
   home_description: "Restaurants, koffiezaken, bakkers en boerderijen rond {region}. Lees de reviews en bestel dan bezorging, afhalen of een wekelijks groentepakket."
@@ -210,6 +214,8 @@ meta:
   checkout_description: Bestel bij een Smakelo-partner.
   track_title: Volgen - Smakelo
   track_description: Waar je bestelling is.
+  codes_title: Tafelcodes - Smakelo
+  codes_description: Printbare codes voor elke tafel.
 order:
   add_to_cart: Toevoegen
   cart: Winkelmand
@@ -364,6 +370,10 @@ courier:
   deliveries: Bezorgingen
   fees: Vergoedingen
   tips: Fooien
+  pick_one: De koeriers hier zijn verzonnen, dus kies er een. Een echte app zou het weten.
+  state_active: In dienst
+  state_offline: Offline
+  state_on_delivery: Onderweg met een bezorging
 footer:
   tagline: 'Restaurants, koffiezaken en boerderijen in {regions}.'
   browse: Bladeren
@@ -426,7 +436,9 @@ manage:
   table_codes: Tafelcodes
   hours_to: tot
   how_people_order: Hoe mensen kunnen bestellen
-
+  available_on: Aan
+  available_off: Uit
+  not_a_partner: Daar valt niets te beheren. Alleen de partnerzaken hebben een menu.
 admin:
   title: Bedrijfsvoering
   guards: Controles
@@ -439,6 +451,8 @@ admin:
   put_back: Terugzetten
   take_down: Weghalen
   lede: Of deze site zijn eigen beloften nog nakomt, getoetst aan de database in plaats van aan de code die ze zou moeten afdwingen.
+  guards_lede: Wat deze site over zichzelf belooft, getoetst aan wat er werkelijk is opgeslagen. Een controle waarvan niemand de stand kan zien, is er een waar je achteraf van hoort.
+  listings_lede: "Een vermelding verbergen haalt hem van de ontdekpagina, uit het zoeken, van de kaart en van zijn eigen pagina, en er kan niet meer besteld worden. De regel blijft staan, zodat hij terug kan komen als blijkt dat het verzoek van iemand kwam die de zaak helemaal niet runt."
 shares:
   title: Aandelen
   none: Je hebt geen aandelen.
@@ -475,7 +489,13 @@ earnings:
   earned: Verdiend
   outstanding: Openstaand
   pay_out: Uitbetalen
-
+  lede: "Elke bestelling schrijft één regel per partij: het eten aan de zaak, de bezorgkosten en de hele fooi aan de koerier, de servicekosten aan het platform, en de omzetbelasting op een stapel die van de staat is. De regels tellen op tot precies wat de klant betaalde. Niets hier wordt uit de bestellingen herberekend, het wordt uit die regels opgeteld."
+  party_tax: Ingehouden omzetbelasting voor afdracht
+  party_unassigned: Wacht op een koerier
+  type_business: Zaak
+  type_courier: Koerier
+  type_platform: Platform
+  type_tax: Belasting
 tab:
   finding_table: Je tafel wordt gezocht…
   scan_to_start: Scan de code op je tafel om te beginnen.
@@ -494,7 +514,10 @@ tab:
   round: Ronde
   total: Totaal
   test_mode: Testmodus. Er is niets afgeschreven.
-
+  scan_to_order: Scan om te bestellen
+  codes_lede: Eén per tafel. Printen, uitknippen, neerzetten. Scannen opent het menu en opent een rekening voor die tafel; wie daarna dezelfde code scant komt op diezelfde rekening in plaats van een tweede te beginnen.
+  print: Printen
+  tab_open_lede: Je rekening staat open. Bestel een ronde, en de volgende wanneer je zover bent.
 account:
   title: Je account
   make_account: Account maken
@@ -552,3 +575,50 @@ checkout:
   paid_test_mode: Betaald, in testmodus. Er is geen geld verplaatst.
   pick_a_place_prefix: Kies eerst een zaak via
   pick_a_place_suffix: .
+  contains: "Bevat {allergens}"
+  group_required: verplicht
+  group_optional: optioneel
+  group_up_to: ", tot {max}"
+  stripe_test: Stripe-testmodus
+  stripe_card: Kaart 4242 4242 4242 4242, elke toekomstige vervaldatum, elke CVC. Er gaat geen geld heen.
+  pay_test_mode: Betalen in testmodus
+allergen:
+  gluten: gluten
+  dairy: zuivel
+  egg: ei
+  fish: vis
+  shellfish: schaaldieren
+  crustaceans: schaaldieren
+  nuts: noten
+  soy: soja
+  sesame: sesam
+  celery: selderij
+
+guard:
+  payments_name: Alleen sandbox-betalingen
+  payments_matters: De zaken waar besteld kan worden zijn verzonnen. Een live sleutel zou een echte kaart belasten namens een restaurant dat niet bestaat.
+  payments_live_key: Er is een live Stripe-sleutel ingesteld. De kassa weigert hem, maar hij hoort hier niet.
+  payments_test_keys: Stripe-testsleutels ingesteld. De kassa draait in sandbox.
+  payments_no_provider: Geen betaalprovider ingesteld. De kassa zegt dat en boekt de bestelling als onbetaald.
+  reviews_name: Geen reviews bij echte zaken
+  reviews_matters: De vermeldingen komen uit open data. Verzonnen meningen publiceren onder de naam van een echte zaak is het enige wat deze site nooit mag doen.
+  reviews_clean: Elke gepubliceerde review hoort bij een van de verzonnen partners.
+  reviews_attached: "{count} review(s) hangen aan een echte vermelding."
+  orders_name: Alleen partners nemen bestellingen aan
+  orders_matters: Een echte zaak weet niet dat deze site bestaat en kan niets uitvoeren wat hier besteld wordt.
+  orders_clean: Elke bestelling hoort bij een van de verzonnen partners.
+  orders_placed: "{count} bestelling(en) zijn bij een echte vermelding geplaatst."
+  contact_name: Geen echte contactgegevens opgeslagen
+  contact_matters: Niemand heeft ermee ingestemd iets van een demonstratie te horen, en een adres dat oplost is een adres waar ooit iets naartoe kan.
+  contact_reserved: "{count} klantregel(s), allemaal op gereserveerde demodomeinen die geen post kunnen ontvangen."
+  contact_reachable: "{count} klantregel(s) dragen een adres dat een echte inbox zou kunnen bereiken."
+  noindex_name: Pagina's dragen noindex
+  noindex_matters: Verzinsels over een echte zaak, geïndexeerd en hoog in de resultaten, is precies wat deze site wil voorkomen.
+  noindex_present: De head-partial geeft op elke pagina noindex, nofollow af.
+  noindex_missing: De head-partial geeft geen robots-metatag meer af.
+  robots_name: robots.txt verbiedt crawlen
+  robots_matters: "Dubbel gezekerd met de metatag: de een stopt indexering, de ander ontmoedigt het ophalen."
+  robots_disallows: robots.txt verbiedt alles en legt uit waarom.
+  robots_missing: robots.txt ontbreekt of verbiedt crawlen niet meer.
+  holding: houdt stand
+  broken: gebroken

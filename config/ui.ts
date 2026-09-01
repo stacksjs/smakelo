@@ -31,7 +31,11 @@ export default {
   // resolves through this. See the plugin file for the lookup order.
   plugins: ['./storage/framework/defaults/stx-components-plugin.ts'],
 
-  layoutsDir: 'layouts',
+  // Resolved relative to the `resources` root above, so this is
+  // resources/views/layouts - which is where the layouts actually are. Spelled
+  // 'layouts' it resolved to resources/layouts, a directory that does not
+  // exist, and stx said so on every boot.
+  layoutsDir: 'views/layouts',
 
   partialsDir: 'partials',
 

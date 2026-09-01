@@ -11,13 +11,50 @@
  * deployment resolves the courier from the session, which is what the
  * framework's own ping and stop endpoints already do.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'courier.on_shift': t('courier.on_shift'),
+  'courier.shift_start': t('courier.shift_start'),
+  'courier.sharing_position': t('courier.sharing_position'),
+  'courier.position_private': t('courier.position_private'),
+  'courier.stop_sharing': t('courier.stop_sharing'),
+  'courier.share_position': t('courier.share_position'),
+  'courier.collect_order': t('courier.collect_order'),
+  'courier.deliver_order': t('courier.deliver_order'),
+  'courier.picked_it_up': t('courier.picked_it_up'),
+  'courier.handed_it_over': t('courier.handed_it_over'),
+  'courier.nothing_assigned': t('courier.nothing_assigned'),
+  'courier.you_are_offline': t('courier.you_are_offline'),
+  'courier.collect_from': t('courier.collect_from'),
+  'courier.deliver_to': t('courier.deliver_to'),
+  'courier.estimate_only': t('courier.estimate_only'),
+  'courier.reporting_pocket': t('courier.reporting_pocket'),
+  'courier.reporting_screen': t('courier.reporting_screen'),
+  'courier.deliveries': t('courier.deliveries'),
+  'courier.fees': t('courier.fees'),
+  'courier.tips': t('courier.tips'),
+  'courier.state_active': t('courier.state_active'),
+  'courier.state_offline': t('courier.state_offline'),
+  'courier.state_on_delivery': t('courier.state_on_delivery'),
+})
+
 const pageTitle = t('meta.courier_title')
 const pageDescription = t('meta.courier_description')
 const canonicalPath = '/courier'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -28,28 +65,7 @@ const canonicalPath = '/courier'
     <main class="mx-auto px-4 sm:px-8 max-w-2xl" data-stx-content>
       <div class="pt-10 pb-24">
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ JSON.stringify({
-          'courier.on_shift': t('courier.on_shift'),
-          'courier.shift_start': t('courier.shift_start'),
-          'courier.sharing_position': t('courier.sharing_position'),
-          'courier.position_private': t('courier.position_private'),
-          'courier.stop_sharing': t('courier.stop_sharing'),
-          'courier.share_position': t('courier.share_position'),
-          'courier.collect_order': t('courier.collect_order'),
-          'courier.deliver_order': t('courier.deliver_order'),
-          'courier.picked_it_up': t('courier.picked_it_up'),
-          'courier.handed_it_over': t('courier.handed_it_over'),
-          'courier.nothing_assigned': t('courier.nothing_assigned'),
-          'courier.you_are_offline': t('courier.you_are_offline'),
-          'courier.collect_from': t('courier.collect_from'),
-          'courier.deliver_to': t('courier.deliver_to'),
-          'courier.estimate_only': t('courier.estimate_only'),
-          'courier.reporting_pocket': t('courier.reporting_pocket'),
-          'courier.reporting_screen': t('courier.reporting_screen'),
-          'courier.deliveries': t('courier.deliveries'),
-          'courier.fees': t('courier.fees'),
-          'courier.tips': t('courier.tips'),
-        }) }}"></div>
+        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
@@ -57,7 +73,7 @@ const canonicalPath = '/courier'
         <div :if="!loading() && !courierId()">
           <h1 class="text-[clamp(1.9rem,4vw,2.5rem)] font-semibold tracking-[-0.03em]">{{ t('courier.who_are_you') }}</h1>
           <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-            The couriers here are invented, so pick one. A real app would know.
+            {{ t('courier.pick_one') }}
           </p>
 
           <div class="mt-8 space-y-2">
@@ -68,7 +84,7 @@ const canonicalPath = '/courier'
               style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)"
             >
               <span class="text-[15px] font-medium">{{ person.name }}</span>
-              <span class="text-[12px]" style="color: var(--ink-soft)">{{ person.status.replace('_', ' ') }}</span>
+              <span class="text-[12px]" style="color: var(--ink-soft)">{{ shiftState(person.status) }}</span>
             </a>
           </div>
         </div>
@@ -193,6 +209,15 @@ const canonicalPath = '/courier'
        */
       function say(key, english) {
         return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
+
+      /* Where a courier is right now, in words rather than as the column
+         value. An unknown state falls back to the value with its underscores
+         opened out, which is what this used to do for every one of them. */
+      function shiftState(status) {
+        const key = String(status ?? '')
+
+        return say(`courier.state_${key}`, key.replace(/_/g, ' '))
       }
 
       const courierId = state(0)

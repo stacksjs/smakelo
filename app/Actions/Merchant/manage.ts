@@ -25,8 +25,15 @@ export interface ManageItem {
 }
 
 export interface ManageHour {
+  /*
+   * The day as a number, and no name for it.
+   *
+   * This used to also carry `dayName`, built from an English constant, which
+   * put the language on the wrong side of the wire: the same payload is read
+   * by a page that may be rendering in German. The screen names the day from
+   * this number and its own locale.
+   */
   dayOfWeek: number
-  dayName: string
   opensAt: number
   closesAt: number
   isClosed: boolean
@@ -38,8 +45,6 @@ export interface ManageView {
   hours: ManageHour[]
   counts: { tables: number, unavailable: number, openOrders: number }
 }
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export async function manageView(businessSlug: string): Promise<ManageView | null> {
   const business = await db.selectFrom('businesses')
@@ -95,7 +100,6 @@ export async function manageView(businessSlug: string): Promise<ManageView | nul
 
     hours.push({
       dayOfWeek: day,
-      dayName: DAY_NAMES[day] ?? '',
       opensAt: Number(row?.opens_at ?? 0),
       closesAt: Number(row?.closes_at ?? 0),
       isClosed: !row || Number(row.is_closed) === 1,

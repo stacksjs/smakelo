@@ -19,7 +19,14 @@ export interface StatementLine {
 }
 
 export interface Statement {
-  party: { type: string, id: number, name: string }
+  /*
+   * Spelled the same as a row of `outstandingBalances`, on purpose. The two
+   * endpoints describe the same party and used to name its fields differently
+   * - `type`/`id` here, `partyType`/`partyId` there - so a caller handling
+   * both had to know which shape it was holding, and one that forgot silently
+   * read `undefined`.
+   */
+  party: { partyType: string, partyId: number, name: string }
   currency: string
   /** Signed sum. Positive is owed to the party. */
   balanceCents: number
@@ -63,7 +70,7 @@ export async function statementFor(partyType: PartyType, partyId: number): Promi
   }
 
   return {
-    party: { type: partyType, id: partyId, name },
+    party: { partyType, partyId, name },
     currency: String(rows[0]?.currency ?? 'usd'),
     balanceCents,
     paidOutCents,

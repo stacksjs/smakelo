@@ -1,5 +1,5 @@
 import { basemap, keepSized } from './map'
-import { send, visitorToken } from './session'
+import { money, send, visitorToken } from './session'
 
 /**
  * What a place page does once it is on screen.
@@ -176,6 +176,36 @@ export function placeHandlers(page: PlaceSignals) {
     return say('review.helpful_count', '{count} found this helpful').replace('{count}', String(count))
   }
 
+  /**
+   * A weekday, in the language being served.
+   *
+   * From `Intl` and the day number the API sends, rather than from a name the
+   * API used to build out of an English constant. UTC so the server's zone
+   * cannot shift the answer by a day.
+   */
+  function dayName(dayOfWeek: number): string {
+    const locale = (globalThis as any).Smakelo?.locale ?? 'en'
+
+    // 2024-01-07 was a Sunday.
+    return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(2024, 0, 7 + Number(dayOfWeek))))
+  }
+
+  /** How often a box comes, phrased the way the language phrases it. */
+  function everyDay(dayOfWeek: number): string {
+    return say('place.every_day', '{day}s').replace('{day}', dayName(dayOfWeek))
+  }
+
+  /** The line under a chosen share: what it costs, and when it is ready. */
+  function boxLine(plan: any): string {
+    if (!plan)
+      return ''
+
+    return say('place.box_ready_on', '{price} a box, ready on {day}s. Pause it whenever you are away.')
+      .replace('{price}', money(Number(plan.priceCents)))
+      .replace('{day}', dayName(Number(plan.dayOfWeek)))
+  }
+
   /** The line that confirms a share, up to the link into /shares. */
   function joinedLine(date: string): string {
     return say('place.joined_head', 'You are in. First box on {date}. Manage it at').replace('{date}', String(date))
@@ -216,6 +246,8 @@ export function placeHandlers(page: PlaceSignals) {
     say,
     helpfulCount,
     joinedLine,
+    everyDay,
+    boxLine,
     load,
   }
 }

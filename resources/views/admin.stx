@@ -8,13 +8,58 @@
  * listing down, because the most likely message this demo will ever receive is
  * a restaurant asking why it is here.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'guard.payments_name': t('guard.payments_name'),
+  'guard.payments_matters': t('guard.payments_matters'),
+  'guard.payments_live_key': t('guard.payments_live_key', { count: '{count}' }),
+  'guard.payments_test_keys': t('guard.payments_test_keys', { count: '{count}' }),
+  'guard.payments_no_provider': t('guard.payments_no_provider', { count: '{count}' }),
+  'guard.reviews_name': t('guard.reviews_name'),
+  'guard.reviews_matters': t('guard.reviews_matters'),
+  'guard.reviews_clean': t('guard.reviews_clean', { count: '{count}' }),
+  'guard.reviews_attached': t('guard.reviews_attached', { count: '{count}' }),
+  'guard.orders_name': t('guard.orders_name'),
+  'guard.orders_matters': t('guard.orders_matters'),
+  'guard.orders_clean': t('guard.orders_clean', { count: '{count}' }),
+  'guard.orders_placed': t('guard.orders_placed', { count: '{count}' }),
+  'guard.contact_name': t('guard.contact_name'),
+  'guard.contact_matters': t('guard.contact_matters'),
+  'guard.contact_reserved': t('guard.contact_reserved', { count: '{count}' }),
+  'guard.contact_reachable': t('guard.contact_reachable', { count: '{count}' }),
+  'guard.noindex_name': t('guard.noindex_name'),
+  'guard.noindex_matters': t('guard.noindex_matters'),
+  'guard.noindex_present': t('guard.noindex_present', { count: '{count}' }),
+  'guard.noindex_missing': t('guard.noindex_missing', { count: '{count}' }),
+  'guard.robots_name': t('guard.robots_name'),
+  'guard.robots_matters': t('guard.robots_matters'),
+  'guard.robots_disallows': t('guard.robots_disallows', { count: '{count}' }),
+  'guard.robots_missing': t('guard.robots_missing', { count: '{count}' }),
+  'guard.holding': t('guard.holding'),
+  'guard.broken': t('guard.broken'),
+  'admin.all_holding': t('admin.all_holding'),
+  'admin.something_wrong': t('admin.something_wrong'),
+  'admin.put_back': t('admin.put_back'),
+  'admin.take_down': t('admin.take_down'),
+})
+
 const pageTitle = t('meta.admin_title')
 const pageDescription = t('meta.admin_description')
 const canonicalPath = '/admin'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -27,17 +72,10 @@ const canonicalPath = '/admin'
         <h1 class="text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('admin.title') }}</h1>
 
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ JSON.stringify({
-          'admin.all_holding': t('admin.all_holding'),
-          'admin.something_wrong': t('admin.something_wrong'),
-          'admin.put_back': t('admin.put_back'),
-          'admin.take_down': t('admin.take_down'),
-        }) }}"></div>
+        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
         <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-          What this site promises about itself, checked against what is actually
-          stored. A guard nobody can see the state of is one you find out about
-          afterwards.
+          {{ t('admin.guards_lede') }}
         </p>
 
         <section class="mt-10">
@@ -54,15 +92,15 @@ const canonicalPath = '/admin'
             <div :for="guard in guards()" class="p-1.5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
               <div class="p-5 rounded-[calc(1.25rem-0.375rem)]">
                 <div class="flex gap-4 justify-between items-baseline">
-                  <p class="text-[15px] font-medium">{{ guard.name }}</p>
+                  <p class="text-[15px] font-medium">{{ guardName(guard) }}</p>
                   <span
                     class="px-2.5 py-1 text-[11px] rounded-full shrink-0"
                     :style="guard.ok ? 'background: var(--accent-soft); color: var(--accent)' : 'background: var(--ink); color: var(--paper)'"
-                  >{{ guard.ok ? 'holding' : 'broken' }}</span>
+                  >{{ guard.ok ? say('guard.holding', 'holding') : say('guard.broken', 'broken') }}</span>
                 </div>
 
-                <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ guard.detail }}</p>
-                <p :if="!guard.ok" class="mt-2 text-[13px] leading-relaxed" style="color: var(--accent)">{{ guard.matters }}</p>
+                <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ guardDetail(guard) }}</p>
+                <p :if="!guard.ok" class="mt-2 text-[13px] leading-relaxed" style="color: var(--accent)">{{ guardMatters(guard) }}</p>
               </div>
             </div>
           </div>
@@ -72,10 +110,7 @@ const canonicalPath = '/admin'
           <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('admin.listings') }}</h2>
 
           <p class="mt-3 max-w-xl text-[14px] leading-relaxed" style="color: var(--ink-soft)">
-            Hiding a listing takes it off the discover page, the search, the map
-            and its own page, and stops it being ordered from. The row stays, so
-            it can come back if the request turns out to have come from somebody
-            who did not run the place after all.
+            {{ t('admin.listings_lede') }}
           </p>
 
           <input
@@ -124,6 +159,31 @@ const canonicalPath = '/admin'
        */
       function say(key, english) {
         return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+      }
+
+      /*
+       * What a guard is called, what it found, and why it matters.
+       *
+       * The API answers with facts - which check, whether it holds, which of
+       * its messages applies and the numbers that message needs - and the
+       * words live here, because this screen may be rendering in any of three
+       * languages and a process serving JSON has no way to know which.
+       */
+      function guardName(guard) {
+        return say(`guard.${guard.key}_name`, String(guard.key ?? ''))
+      }
+
+      function guardMatters(guard) {
+        return say(`guard.${guard.key}_matters`, '')
+      }
+
+      function guardDetail(guard) {
+        let text = say(`guard.${guard.key}_${guard.detailKey}`, '')
+
+        for (const [name, value] of Object.entries(guard.detailValues || {}))
+          text = text.replace(`{${name}}`, value)
+
+        return text
       }
 
       const guards = state([])

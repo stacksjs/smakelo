@@ -7,13 +7,32 @@
  * pause for a holiday cancels instead, and a cancelled member is one the farm
  * has to replace.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+/*
+ * The strings this page's own script writes, already translated.
+ *
+ * Built here and carried to the markup on a data attribute, the same way the
+ * rest of this app hands the client a payload. Written inline in the markup
+ * instead, stx sometimes reads it as a client expression and leaves the
+ * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
+ * silently falls back to English. The shared strings are in partials/head.stx.
+ */
+const clientStrings = JSON.stringify({
+  'shares.paused_until': t('shares.paused_until'),
+  'shares.next_box': t('shares.next_box'),
+  'shares.delivered': t('shares.delivered'),
+  'shares.collected': t('shares.collected'),
+  'shares.boxes_so_far': t('shares.boxes_so_far', { count: '{count}' }),
+})
+
 const pageTitle = t('meta.shares_title')
 const pageDescription = t('meta.shares_description')
 const canonicalPath = '/shares'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>
@@ -30,13 +49,7 @@ const canonicalPath = '/shares'
         </p>
 
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ JSON.stringify({
-          'shares.paused_until': t('shares.paused_until'),
-          'shares.next_box': t('shares.next_box'),
-          'shares.delivered': t('shares.delivered'),
-          'shares.collected': t('shares.collected'),
-          'shares.boxes_so_far': t('shares.boxes_so_far', { count: '{count}' }),
-        }) }}"></div>
+        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
 
         <p :if="loading()" class="mt-10 text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 

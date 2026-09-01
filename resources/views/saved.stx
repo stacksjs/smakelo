@@ -6,13 +6,15 @@
  * a dashboard. Rendered from signals: the markup lives in the markup, and the
  * script only decides what is true.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
 const pageTitle = t('meta.saved_title')
 const pageDescription = t('meta.saved_description')
 const canonicalPath = '/saved'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>

@@ -7,13 +7,15 @@
  * whichever tab they closed; recording who placed the order means the list can
  * simply be shown.
  */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
 const pageTitle = t('meta.orders_title')
 const pageDescription = t('meta.orders_description')
 const canonicalPath = '/orders'
 </script>
 
 <!DOCTYPE html>
-<html lang="{{ locale }}">
+<html lang="{{ currentLocale() }}">
   <head>
     @include('head')
   </head>

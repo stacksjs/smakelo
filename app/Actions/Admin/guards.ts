@@ -17,12 +17,23 @@ import { assessKeys } from '../Payment/checkout'
  * you find out about afterwards.
  */
 
+/**
+ * A guard's finding: which check, whether it holds, and which of its messages
+ * applies.
+ *
+ * Facts rather than sentences. The screen that shows this may be rendering in
+ * German, and a process that runs no request has no way to know that - so the
+ * words live with the interface, keyed off `key` and `detailKey`, and the
+ * numbers a message needs travel beside it.
+ */
 export interface GuardResult {
-  name: string
+  /** Stable name for the check; the screen titles and explains it from this. */
+  key: string
   ok: boolean
-  detail: string
-  /** What the check would say if it failed, so the screen explains itself. */
-  matters: string
+  /** Which of this guard's messages applies. */
+  detailKey: string
+  /** What that message interpolates, when it interpolates anything. */
+  detailValues?: Record<string, number>
 }
 
 export async function runGuards(): Promise<{ results: GuardResult[], allPassed: boolean }> {
@@ -51,14 +62,9 @@ async function paymentGuard(): Promise<GuardResult> {
   const live = secret.startsWith('sk_live_') || publishable.startsWith('pk_live_')
 
   return {
-    name: 'Sandbox payments only',
+    key: 'payments',
     ok: !live,
-    detail: live
-      ? 'A live Stripe key is configured. Checkout will refuse it, but it should not be here.'
-      : configured
-        ? 'Stripe test keys configured. Checkout runs in sandbox.'
-        : 'No payment provider configured. Checkout says so and records the order unpaid.',
-    matters: 'The businesses that can be ordered from are invented. A live key would charge a real card on behalf of a restaurant that does not exist.',
+    detailKey: live ? 'live_key' : configured ? 'test_keys' : 'no_provider',
   }
 }
 
@@ -73,12 +79,10 @@ async function reviewGuard(): Promise<GuardResult> {
   const rows = reviews.filter(review => !partnerIds.has(Number(review.business_id)))
 
   return {
-    name: 'No reviews on real businesses',
+    key: 'reviews',
     ok: rows.length === 0,
-    detail: rows.length === 0
-      ? 'Every published review belongs to one of the invented partners.'
-      : `${rows.length} review(s) are attached to a real listing.`,
-    matters: 'The listings come from open data. Publishing invented opinions under a real restaurant\'s name is the one thing this site must never do.',
+    detailKey: rows.length === 0 ? 'clean' : 'attached',
+    detailValues: { count: rows.length },
   }
 }
 
@@ -93,12 +97,10 @@ async function orderGuard(): Promise<GuardResult> {
   const rows = orders.filter(order => !partnerIds.has(Number(order.business_id)))
 
   return {
-    name: 'Only partners take orders',
+    key: 'orders',
     ok: rows.length === 0,
-    detail: rows.length === 0
-      ? 'Every order belongs to one of the twelve invented partners.'
-      : `${rows.length} order(s) were placed at a real listing.`,
-    matters: 'A real business has no idea this site exists and cannot fulfil anything ordered through it.',
+    detailKey: rows.length === 0 ? 'clean' : 'placed',
+    detailValues: { count: rows.length },
   }
 }
 
@@ -121,12 +123,10 @@ async function contactGuard(): Promise<GuardResult> {
   })
 
   return {
-    name: 'No real contact details stored',
+    key: 'contact',
     ok: real.length === 0,
-    detail: real.length === 0
-      ? `${rows.length} customer row(s), all on reserved demo domains that cannot receive mail.`
-      : `${real.length} customer row(s) carry an address that could reach a real inbox.`,
-    matters: 'Nobody consented to hear from a demonstration, and an address that resolves is an address something can eventually send to.',
+    detailKey: real.length === 0 ? 'reserved' : 'reachable',
+    detailValues: { count: real.length === 0 ? rows.length : real.length },
   }
 }
 
@@ -137,12 +137,9 @@ function noindexGuard(): GuardResult {
   const present = source.includes('noindex')
 
   return {
-    name: 'Pages carry noindex',
+    key: 'noindex',
     ok: present,
-    detail: present
-      ? 'The head partial emits noindex, nofollow on every page.'
-      : 'The head partial no longer emits a robots meta tag.',
-    matters: 'Fiction about a real restaurant, indexed and ranking, is the outcome this site exists to avoid.',
+    detailKey: present ? 'present' : 'missing',
   }
 }
 
@@ -153,12 +150,9 @@ function robotsGuard(): GuardResult {
   const disallows = source.includes('Disallow: /')
 
   return {
-    name: 'robots.txt disallows crawling',
+    key: 'robots',
     ok: disallows,
-    detail: disallows
-      ? 'robots.txt disallows everything and explains why.'
-      : 'robots.txt is missing or no longer disallows crawling.',
-    matters: 'Belt and braces with the meta tag: one stops indexing, the other discourages the fetch.',
+    detailKey: disallows ? 'disallows' : 'missing',
   }
 }
 

@@ -220,10 +220,25 @@ export const tsCloud: TsCloudConfig = {
         'bun node_modules/@stacksjs/buddy/dist/cli.js migrate:fresh --force',
         'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo',
         'bun node_modules/@stacksjs/buddy/dist/cli.js build:places',
-        // The production server serves what the build produced, so a page added
-        // without this simply 404s. It runs after build:places because that is
-        // what writes the per-business views the build then compiles.
-        'bunx --bun @stacksjs/stx build --pages resources/views --out dist',
+        /*
+         * No static build here, deliberately.
+         *
+         * This used to run `stx build --pages resources/views --out dist`, on
+         * the stated grounds that "the production server serves what the build
+         * produced". It does not. `buddy serve` starts the stx views server,
+         * which renders `resources/views` per request - checked by asking a
+         * local production server for a page that was not in `dist` at all and
+         * getting it, in the right language, with its prices in euros.
+         *
+         * Rendering per request is also the only thing that can work here: the
+         * locale comes from the URL, the cookie or the Accept-Language header,
+         * the region comes from the query string, and the contents come from a
+         * database that the deploy reseeds two lines above. A static snapshot
+         * is one language, one region and one moment.
+         *
+         * `bunx --bun @stacksjs/stx build --out dist` still works - it is what
+         * `buddy preview` serves - and it is a local tool, not a deploy step.
+         */
       ],
       env: {
         HOST: '127.0.0.1',
