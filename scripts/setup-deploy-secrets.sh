@@ -93,7 +93,38 @@ echo "→ DOTENV_PRIVATE_KEY_PRODUCTION"
 printf '%s' "$PRIVATE_KEY" | gh secret set DOTENV_PRIVATE_KEY_PRODUCTION --repo "$REPO" --env "$ENVIRONMENT"
 unset PRIVATE_KEY
 
+# --- 5. The values the deploy ships to the server ---------------------------
+#
+# `buddy deploy` writes the environment it runs with to the box. A runner
+# starts with no `.env`, so it made one and generated a random APP_KEY into it
+# - which would have replaced production's and signed every session out. These
+# come from the local `.env`, which is where they already live.
+ENV_FILE="${DEPLOY_ENV_FILE:-.env}"
+[ -f "$ENV_FILE" ] || { echo "No $ENV_FILE here, so APP_KEY and HCLOUD_TOKEN cannot be read."; exit 1; }
+
+from_env() {
+  # Strip either quote style; dotenv writes both.
+  grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- | tr -d "\"'"
+}
+
+for name in APP_KEY HCLOUD_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+  value="$(from_env "$name")"
+
+  if [ -z "$value" ]; then
+    # Cloudflare's pair is only needed for DNS reconciliation; the first two
+    # are not optional, and the workflow refuses to deploy without them.
+    case "$name" in
+      APP_KEY|HCLOUD_TOKEN) echo "  $name is missing from $ENV_FILE - the deploy needs it."; exit 1 ;;
+      *) echo "→ $name (absent, skipping)"; continue ;;
+    esac
+  fi
+
+  echo "→ $name"
+  printf '%s' "$value" | gh secret set "$name" --repo "$REPO" --env "$ENVIRONMENT"
+done
+unset value
+
 echo
-echo "Both secrets are on the $ENVIRONMENT environment, and the key is known to work."
+echo "All secrets are on the $ENVIRONMENT environment, and the key is known to work."
 echo "Ship something, or trigger it directly:"
 echo "  gh workflow run Deploy --repo $REPO"

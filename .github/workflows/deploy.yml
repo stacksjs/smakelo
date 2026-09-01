@@ -59,16 +59,25 @@ jobs:
         env:
           DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          APP_KEY: ${{ secrets.APP_KEY }}
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           DEPLOY_OPTIONAL: ${{ vars.DEPLOY_OPTIONAL }}
         run: |
-          if [ -n "$DOTENV_PRIVATE_KEY_PRODUCTION" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
-            echo 'configured=true' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           missing=
           [ -z "$DEPLOY_SSH_KEY" ] && missing="$missing DEPLOY_SSH_KEY"
           [ -z "$DOTENV_PRIVATE_KEY_PRODUCTION" ] && missing="$missing DOTENV_PRIVATE_KEY_PRODUCTION"
+          # APP_KEY is not optional and not defaultable. `buddy deploy` writes
+          # the environment it runs with to the server, and with no APP_KEY it
+          # generates a random one - which replaces production's and signs
+          # every existing session out. A deploy that cannot do it correctly
+          # must not do it at all.
+          [ -z "$APP_KEY" ] && missing="$missing APP_KEY"
+          [ -z "$HCLOUD_TOKEN" ] && missing="$missing HCLOUD_TOKEN"
+
+          if [ -z "$missing" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           echo 'configured=false' >> "$GITHUB_OUTPUT"
 
@@ -127,6 +136,45 @@ jobs:
           ssh-keygen -y -f ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.pub
           chmod 644 ~/.ssh/id_ed25519.pub
 
+      # Write the environment the deploy will ship.
+      #
+      # `buddy deploy` sends the environment it runs with to the server, and a
+      # runner starts with no `.env` at all - so it made one, generated a
+      # random APP_KEY into it, and would have replaced production's. Every
+      # signed-in session is signed with that key; a new one signs all of them
+      # out, and nothing about the deploy looks like it failed.
+      #
+      # The one deploy that actually reached this point died on a missing
+      # Hetzner token first, which is the only reason it did not happen.
+      #
+      # Written before the deploy rather than passed as environment variables,
+      # because it is the file that travels to the server.
+      - name: Write the production env
+        if: steps.check.outputs.configured == 'true'
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          umask 077
+          {
+            echo "APP_NAME=Smakelo"
+            echo "APP_ENV=production"
+            echo "APP_KEY=$APP_KEY"
+            echo "APP_URL=https://smakelo.stacksjs.com"
+            echo "DB_CONNECTION=sqlite"
+            echo "DB_DATABASE=/var/lib/smakelo/smakelo.sqlite"
+            echo "DB_DATABASE_PATH=/var/lib/smakelo/smakelo.sqlite"
+            echo "HCLOUD_TOKEN=$HCLOUD_TOKEN"
+            echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID"
+          } > .env
+
+          # Belt and braces: if APP_KEY were ever empty the line above would
+          # write `APP_KEY=` and the deploy would fill it in for us.
+          grep -q '^APP_KEY=.\+' .env || { echo '::error::APP_KEY is empty; refusing to deploy a generated one.'; exit 1; }
+
       # What is serving right now, so the check afterwards can tell a new
       # release from the old one still being up. Best effort: a site that is
       # down or does not exist yet records nothing, and the check below then
@@ -153,6 +201,7 @@ jobs:
           # zone, declared in config/cloud.ts. Keep these in the environment
           # even when they are also in .env.production — a missing one now
           # fails loudly instead of reaching for another provider's keys.
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
           PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
