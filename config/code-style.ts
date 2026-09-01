@@ -88,6 +88,9 @@ const config: PickierOptions = {
     '**/docs/deps/**',
     // Generated scaffolds copied into pantry — out of project control
     '**/pantry/**',
+    // Bundled by `buddy build:splathash` from the installed package, minified,
+    // and served as-is. Linting it reports on somebody else's minifier.
+    '**/public/js/**',
   ],
 }
 

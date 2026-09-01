@@ -58,9 +58,14 @@ export interface BusinessResult {
   opensInMinutes?: number
   /** The photograph, at the three sizes a card or a page needs. */
   photoId: string
+  /** Smallest variant, for `src`. */
   photo: string
-  photoWide: string
-  photoThumb: string
+  /** Every variant, for `srcset`. */
+  photoSrcset: string
+  /** SplatHash, base64 - decoded in the browser to fill the frame. */
+  photoBlur: string
+  photoWidth: number
+  photoHeight: number
   /** The colour behind it, and the fallback when it does not load. */
   hue: number
   hueEnd: number

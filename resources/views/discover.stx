@@ -571,10 +571,10 @@ function openLabel(business) {
                 {{-- The photograph, over the business's own colour. The colour
                   is what shows while it decodes and what remains if it never
                   arrives; see app/Actions/Business/imagery.ts. --}}
-                <div class="cover flex justify-center items-center aspect-[16/10]" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
+                <div class="cover flex justify-center items-center aspect-[16/10]" :data-blur="card.photoBlur" :style="'--h: ' + card.hue + '; --h2: ' + card.hueEnd">
                   <i class="cover-mark w-9 h-9" :class="'i-hugeicons-' + card.icon"></i>
 
-                  <img class="cover-photo" :src="card.photo" alt="" loading="lazy" decoding="async" width="800" height="560">
+                  <img class="cover-photo" :src="card.photo" :srcset="card.photoSrcset" sizes="(min-width: 1280px) 320px, (min-width: 640px) 45vw, 92vw" alt="" loading="lazy" decoding="async" width="800" height="560">
 
                   <span class="cover-scrim"></span>
 

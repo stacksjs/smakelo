@@ -850,49 +850,116 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
 <script>
   /*
-   * Cover photographs: fade them in, and stand out of the way when one fails.
+   * Cover photographs: paint a placeholder, then fade the real one in.
    *
-   * Delegated on the document rather than bound per image, because the cards
-   * are rendered from a signal after this runs and there is nothing to bind to
-   * yet. Capture phase, because `load` and `error` do not bubble.
+   * Every processed image carries a SplatHash - sixteen bytes summarising the
+   * picture - on `data-blur`. Decoding one gives a blurred version of the
+   * photograph to sit in the frame until the file arrives, so a card is never
+   * an empty rectangle and never jumps when the image lands.
    *
-   * Only the `error` event marks a cover failed. The tempting shortcut -
-   * treating `complete && !naturalWidth` as a failure - cannot tell a broken
-   * image from a lazy one that has not started yet: both report exactly that,
-   * and every card passes through the second state on the tick it is inserted.
-   * Reading it as failure hid all sixty photographs behind their fallback.
+   * The hash travels rather than the decoded image because the decoded form is
+   * a few kilobytes each, and a page of sixty cards cannot carry sixty of
+   * those in its markup. Twenty-four characters can.
    *
-   * So the sweep only ever confirms success, for the case the listeners cannot
-   * catch: an image served from cache that finished before they were attached.
+   * Decoded lazily, as each image is seen, rather than all at once on load:
+   * sixty decodes up front is work done for cards most visitors never scroll
+   * to, on the main thread, while the page is still trying to become
+   * interactive.
+   *
+   * Only `error` marks a cover failed. The tempting shortcut - treating
+   * `complete && !naturalWidth` as failure - cannot tell a broken image from a
+   * lazy one that has not started: both report exactly that, and every card
+   * passes through the second state on the tick it is inserted. Reading it as
+   * failure once hid all sixty photographs behind their fallback.
    */
-  ;(function () {
-    function loaded(image) {
-      if (image && image.classList && image.classList.contains('cover-photo'))
-        image.setAttribute('data-loaded', '')
+  /*
+   * The decoder is fetched when the first placeholder is actually wanted.
+   *
+   * `import()` rather than a static import, for two reasons. It is the right
+   * shape: nothing here runs until an image frame comes into view, so a module
+   * the page blocks on at parse time would be paid for by every visitor
+   * including the ones who never scroll. And a static import only works at the
+   * top level of a module, which this script cannot rely on being - the
+   * template pipeline decides how it is wrapped, and inside a function the
+   * static form is a SyntaxError that stops the whole block from running.
+   */
+  let decoder = null
+
+  function splathash() {
+    decoder = decoder || import('/js/splathash.js')
+
+    return decoder
+  }
+
+  function loaded(image) {
+    if (image && image.classList && image.classList.contains('cover-photo'))
+      image.setAttribute('data-loaded', '')
+  }
+
+  function failed(image) {
+    if (image && image.classList && image.classList.contains('cover-photo'))
+      image.setAttribute('data-failed', '')
+  }
+
+  document.addEventListener('load', function (event) { loaded(event.target) }, true)
+  document.addEventListener('error', function (event) { failed(event.target) }, true)
+
+  /* One frame's worth of placeholders at a time. A screen holds a handful;
+     decoding the rest can wait for the scroll that asks for them. */
+  const waiting = new WeakSet()
+
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting)
+        continue
+
+      seen.unobserve(entry.target)
+      paint(entry.target)
+    }
+  }, { rootMargin: '400px' })
+
+  function paint(frame) {
+    const hash = frame.dataset.blur
+
+    if (!hash)
+      return
+
+    splathash().then(function (module) {
+      frame.style.backgroundImage = `url("${module.splatHashToDataURL(module.splatHashFromBase64(hash))}")`
+      frame.style.backgroundSize = 'cover'
+      frame.style.backgroundPosition = 'center'
+    }).catch(function () {
+      // A hash that will not decode, or a decoder that will not load, leaves
+      // the coloured ground - which is a complete backdrop on its own. The
+      // decoder throws on a malformed hash rather than painting noise, which
+      // is why this is a no-op and not a broken frame.
+    })
+  }
+
+  function sweep() {
+    for (const image of document.querySelectorAll('.cover-photo:not([data-loaded])')) {
+      if (image.complete && image.naturalWidth > 0)
+        loaded(image)
     }
 
-    function failed(image) {
-      if (image && image.classList && image.classList.contains('cover-photo'))
-        image.setAttribute('data-failed', '')
+    for (const frame of document.querySelectorAll('.cover[data-blur]')) {
+      if (waiting.has(frame))
+        continue
+
+      waiting.add(frame)
+      seen.observe(frame)
     }
+  }
 
-    document.addEventListener('load', function (event) { loaded(event.target) }, true)
-    document.addEventListener('error', function (event) { failed(event.target) }, true)
+  document.addEventListener('DOMContentLoaded', sweep)
 
-    function sweep() {
-      for (const image of document.querySelectorAll('.cover-photo:not([data-loaded])'))
-        if (image.complete && image.naturalWidth > 0)
-          loaded(image)
-    }
+  // Signal-rendered grids arrive after that, so sweep again whenever the
+  // document grows. An observer rather than a poll: the cards land in one
+  // burst when a search resolves, and a timer either misses that burst or
+  // runs forever waiting for it.
+  new MutationObserver(sweep).observe(document.documentElement, { childList: true, subtree: true })
 
-    document.addEventListener('DOMContentLoaded', sweep)
-
-    // Signal-rendered grids arrive after that, so sweep again whenever the
-    // document grows. An observer rather than a poll: the cards land in one
-    // burst when a search resolves, and a timer either misses that burst or
-    // runs forever waiting for it.
-    new MutationObserver(sweep).observe(document.documentElement, { childList: true, subtree: true })
-  })()
+  sweep()
 </script>
 
 <script>

@@ -1,5 +1,6 @@
 import { db } from '@stacksjs/database'
 import { dishIcon, visualFor } from '../Business/identity'
+import { dishPhotoFor } from '../Business/imagery'
 
 /**
  * A business's menu, shaped for the ordering screen.
@@ -35,7 +36,24 @@ export interface MenuItem {
   allergens: string[]
   /** A glyph for the dish, so a menu of twenty rows can be scanned. */
   iconClass: string
+  /**
+   * A photograph of the kind of dish this is.
+   *
+   * Stock, and keyed on the dish's own name rather than the restaurant's
+   * cuisine, so a pizzeria's salad is a salad. Empty when the image build has
+   * not run, which the markup treats as "draw the glyph instead".
+   */
+  photo: string
+  photoSrcset: string
+  photoBlur: string
   groups: MenuGroup[]
+}
+
+/** Just the parts of a processed image a menu row uses. */
+function dishPhoto(name: string, cuisine: string): { photo: string, photoSrcset: string, photoBlur: string } {
+  const image = dishPhotoFor(name, cuisine)
+
+  return { photo: image.photo, photoSrcset: image.photoSrcset, photoBlur: image.photoBlur }
 }
 
 export interface Menu {
@@ -53,9 +71,14 @@ export interface Menu {
     longitude: number
     /** The photograph and the colour behind it; see Business/identity.ts. */
     photoId: string
+    /** Smallest variant, for `src`. */
     photo: string
-    photoWide: string
-    photoThumb: string
+    /** Every variant, for `srcset`. */
+    photoSrcset: string
+    /** SplatHash, base64 - decoded in the browser to fill the frame. */
+    photoBlur: string
+    photoWidth: number
+    photoHeight: number
     hue: number
     hueEnd: number
     icon: string
@@ -94,6 +117,10 @@ export async function menuFor(slug: string): Promise<Menu | null> {
   })
 
   const businessIcon = businessVisual.icon
+
+  // What the restaurant sells, for dishes whose own name says nothing a photo
+  // library recognises - "Margherita" is a pizza only if you already know.
+  const businessCuisine = String(business.cuisine ?? '')
 
   const rows = await db.selectFrom('products')
     .where('business_id', '=', businessId)
@@ -162,6 +189,7 @@ export async function menuFor(slug: string): Promise<Menu | null> {
       prepMinutes: Number(row.preparation_time ?? 0),
       allergens: parseAllergens(row.allergens),
       iconClass: `i-hugeicons-${dishIcon(row.name, row.description, businessIcon)}`,
+      ...dishPhoto(String(row.name), businessCuisine),
       groups: groupsByProduct.get(Number(row.id)) ?? [],
     })
 

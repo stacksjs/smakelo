@@ -239,39 +239,202 @@ export function photoIdFor(input: PhotoInput): string {
   return bucket[pick(slug) % bucket.length]!
 }
 
-/**
- * A URL for a given box.
- *
- * `fit=crop` with an explicit height rather than a width alone, because a
- * card is a fixed rectangle and a photograph that arrives at its own aspect
- * ratio either letterboxes or overflows it. `auto=format` lets the CDN send
- * webp where it can. Quality is 68: above that the file grows faster than the
- * picture improves at these sizes.
- */
-export function photoUrl(id: string, width: number, height: number): string {
-  return `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=entropy&w=${width}&h=${height}&q=68`
+/** Every id in the library, for the build that fetches and processes them. */
+export function everyPhotoId(): string[] {
+  const ids = new Set<string>()
+
+  for (const bucket of Object.values(LIBRARY)) {
+    for (const id of bucket)
+      ids.add(id)
+  }
+
+  return [...ids]
 }
+
+/**
+ * Where a photograph is fetched from, at build time and only at build time.
+ *
+ * Nothing at request time touches this host: `buddy build:images` reads it
+ * once, and everything the site serves afterwards comes out of `public/`.
+ * `fit=crop` with an explicit height because a card is a fixed rectangle and a
+ * photograph arriving at its own aspect ratio either letterboxes or overflows.
+ */
+export function photoSourceUrl(id: string, width: number): string {
+  return `https://images.unsplash.com/${id}?fit=crop&crop=entropy&w=${width}&h=${Math.round(width * 0.7)}&q=82`
+}
+
+/**
+ * A dish's photograph.
+ *
+ * The same library, keyed on what the dish is called rather than on what the
+ * business sells: a pizzeria's salad should be a salad. Falls back to the
+ * restaurant's own cuisine when the name says nothing recognisable, because a
+ * plausible-but-wrong photograph is worse than a generic one.
+ */
+export function dishPhotoId(name: string, cuisine: string): string {
+  const words = String(name ?? '').toLowerCase()
+
+  for (const [needle, bucket] of DISH_BUCKETS) {
+    if (words.includes(needle))
+      return LIBRARY[bucket]![pick(words) % LIBRARY[bucket]!.length]!
+  }
+
+  return photoIdFor({ slug: words, cuisine })
+}
+
+/**
+ * Dish words to buckets, longest and most specific first.
+ *
+ * Ordered by hand rather than sorted, because the first match wins and the
+ * general words have to come last: "ice cream" before "cream", "pizza" before
+ * "pie". A dish called "Margherita" matches nothing here and falls through to
+ * the restaurant's cuisine, which is the right answer.
+ */
+const DISH_BUCKETS: Array<[string, string]> = [
+  ['pizza', 'pizza'],
+  ['margherita', 'pizza'],
+  ['calzone', 'pizza'],
+  ['burger', 'burger'],
+  ['cheeseburger', 'burger'],
+  ['taco', 'taco'],
+  ['burrito', 'taco'],
+  ['quesadilla', 'taco'],
+  ['sushi', 'sushi'],
+  ['sashimi', 'sushi'],
+  ['maki', 'sushi'],
+  ['nigiri', 'sushi'],
+  ['ramen', 'noodles'],
+  ['noodle', 'noodles'],
+  ['pasta', 'noodles'],
+  ['spaghetti', 'noodles'],
+  ['linguine', 'noodles'],
+  ['tagliatelle', 'noodles'],
+  ['pappardelle', 'noodles'],
+  ['rigatoni', 'noodles'],
+  ['gnocchi', 'noodles'],
+  ['lasagne', 'noodles'],
+  ['lasagna', 'noodles'],
+  ['udon', 'noodles'],
+  ['pho', 'noodles'],
+  ['rice', 'rice'],
+  ['risotto', 'rice'],
+  ['biryani', 'rice'],
+  ['curry', 'indian'],
+  ['masala', 'indian'],
+  ['tikka', 'indian'],
+  ['dal', 'indian'],
+  ['samosa', 'indian'],
+  ['hummus', 'mediterranean'],
+  ['falafel', 'mediterranean'],
+  ['mezze', 'mediterranean'],
+  ['shawarma', 'mediterranean'],
+  ['kebab', 'mediterranean'],
+  ['salad', 'salad'],
+  ['greens', 'salad'],
+  ['slaw', 'salad'],
+  ['steak', 'steak'],
+  ['ribeye', 'steak'],
+  ['brisket', 'steak'],
+  ['lamb', 'steak'],
+  ['fish', 'seafood'],
+  ['salmon', 'seafood'],
+  ['tuna', 'seafood'],
+  ['prawn', 'seafood'],
+  ['shrimp', 'seafood'],
+  ['oyster', 'seafood'],
+  ['crab', 'seafood'],
+  ['ice cream', 'dessert'],
+  ['gelato', 'dessert'],
+  ['tiramisu', 'dessert'],
+  ['cake', 'dessert'],
+  ['tart', 'dessert'],
+  ['brownie', 'dessert'],
+  ['pudding', 'dessert'],
+  ['cookie', 'dessert'],
+  ['croissant', 'bakery'],
+  ['bread', 'bakery'],
+  ['focaccia', 'bakery'],
+  ['bagel', 'bakery'],
+  ['pastry', 'bakery'],
+  ['espresso', 'coffee'],
+  ['latte', 'coffee'],
+  ['cappuccino', 'coffee'],
+  ['flat white', 'coffee'],
+  ['americano', 'coffee'],
+  ['cold brew', 'coffee'],
+  ['coffee', 'coffee'],
+  ['matcha', 'tea'],
+  ['tea', 'tea'],
+  ['egg', 'breakfast'],
+  ['omelette', 'breakfast'],
+  ['pancake', 'breakfast'],
+  ['toast', 'breakfast'],
+  ['granola', 'breakfast'],
+]
 
 /** Both sizes a listing needs: the card in a grid, and the band on its page. */
 export interface BusinessPhoto {
   photoId: string
-  /** 3:2, for the cards. */
+  /** Smallest variant, for `src`. */
   photo: string
-  /** A wide band, for the top of a place page. */
-  photoWide: string
-  /** Square and small, for the 48px tiles in a list of orders or saves. */
-  photoThumb: string
+  /** Every variant, for `srcset` - the browser picks by the rendered width. */
+  photoSrcset: string
+  /** The SplatHash, decoded, to fill the frame while the file arrives. */
+  photoBlur: string
+  photoWidth: number
+  photoHeight: number
 }
 
-export function photoFor(input: PhotoInput): BusinessPhoto {
-  const id = photoIdFor(input)
+/**
+ * The processed images, written by `buddy build:images`.
+ *
+ * Read once at module load rather than per call: it is one small JSON file and
+ * this runs for every card on every page.
+ *
+ * An empty manifest is a working site, not a broken one - every image on this
+ * site sits on a coloured ground derived from the business, and that ground is
+ * what shows when there is no photograph to put on it. So a checkout that has
+ * not run the image build renders in flat colour rather than failing.
+ */
+let manifest: Record<string, ImageEntry> = {}
+
+try {
+  // eslint-disable-next-line ts/no-require-imports
+  manifest = require('../../../public/img/photos/manifest.json')
+}
+catch {
+  manifest = {}
+}
+
+export interface ImageEntry {
+  src: string
+  srcset: string
+  width: number
+  height: number
+  blur: string
+}
+
+/** What a view needs to render one photograph, by id. */
+export function imageFor(id: string): BusinessPhoto {
+  const entry = manifest[id]
 
   return {
     photoId: id,
-    photo: photoUrl(id, 800, 560),
-    photoWide: photoUrl(id, 1600, 640),
-    photoThumb: photoUrl(id, 160, 160),
+    photo: entry?.src ?? '',
+    photoSrcset: entry?.srcset ?? '',
+    photoBlur: entry?.blur ?? '',
+    photoWidth: entry?.width ?? 0,
+    photoHeight: entry?.height ?? 0,
   }
+}
+
+export function photoFor(input: PhotoInput): BusinessPhoto {
+  return imageFor(photoIdFor(input))
+}
+
+/** The same, for one dish on a menu. */
+export function dishPhotoFor(name: string, cuisine: string): BusinessPhoto {
+  return imageFor(dishPhotoId(name, cuisine))
 }
 
 function bucketFor(cuisine: string, type: string): string {

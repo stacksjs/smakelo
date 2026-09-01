@@ -43,9 +43,9 @@ const canonicalPath = '/orders'
             <div class="p-6 rounded-[calc(1.5rem-0.375rem)]">
               <div class="flex flex-wrap gap-4 justify-between items-center">
                 <div class="flex gap-4 items-center min-w-0">
-                  <div class="cover flex justify-center items-center w-12 h-12 rounded-[0.9rem] shrink-0" :style="'--h: ' + order.hue + '; --h2: ' + order.hueEnd">
+                  <div class="cover flex justify-center items-center w-12 h-12 rounded-[0.9rem] shrink-0" :data-blur="order.photoBlur" :style="'--h: ' + order.hue + '; --h2: ' + order.hueEnd">
                     <i class="cover-mark w-5 h-5" :class="order.iconClass"></i>
-                    <img class="cover-photo" :src="order.photoThumb" alt="" loading="lazy" decoding="async" width="160" height="160">
+                    <img class="cover-photo" :src="order.photo" :srcset="order.photoSrcset" sizes="64px" alt="" loading="lazy" decoding="async" width="160" height="160">
                   </div>
                   <a :href="'/places/' + order.businessSlug" class="text-[16px] font-semibold transition-opacity duration-500 hover:opacity-70">{{ order.businessName }}</a>
                 </div>

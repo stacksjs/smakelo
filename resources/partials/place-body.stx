@@ -32,9 +32,9 @@ import { t } from '../../app/Actions/Locale/translate'
 
       {{-- The cover band: a photograph of what this kind of kitchen sends
         out, over the business's own colour. See Business/imagery.ts. --}}
-      <div class="cover flex overflow-hidden relative justify-center items-center mt-6 h-56 rounded-[1.75rem] sm:h-72" style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}">
+      <div class="cover flex overflow-hidden relative justify-center items-center mt-6 h-56 rounded-[1.75rem] sm:h-72" data-blur="{{ vm.photoBlur }}" style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}">
         <i class="cover-mark w-14 h-14 sm:w-16 sm:h-16 {{ vm.iconClass }}"></i>
-        <img class="cover-photo" src="{{ vm.photoWide }}" alt="" fetchpriority="high" decoding="async" width="1600" height="640">
+        <img class="cover-photo" src="{{ vm.photo }}" srcset="{{ vm.photoSrcset }}" sizes="(min-width: 1280px) 1200px, 100vw" alt="" fetchpriority="high" decoding="async" width="1600" height="640">
         <span class="cover-scrim"></span>
         <span class="absolute right-5 bottom-4 text-[13px] font-semibold tracking-[0.18em] text-white" style="opacity: .8; text-shadow: 0 1px 3px rgba(0,0,0,.45)">{{ vm.monogram }}</span>
       </div>

@@ -47,9 +47,14 @@ export interface PlaceViewModel {
   type: string
   /** The photograph and the colour behind it; see Business/identity.ts. */
   photoId: string
+  /** Smallest variant, for `src`. */
   photo: string
-  photoWide: string
-  photoThumb: string
+  /** Every variant, for `srcset`. */
+  photoSrcset: string
+  /** SplatHash, base64 - decoded in the browser to fill the frame. */
+  photoBlur: string
+  photoWidth: number
+  photoHeight: number
   hue: number
   hueEnd: number
   icon: string
