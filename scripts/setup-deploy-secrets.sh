@@ -1,75 +1,99 @@
 #!/usr/bin/env bash
 #
-# Give the Deploy workflow the two secrets it needs.
-#
-# Push-to-deploy is gated on these, and without them the workflow fails with a
-# notice naming them. They are a private SSH key and a dotenv decryption key,
-# so they are yours to install rather than something automation should route
-# through a third party - this script only puts them where GitHub wants them,
-# and never prints or copies them anywhere else.
+# Give the Deploy workflow the two secrets it needs, and prove they work.
 #
 #   bash scripts/setup-deploy-secrets.sh
 #
-# Re-runnable: setting a secret that already exists overwrites it.
+# The secrets are a private SSH key and the key that decrypts .env.production,
+# so they are yours to install: this script moves them from your machine to
+# GitHub and never prints them or copies them anywhere else.
+#
+# Re-runnable. Setting a secret that already exists overwrites it.
+#
+# The first version of this script took `~/.ssh/id_ed25519` on faith. That key
+# has a passphrase, and `ssh-add` in a runner has no terminal to ask on, so the
+# deploy failed at "Load the deploy key" with `Command failed: ssh-add -` and
+# nothing to say why. A key CI cannot use is worse than no key: the secret
+# exists, the gate passes, and the failure moves somewhere less obvious. So
+# this checks first, and makes a usable key when the default will not do.
 
 set -euo pipefail
 
 REPO="${DEPLOY_REPO:-stacksjs/smakelo}"
 ENVIRONMENT="${DEPLOY_ENVIRONMENT:-production}"
-SSH_KEY="${DEPLOY_SSH_KEY_PATH:-$HOME/.ssh/id_ed25519}"
+SERVER="${DEPLOY_SERVER:-178.105.248.188}"
+SERVER_USER="${DEPLOY_SERVER_USER:-root}"
+DEPLOY_KEY="${DEPLOY_SSH_KEY_PATH:-$HOME/.ssh/smakelo-deploy}"
 
 command -v gh >/dev/null || { echo "gh is not installed: https://cli.github.com"; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "gh is not logged in. Run: gh auth login"; exit 1; }
 
 echo "Repository:  $REPO"
 echo "Environment: $ENVIRONMENT"
+echo "Server:      $SERVER_USER@$SERVER"
 echo
 
-# --- 1. The key the server trusts -------------------------------------------
-#
-# The deploy talks to the box as root over SSH with BatchMode on, so the key
-# has to be one the box already accepts. This is the same key a working
-# `ssh root@<box>` from this machine uses.
-if [ ! -f "$SSH_KEY" ]; then
-  echo "No SSH key at $SSH_KEY."
-  echo "Set DEPLOY_SSH_KEY_PATH to the private key the server trusts, then re-run."
-  exit 1
+usable() {
+  # A key CI can load is one that needs no passphrase. `-P ''` succeeds only
+  # when the empty passphrase is the right one.
+  [ -f "$1" ] && ssh-keygen -y -P '' -f "$1" >/dev/null 2>&1
+}
+
+# --- 1. A key a runner can actually load ------------------------------------
+if usable "$DEPLOY_KEY"; then
+  echo "→ Using existing deploy key at $DEPLOY_KEY"
+else
+  if [ -f "$DEPLOY_KEY" ]; then
+    echo "The key at $DEPLOY_KEY has a passphrase, which a CI runner cannot answer."
+    echo "Move it aside or set DEPLOY_SSH_KEY_PATH to a different path, then re-run."
+    exit 1
+  fi
+
+  echo "→ Creating a dedicated deploy key at $DEPLOY_KEY (no passphrase)"
+  # Its own key rather than your personal one: it lives in a CI secret, it is
+  # only trusted for this deploy, and revoking it is one line on the server.
+  ssh-keygen -t ed25519 -N '' -C "smakelo-deploy (github actions)" -f "$DEPLOY_KEY" >/dev/null
+
+  echo "→ Authorising it on $SERVER_USER@$SERVER"
+  # Appends only if absent, so re-running does not grow the file.
+  ssh -o ConnectTimeout=20 "$SERVER_USER@$SERVER" \
+    "mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && grep -qxF '$(cat "$DEPLOY_KEY.pub")' ~/.ssh/authorized_keys || echo '$(cat "$DEPLOY_KEY.pub")' >> ~/.ssh/authorized_keys"
 fi
 
-echo "→ DEPLOY_SSH_KEY   from $SSH_KEY"
-gh secret set DEPLOY_SSH_KEY --repo "$REPO" --env "$ENVIRONMENT" < "$SSH_KEY"
+# --- 2. Prove the key works before trusting it -------------------------------
+#
+# BatchMode so it fails rather than falling back to a prompt or another key in
+# the agent — which is exactly how an unusable key looked fine from a laptop
+# and failed in CI.
+echo "→ Checking the key can reach the server on its own"
+if ! ssh -i "$DEPLOY_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
+       -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER" true 2>/dev/null; then
+  echo "  Could not log in with $DEPLOY_KEY."
+  echo "  Authorise its public half on the server and re-run:"
+  echo "    ssh-copy-id -i $DEPLOY_KEY.pub $SERVER_USER@$SERVER"
+  exit 1
+fi
+echo "  ok"
 
-# --- 2. The key that decrypts .env.production -------------------------------
+# --- 3. Install it -----------------------------------------------------------
+echo "→ DEPLOY_SSH_KEY"
+gh secret set DEPLOY_SSH_KEY --repo "$REPO" --env "$ENVIRONMENT" < "$DEPLOY_KEY"
+
+# --- 4. The key that decrypts .env.production --------------------------------
 #
 # Without it the encrypted values fall back to defaults, which is how an app
-# deploys with the wrong APP_KEY and invalidates every session it had. It lives
-# in .env.keys, which is gitignored.
+# deploys with the wrong APP_KEY and invalidates every session it had.
 KEYS_FILE="${DOTENV_KEYS_FILE:-.env.keys}"
+[ -f "$KEYS_FILE" ] || { echo "No $KEYS_FILE here. Run from the repo root, or set DOTENV_KEYS_FILE."; exit 1; }
 
-if [ ! -f "$KEYS_FILE" ]; then
-  echo "No $KEYS_FILE here. Run this from the repo root, or set DOTENV_KEYS_FILE."
-  exit 1
-fi
-
-# The line is DOTENV_PRIVATE_KEY_PRODUCTION="<hex>". Take everything after the
-# first `=` and strip the quotes, without echoing it anywhere.
 PRIVATE_KEY="$(grep -m1 '^DOTENV_PRIVATE_KEY_PRODUCTION=' "$KEYS_FILE" | cut -d= -f2- | tr -d '"'"'"'')"
+[ -n "$PRIVATE_KEY" ] || { echo "No DOTENV_PRIVATE_KEY_PRODUCTION in $KEYS_FILE."; exit 1; }
 
-if [ -z "$PRIVATE_KEY" ]; then
-  echo "No DOTENV_PRIVATE_KEY_PRODUCTION found in $KEYS_FILE."
-  exit 1
-fi
-
-echo "→ DOTENV_PRIVATE_KEY_PRODUCTION   from $KEYS_FILE"
+echo "→ DOTENV_PRIVATE_KEY_PRODUCTION"
 printf '%s' "$PRIVATE_KEY" | gh secret set DOTENV_PRIVATE_KEY_PRODUCTION --repo "$REPO" --env "$ENVIRONMENT"
-
 unset PRIVATE_KEY
 
 echo
-echo "Done. Both secrets are on the $ENVIRONMENT environment."
-echo
-echo "Verify by shipping something, or trigger it directly:"
+echo "Both secrets are on the $ENVIRONMENT environment, and the key is known to work."
+echo "Ship something, or trigger it directly:"
 echo "  gh workflow run Deploy --repo $REPO"
-echo
-echo "The run should now get past 'Is deployment configured?' and finish with"
-echo "'<site> is serving build <id>' from the post-deploy check."
