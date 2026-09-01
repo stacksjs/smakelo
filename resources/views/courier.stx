@@ -23,7 +23,7 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
  * silently falls back to English. The shared strings are in partials/head.stx.
  */
 const clientStrings = JSON.stringify({
-  'courier.on_shift': t('courier.on_shift'),
+  'courier.shift_end': t('courier.shift_end'),
   'courier.shift_start': t('courier.shift_start'),
   'courier.sharing_position': t('courier.sharing_position'),
   'courier.position_private': t('courier.position_private'),
@@ -104,7 +104,7 @@ const canonicalPath = '/courier'
               @click="toggleShift()"
               class="px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-500 active:scale-[0.98]"
               :style="online() ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-            >{{ online() ? say('courier.on_shift', 'On shift') : say('courier.shift_start', 'Go online') }}</button>
+            >{{ online() ? say('courier.shift_end', 'Go offline') : say('courier.shift_start', 'Go online') }}</button>
           </div>
 
           <p :if="error()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ error() }}</p>

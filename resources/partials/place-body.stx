@@ -1,3 +1,14 @@
+<script server>
+/*
+ * This partial imports what it uses.
+ *
+ * A partial inherits the including page's scope, and leaning on it for `t`
+ * makes every page responsible for importing something only the partial needs
+ * - a page that forgets renders key names. Its own import cannot be forgotten.
+ */
+import { t } from '../../app/Actions/Locale/translate'
+</script>
+
 {{-- The place page's content.
 
   Included by every generated view under resources/views/places/, each of which
@@ -247,7 +258,7 @@
 
               <input
                 :if="share().fulfilment === 'delivery'"
-                placeholder="{{ t('place.form_address') }}"
+                placeholder="{{ t('order.address') }}"
                 maxlength="255"
                 :value="share().address"
                 @input="setShare('address', $event.target.value)"
@@ -307,7 +318,7 @@
                       </div>
 
                       <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">
-                        {{ review.authorName }}{{ review.verified ? ' · ordered through Smakelo' : '' }}
+                        {{ review.authorName }}{{ review.verified ? ' · ' + say('review.verified', 'ordered through Smakelo') : '' }}
                       </p>
                     </div>
                   </div>
@@ -353,11 +364,18 @@
                   {{ t('place.review_prompt') }}
                 </p>
 
-                <div class="flex gap-1 mt-5">
+                {{-- Five bare stars said nothing to a screen reader and named
+                  nothing on the page. The label is what the group is for, and
+                  each star says which one it is. --}}
+                <p class="mt-5 text-[12px] font-medium tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('review.rating') }}</p>
+
+                <div class="flex gap-1 mt-2" role="group" aria-label="{{ t('review.rating') }}">
                   <button
                     :for="star in [1, 2, 3, 4, 5]"
                     type="button"
                     @click="setComposer('rating', star)"
+                    :aria-label="starLabel(star)"
+                    :aria-pressed="star <= composer().rating ? 'true' : 'false'"
                     class="p-1 text-[22px] leading-none transition-transform duration-500 hover:scale-110"
                     :style="star <= composer().rating ? 'color: var(--accent)' : 'color: var(--line)'"
                   >★</button>

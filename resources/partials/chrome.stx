@@ -1,3 +1,14 @@
+<script server>
+/*
+ * This partial imports what it uses.
+ *
+ * A partial inherits the including page's scope, and leaning on it for `t`
+ * makes every page responsible for importing something only the partial needs
+ * - a page that forgets renders key names. Its own import cannot be forgotten.
+ */
+import { t } from '../../app/Actions/Locale/translate'
+</script>
+
 {{-- The nav, on every page.
 
   Kept to the handful of places somebody actually moves between: discover,

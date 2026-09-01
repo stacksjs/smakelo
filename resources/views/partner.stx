@@ -72,7 +72,7 @@ const surfaces = [
     href: '/claims',
   },
   {
-    name: t('partner.payouts_title'),
+    name: t('partner.payouts'),
     icon: 'i-hugeicons-money-bag-02',
     detail: t('partner.payouts_body'),
     state: t('partner.built'),

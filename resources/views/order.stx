@@ -279,7 +279,7 @@ const canonicalPath = '/order'
                       <dd class="tabular-nums">{{ money(quote().deliveryFeeCents, currency()) }}</dd>
                     </div>
                     <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">{{ t('checkout.service') }}</dt>
+                      <dt style="color: var(--ink-soft)">{{ t('order.service_fee') }}</dt>
                       <dd class="tabular-nums">{{ money(quote().serviceFeeCents, currency()) }}</dd>
                     </div>
                     <div class="flex justify-between">

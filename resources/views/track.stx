@@ -24,6 +24,7 @@ const clientStrings = JSON.stringify({
   'status.out_for_delivery': t('status.out_for_delivery'),
   'status.delivered': t('status.delivered'),
   'tracking.about_minutes': t('tracking.about_minutes', { minutes: '{minutes}' }),
+  'tracking.arriving_now': t('tracking.arriving_now'),
   'tracking.your_address': t('tracking.your_address'),
 })
 
@@ -147,7 +148,14 @@ const canonicalPath = '/track'
           return say('status.delivered', 'Delivered')
 
         if (current.stop && current.stop.etaAt) {
-          const minutes = Math.max(1, Math.round((new Date(current.stop.etaAt) - Date.now()) / 60000))
+          const minutes = Math.round((new Date(current.stop.etaAt) - Date.now()) / 60000)
+
+          /* An estimate that has passed said "about 1 min", and kept saying it
+             for as long as the courier was late. Once it is up, the honest
+             answer is that the order is arriving, not that it is one minute
+             away for the fourth time. */
+          if (minutes < 1)
+            return say('tracking.arriving_now', 'Arriving now')
 
           return say('tracking.about_minutes', 'about {minutes} min').replace('{minutes}', minutes)
         }

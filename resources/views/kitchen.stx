@@ -119,7 +119,7 @@ const canonicalPath = '/kitchen'
 
                     <span :if="!nextStep(order)" class="text-[13px]" style="color: var(--ink-soft)">{{ t('kitchen.waiting_handover') }}</span>
 
-                    <button @click="advance(order.id, 'CANCELLED')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('kitchen.cancel') }}</button>
+                    <button @click="advance(order.id, 'CANCELLED')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('common.cancel') }}</button>
 
                     <span class="ml-auto text-[13px] tabular-nums" style="color: var(--ink-soft)">{{ money(order.totalCents, board().business.currency) }}</span>
                   </div>

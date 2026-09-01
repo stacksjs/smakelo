@@ -1,3 +1,24 @@
+<script server>
+/*
+ * The footer imports what it uses.
+ *
+ * A partial inherits the including page's scope, and for a while this one
+ * leaned on it for `t`. That makes every page responsible for importing
+ * something only the footer needs, and a page that forgets renders a footer of
+ * key names. Its own script is smaller and cannot be forgotten.
+ */
+import { t } from '../../app/Actions/Locale/translate'
+import { REGIONS } from '../../app/Actions/Business/regions'
+
+/*
+ * The places this site covers, named in the language being read and derived
+ * from the region list rather than typed out. The line used to carry the three
+ * of them as a literal, which is true until somebody adds a fourth.
+ */
+const regionNames = REGIONS.map(region => t(`region.${region.slug}`)).join(', ')
+const footerTagline = t('footer.tagline', { regions: regionNames })
+</script>
+
 {{-- The footer, on every page.
 
   Everything the nav does not carry. The nav is three links - discover, your
@@ -22,7 +43,7 @@
         </a>
 
         <p class="mt-3 max-w-[28ch] text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-          {{ t('footer.tagline', { regions: 'Los Angeles, Wuppertal, Gescher' }) }}
+          {{ footerTagline }}
         </p>
       </div>
 

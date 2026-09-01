@@ -1,3 +1,16 @@
+<script server>
+/*
+ * The head imports what it uses.
+ *
+ * A partial inherits the including page's scope, and this one leaned on it
+ * for `t` and `currentLocale` - which made every page responsible for
+ * importing something only the head needs, and a page that forgot shipped a
+ * bundle of key names to its own scripts. `pageTitle` and the rest still come
+ * from the page, because those are the page's to decide.
+ */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+</script>
+
 {{-- Shared <head> for every Smakelo page.
 
   Partials inherit the including page's scope, so a page sets pageTitle,

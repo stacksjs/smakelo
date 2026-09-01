@@ -20,14 +20,10 @@ nav:
 
 search:
   placeholder: Tacos, Flat White, eine Gemüsekiste
-  near_me: In meiner Nähe
   open_now: Jetzt geöffnet
-  filters: Filter
-  sort: Sortieren
   sort_distance: Am nächsten
   sort_rating: Beste Bewertung
   no_results: Hier ist noch nichts. Versuche eine größere Umgebung.
-  results_count: '{count} Orte'
   takes_orders: Nimmt Bestellungen
   sort_name: A bis Z
   all_types: Alle
@@ -52,23 +48,17 @@ region:
 business:
   menu: Speisekarte
   reviews: Bewertungen
-  about: Über uns
   hours: Öffnungszeiten
   open: Geöffnet
   closed: Geschlossen
-  closes_at: 'Schließt um {time}'
-  opens_at: 'Öffnet um {time}'
-  directions: Route
-  call: Anrufen
   save: Merken
   saved: Gemerkt
-  claim: Ist das dein Betrieb?
-  rating_count: '{count} Bewertungen'
-  price_tier: Preis
+  rating_count: "{count} Bewertungen"
   no_reviews: Noch keine Bewertungen.
   hours_unknown: Öffnungszeiten nicht hinterlegt
   save_name: "{name} merken"
   rating_from: "{average} aus {count}"
+
 home:
   title: Finde die guten Orte in deiner Nähe.
   lede: Restaurants, Cafés, Bäckereien und Höfe. Lies, was Leute wirklich gesagt haben, und bestelle dann bei denen, die liefern.
@@ -79,7 +69,7 @@ home:
   browse_rest: Art stöbern
   open_lead: Jetzt
   open_rest: geöffnet
-  see_all: 'Alle {count} ansehen'
+  see_all: "Alle {count} ansehen"
   orders_lead: Nimmt
   orders_rest: Bestellungen
   browse_everything: Alles durchsehen
@@ -94,9 +84,9 @@ home:
   how_reviews_title: Bewertungen lesen
   how_reviews_body: Was Leute über das Essen gesagt haben, mit ihren Fotos und den Gerichten, die sie genannt haben.
   how_order_title: Bei denen bestellen, die liefern
-  how_order_body: '{count} davon nehmen Bestellungen an - Lieferung, Abholung oder Tisch. Über den Rest kann man hier lesen.'
+  how_order_body: "{count} davon nehmen Bestellungen an - Lieferung, Abholung oder Tisch. Über den Rest kann man hier lesen."
   subscribe_title: Erfahre, wenn ein Ort in deiner Nähe zu liefern anfängt.
-  subscribe_body: '{count} dieser Orte nehmen heute Bestellungen an. Wenn einer der anderen dazukommt, erfährst du es so.'
+  subscribe_body: "{count} dieser Orte nehmen heute Bestellungen an. Wenn einer der anderen dazukommt, erfährst du es so."
   subscribe_label: E-Mail-Adresse
   subscribe_button: Sag mir Bescheid
   subscribe_busy: Einen Moment…
@@ -144,6 +134,7 @@ discover:
   attribution: Kartenkacheln von CARTO, Daten von OpenStreetMap-Mitwirkenden.
   popup_order: Bestellen oder Bewertungen lesen
   popup_details: Details ansehen
+
 place:
   not_found: Nicht gefunden
   not_found_body: Dieser Ort ist nicht gelistet.
@@ -168,7 +159,6 @@ place:
   form_name: Dein Name
   form_reply_to: Wohin wir antworten
   form_what_happens: Was soll geschehen?
-  form_address: Lieferadresse
   joined_head: "Du bist dabei. Erste Kiste am {date}. Verwalten kannst du das unter"
   joined_tail: Wir schreiben dir am Tag vor jeder Kiste.
   your_shares: deinen Anteilen
@@ -189,6 +179,7 @@ place:
   reviews_closed: "{name} ist noch nicht bei Smakelo, deshalb sind Bewertungen hier geschlossen. Wenn du den Betrieb führst, beanspruche den Eintrag oben - dann öffnen sie noch am selben Tag."
   review_prompt: Sag, wie es wirklich war. Bewertungen bleiben stehen, und der Betrieb kann direkt darunter antworten.
   review_post: Abschicken
+
 meta:
   home_title: Smakelo - finde die guten Orte in deiner Nähe
   home_description: "Restaurants, Cafés, Bäckereien und Höfe rund um {region}. Lies die Bewertungen und bestelle dann Lieferung, Abholung oder eine wöchentliche Gemüsekiste."
@@ -224,24 +215,19 @@ meta:
   track_description: Wo deine Bestellung ist.
   codes_title: Tischcodes - Smakelo
   codes_description: Druckbare Codes für jeden Tisch.
+
 order:
   add_to_cart: Hinzufügen
-  cart: Warenkorb
-  cart_empty: Dein Warenkorb ist leer.
   subtotal: Zwischensumme
   delivery_fee: Lieferung
   service_fee: Service
   tax: MwSt.
   tip: Trinkgeld
   total: Gesamt
-  checkout: Zur Kasse
   place_order: Bestellung aufgeben
   delivery: Lieferung
   pickup: Abholung
   dine_in: Vor Ort
-  schedule: Für später planen
-  asap: So schnell wie möglich
-  notes: Hinweise für die Küche
   address: Lieferadresse
 
 status:
@@ -250,15 +236,11 @@ status:
   out_for_delivery: Unterwegs
   delivered: Geliefert
   cancelled: Storniert
-  ready_for_pickup: Zur Abholung bereit
   shipped: Übergeben
+
 tracking:
   title: Wo deine Bestellung ist
-  eta: 'Ankunft in etwa {minutes} Min.'
   arriving_now: Kommt jetzt an
-  courier_nearby: Dein Kurier ist gleich da
-  picked_up: Im Restaurant abgeholt
-  contact_courier: Kurier kontaktieren
   looking: Bestellung wird gesucht…
   not_found: Zu diesem Code gibt es keine Bestellung.
   arriving: Ankunft
@@ -269,15 +251,13 @@ tracking:
   about_minutes: "etwa {minutes} Min."
   no_code_prefix: Kein Verfolgungscode. Gib zuerst eine Bestellung über
   no_code_suffix: auf.
+
 review:
   write: Bewertung schreiben
   rating: Deine Bewertung
-  body: Wie war es?
-  photos: Fotos hinzufügen
-  submit: Bewertung posten
   helpful: Hilfreich
   owner_response: Antwort des Betriebs
-  verified: Bestellung bestätigt
+  verified: über Smakelo bestellt
   untitled: Ohne Titel
   helpful_yours: Du fandest das hilfreich
   helpful_count: "{count} fanden das hilfreich"
@@ -285,6 +265,8 @@ review:
   body_placeholder: Wie war es?
   dishes_placeholder: Was du bestellt hast (optional)
   dishes_label: "Bestellt: {dishes}"
+  stars_of_five: "{count} von 5"
+
 saved:
   title: Gemerkt
   lede: In diesem Browser gespeichert. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste - und wer die Websitedaten löscht, löscht sie mit.
@@ -302,24 +284,30 @@ orders:
   write_review: Bewertung schreiben
 
 table:
-  scan_prompt: Scannen für die Speisekarte
+  scan_prompt: Zum Bestellen scannen
   tab_open: Deine Rechnung
   add_round: Mehr bestellen
-  split: Rechnung teilen
   split_evenly: Gleichmäßig teilen
   split_by_item: Ich zahle, was ich hatte
-  close_tab: Rechnung abschließen
+  finding_table: Dein Tisch wird gesucht…
+  scan_to_start: Scanne den Code auf deinem Tisch, um zu starten.
+  code_no_match: Zu diesem Code gibt es keinen Tisch.
+  see_menu: Speisekarte ansehen
+  tab_total: Rechnungssumme
+  ask_for_bill: Rechnung verlangen
+  the_bill: Die Rechnung
+  split_ways: Geteilt durch
+  each_round: Jede Runde geht auf den, der sie bestellt hat
+  person: Person
+  round: Runde
+  total: Gesamt
+  test_mode: Testmodus. Es wurde nichts abgebucht.
+  tab_open_lede: Deine Rechnung ist offen. Bestell eine Runde, und die nächste, wenn du so weit bist.
+  codes_lede: Einer pro Tisch. Ausdrucken, ausschneiden, aufstellen. Ein Scan öffnet die Speisekarte und eröffnet eine Rechnung für diesen Tisch; wer denselben Code danach scannt, kommt auf dieselbe Rechnung statt eine zweite anzufangen.
+  print: Drucken
 
 partner:
-  dashboard: Übersicht
-  menu_editor: Speisekarte
-  orders_board: Bestellungen
-  hours: Öffnungszeiten
-  tables: Tische
-  qr_codes: QR-Codes
-  earnings: Einnahmen
   payouts: Auszahlungen
-  onboarding: Zahlungen einrichten
   built: Fertig
   see_it: Ansehen
   menu_title: Speisekarte
@@ -338,25 +326,17 @@ partner:
   ops_body: "Ob diese Seite ihre eigenen Zusagen noch einhält, geprüft an der Datenbank statt an dem Code, der sie durchsetzen soll: Sandbox-Zahlungen, keine Bewertungen bei echten Betrieben, keine Bestellungen bei ihnen, keine gespeicherten Kontaktdaten, noindex, robots.txt. Dazu das Ausblenden eines Eintrags, das ihn aus Suche, Karte, seiner Seite und dem Bestellen entfernt."
   claims_title: Ansprüche
   claims_body: Wenn du einen der gelisteten Orte führst und lieber nicht hier stehen möchtest, sagt das Formular das als Erstes. An den Betrieb geht keine E-Mail, und ein Anspruch wird von einem Menschen gelesen.
-  payouts_title: Auszahlungen
   payouts_body: "Jede Bestellung hält fest, wem was zusteht: das Essen dir, die Liefergebühr und das gesamte Trinkgeld dem Kurier, die Servicegebühr der Plattform. Die Abrechnung summiert diese Zeilen, und eine Auszahlung schreibt eine eigene Zeile, statt eine Zahl zurückzusetzen."
   headline: Die Betriebsseite, ehrlich gesagt.
   intro: Keine Einrichtungsgebühr, kein monatlicher Mindestumsatz, und du behältst deine eigenen Preise. Speisekarte, Öffnungszeiten, Bestellungen, Tische und Auszahlungen liegen an einer Stelle, und du kannst dir unten jeden Bildschirm ansehen, bevor du dich entscheidest.
   claim_note: "Wenn du einen der hier gelisteten Orte führst und das lieber nicht möchtest, ist das ein vernünftiger Wunsch. Der Eintrag stammt aus OpenStreetMap und Foursquare Open Source Places; öffne ihn, wähle \"Das ist mein Betrieb\" und sag Bescheid - er verschwindet noch am selben Tag."
+
 courier:
   shift_start: Online gehen
   shift_end: Offline gehen
-  offer: Neue Lieferung
-  accept: Annehmen
-  decline: Ablehnen
   navigate: Navigation
-  arrived: Ich bin da
-  picked_up: Abgeholt
-  delivered: Geliefert
-  earnings: Einnahmen
   who_are_you: Wer bist du?
   no_such_courier: Diesen Kurier gibt es nicht.
-  on_shift: Im Dienst
   sharing_position: Standort wird geteilt
   position_private: Standort nicht geteilt
   stop_sharing: Nicht mehr teilen
@@ -382,8 +362,9 @@ courier:
   state_offline: Offline
   state_on_delivery: Unterwegs mit einer Lieferung
   away: "{distance} entfernt"
+
 footer:
-  tagline: 'Restaurants, Cafés und Höfe in {regions}.'
+  tagline: "Restaurants, Cafés und Höfe in {regions}."
   browse: Stöbern
   for_business: Für Betriebe
   about: Über
@@ -399,14 +380,13 @@ footer:
   language: Sprache
 
 common:
-  back: Zurück
-  cancel: Abbrechen
+  cancel: Stornieren
   save: Speichern
-  close: Schließen
   loading: Lädt
   retry: Erneut versuchen
   error: Etwas ist schiefgelaufen.
   saved: Gespeichert
+
 claims:
   title: Ansprüche
   waiting: Offen
@@ -416,6 +396,7 @@ claims:
   reject: Ablehnen
   decided: Entschieden
   lede: Die Einträge stammen aus offenen Daten, deshalb schreiben die meisten, weil sie herauswollen. Das ist ein vernünftiger Wunsch, und er steht hier an erster Stelle.
+
 kitchen:
   loading_board: Board wird geladen…
   needs_slug: Hänge ?business=<slug> an, um ein Board zu sehen.
@@ -427,7 +408,6 @@ kitchen:
   cooking_now: Wird gerade gekocht
   nothing_waiting: Nichts offen.
   waiting_handover: Wartet auf Übergabe
-  cancel: Stornieren
   done: Fertig
   start_cooking: Zubereitung starten
   ready: Fertig
@@ -438,6 +418,7 @@ kitchen:
   reply_placeholder: Als Betrieb antworten
   reply: Antworten
   minutes_ago: "{minutes} Min."
+
 manage:
   title: Verwalten
   needs_slug: Hänge ?business=<slug> an, um einen Betrieb zu verwalten.
@@ -448,6 +429,7 @@ manage:
   available_off: Aus
   not_a_partner: Dort gibt es nichts zu verwalten. Nur die Partnerbetriebe haben eine Speisekarte.
   off_the_menu: "{count} nicht auf der Karte"
+
 admin:
   title: Betrieb
   guards: Prüfungen
@@ -460,7 +442,8 @@ admin:
   put_back: Wieder einblenden
   take_down: Ausblenden
   guards_lede: Was diese Seite über sich selbst zusagt, geprüft an dem, was tatsächlich gespeichert ist. Eine Prüfung, deren Stand niemand sehen kann, ist eine, von der man hinterher erfährt.
-  listings_lede: "Einen Eintrag auszublenden nimmt ihn von der Entdecken-Seite, aus der Suche, von der Karte und von seiner eigenen Seite, und man kann dort nicht mehr bestellen. Die Zeile bleibt, damit er zurückkommen kann, falls sich herausstellt, dass die Anfrage von jemandem kam, der den Betrieb gar nicht führt."
+  listings_lede: Einen Eintrag auszublenden nimmt ihn von der Entdecken-Seite, aus der Suche, von der Karte und von seiner eigenen Seite, und man kann dort nicht mehr bestellen. Die Zeile bleibt, damit er zurückkommen kann, falls sich herausstellt, dass die Anfrage von jemandem kam, der den Betrieb gar nicht führt.
+
 shares:
   title: Anteile
   none: Du hast keine Anteile.
@@ -476,6 +459,7 @@ shares:
   lede: "Ein Anteil ist ein Anspruch auf die Saison, keine Bestellung. Pausiere ihn, wenn du weg bist: eine Kiste, die niemand abholt, hilft keinem von beiden."
   boxes_so_far: "{count} Kisten bisher"
   pause_until: Pausieren bis
+
 earnings:
   title: Einnahmen
   balances: Salden
@@ -506,28 +490,7 @@ earnings:
   type_tax: Steuer
   payout_note: "Eine Auszahlung schreibt eine negative Zeile, statt den Saldo zurückzusetzen - so bleibt die Geschichte dessen erhalten, was geschuldet und dann bezahlt wurde. Hier fließt kein Geld: diese Konten gehören erfundenen Betrieben."
   order_ref: "Bestellung #{id}"
-tab:
-  finding_table: Dein Tisch wird gesucht…
-  scan_to_start: Scanne den Code auf deinem Tisch, um zu starten.
-  code_no_match: Zu diesem Code gibt es keinen Tisch.
-  order_more: Mehr bestellen
-  see_menu: Speisekarte ansehen
-  your_tab: Deine Rechnung
-  tab_total: Rechnungssumme
-  ask_for_bill: Rechnung verlangen
-  split_evenly: Gleichmäßig teilen
-  pay_for_mine: Ich zahle, was ich hatte
-  the_bill: Die Rechnung
-  split_ways: Geteilt durch
-  each_round: Jede Runde geht auf den, der sie bestellt hat
-  person: Person
-  round: Runde
-  total: Gesamt
-  test_mode: Testmodus. Es wurde nichts abgebucht.
-  scan_to_order: Zum Bestellen scannen
-  codes_lede: Einer pro Tisch. Ausdrucken, ausschneiden, aufstellen. Ein Scan öffnet die Speisekarte und eröffnet eine Rechnung für diesen Tisch; wer denselben Code danach scannt, kommt auf dieselbe Rechnung statt eine zweite anzufangen.
-  print: Drucken
-  tab_open_lede: Deine Rechnung ist offen. Bestell eine Runde, und die nächste, wenn du so weit bist.
+
 account:
   title: Dein Konto
   make_account: Konto erstellen
@@ -569,6 +532,7 @@ account:
   tile_reviews_many: Bewertungen
   tile_shares_one: Anteil
   tile_shares_many: Anteile
+
 checkout:
   loading_menu: Speisekarte wird geladen…
   unavailable: Diese Speisekarte ist nicht verfügbar.
@@ -584,7 +548,6 @@ checkout:
   your_order: Deine Bestellung
   nothing_yet: Noch nichts.
   remove: Entfernen
-  service: Service
   test_mode: Testmodus. Es wird keine Karte belastet.
   home: Zuhause
   none: Kein
@@ -601,6 +564,7 @@ checkout:
   stripe_card: Karte 4242 4242 4242 4242, ein beliebiges künftiges Ablaufdatum, eine beliebige Prüfziffer. Es fließt kein Geld.
   pay_test_mode: Im Testmodus bezahlen
   placed_body: "{name} hat sie, und die Küche hat angefangen. Von hier aus kannst du sie verfolgen."
+
 allergen:
   gluten: Gluten
   dairy: Milch

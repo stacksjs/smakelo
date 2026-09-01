@@ -206,6 +206,11 @@ export function placeHandlers(page: PlaceSignals) {
       .replace('{day}', dayName(Number(plan.dayOfWeek)))
   }
 
+  /** What one star in the picker means, for anything not looking at colour. */
+  function starLabel(star: number): string {
+    return say('review.stars_of_five', '{count} of 5').replace('{count}', String(star))
+  }
+
   /** What a reviewer says they ordered. */
   function dishesLine(dishes: string): string {
     return say('review.dishes_label', 'Ordered: {dishes}').replace('{dishes}', String(dishes))
@@ -265,6 +270,7 @@ export function placeHandlers(page: PlaceSignals) {
     boxLine,
     ratingSummary,
     dishesLine,
+    starLabel,
     load,
   }
 }

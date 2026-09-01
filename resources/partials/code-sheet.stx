@@ -1,3 +1,14 @@
+<script server>
+/*
+ * This partial imports what it uses.
+ *
+ * A partial inherits the including page's scope, and leaning on it for `t`
+ * makes every page responsible for importing something only the partial needs
+ * - a page that forgets renders key names. Its own import cannot be forgotten.
+ */
+import { t } from '../../app/Actions/Locale/translate'
+</script>
+
 {{-- Printable table codes.
 
   Included by every generated view under resources/views/codes/, each of which
@@ -29,10 +40,10 @@
       <section class="pt-10 pb-8 no-print">
         <h1 class="text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('manage.table_codes') }}</h1>
         <p class="mt-3 max-w-xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
-          {{ t('tab.codes_lede') }}
+          {{ t('table.codes_lede') }}
         </p>
         <button onclick="window.print()" class="inline-flex gap-2 items-center px-5 py-2.5 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
-          {{ t('tab.print') }}
+          {{ t('table.print') }}
         </button>
       </section>
 
@@ -47,7 +58,7 @@
                 {!! code.svg !!}
               </div>
 
-              <p class="mt-4 text-[13px] font-medium">{{ t('tab.scan_to_order') }}</p>
+              <p class="mt-4 text-[13px] font-medium">{{ t('table.scan_prompt') }}</p>
               <p class="mt-1 text-[11px] break-all" style="color: var(--ink-soft)">{{ code.url }}</p>
             </div>
           </div>
