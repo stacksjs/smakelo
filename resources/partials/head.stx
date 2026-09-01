@@ -143,20 +143,17 @@
      radius, hairline and buttons rather than the library's defaults. */
   .tsmap-container { background: var(--paper-raised); }
 
-  /* The basemap is drawn quiet already (see resources/functions/map.ts), so
-     nothing is filtered on top of it in light mode - the old rule desaturated
-     OpenStreetMap's raster to stop it fighting the photographs, and doing that
-     to a tileset already drawn as a background only muddied it.
+  /* Nothing is filtered on top of the basemap.
 
-     Dark mode is the exception, and the one thing a filter is genuinely good
-     for: there is no dark version of this tileset, and turning a light map
-     dark is a change to every pixel. Inverting the lightness and rotating the
-     hue back is what keeps water blue instead of orange. */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .tsmap-tile {
-      filter: invert(1) hue-rotate(180deg) saturate(0.78) brightness(0.94) contrast(0.92);
-    }
-  }
+     It used to be: the map was somebody else's raster, so light mode
+     desaturated it to stop it fighting the photographs and dark mode inverted
+     it, because inverting was the only way to get a dark map out of a light
+     picture. The tiles are vector now and draw themselves from a palette per
+     theme, so a filter here does not adjust the map - it corrupts it. Left in
+     place, the dark rule turned an already-dark map light again, which read
+     exactly like the palette being ignored.
+
+     See resources/functions/basemap-style.ts for the colours. */
 
   /* The popup is a small card, so it is built out of the same parts as the
      large ones rather than the library's white box with a tail. */
@@ -828,99 +825,85 @@
   })()
 </script>
 
+{{-- Language, for the parts of the page a script writes.
+
+  Everything the server rendered is already in the visitor's language: the
+  views server resolves the locale from the URL prefix, the cookie or the
+  Accept-Language header, and `t()` in a template answers in it. See
+  config/site.ts.
+
+  What is left is the handful of strings a client script produces after the
+  page has loaded - a map popup, a card built from a search result, an error
+  under a form. Those cannot call `t()`, so the server hands them down here,
+  already translated, as one small object.
+
+  Carried on a data attribute rather than written into a `<script>`: stx does
+  not interpolate inside script tags, so a `{{ locale }}` in one reaches the
+  browser as the four literal characters. Every other server-to-client handoff
+  in this app goes through a data attribute for the same reason.
+
+  The interface is translated. The invented restaurant descriptions, menus and
+  reviews are not: they are content, and machine-translating a menu is how a
+  demonstration starts lying about what a kitchen serves. --}}
+<div
+  id="smakelo-i18n"
+  hidden
+  data-locale="{{ locale }}"
+  data-strings="{{ JSON.stringify({
+    'search.open_now': t('search.open_now'),
+    'search.takes_orders': t('search.takes_orders'),
+    'search.no_results': t('search.no_results'),
+    'search.nearby': t('search.nearby'),
+    'business.open': t('business.open'),
+    'business.closed': t('business.closed'),
+    'business.save': t('business.save'),
+    'business.saved': t('business.saved'),
+    'business.hours_unknown': t('business.hours_unknown'),
+    'business.no_reviews': t('business.no_reviews'),
+    'order.delivery': t('order.delivery'),
+    'order.pickup': t('order.pickup'),
+    'order.dine_in': t('order.dine_in'),
+    'common.loading': t('common.loading'),
+    'common.error': t('common.error'),
+    'common.retry': t('common.retry'),
+    'types.restaurant': t('types.restaurant'),
+    'types.cafe': t('types.cafe'),
+    'types.farm': t('types.farm'),
+    'types.bakery': t('types.bakery'),
+    'types.bar': t('types.bar'),
+    'types.grocery': t('types.grocery'),
+    'home.subscribe_bad_email': t('home.subscribe_bad_email'),
+    'home.subscribe_failed': t('home.subscribe_failed'),
+  }) }}"
+></div>
+
 <script>
-  /*
-   * Language.
-   *
-   * The pages are built once and served as static files, so translation happens
-   * in the browser: a dictionary is fetched for the chosen language and every
-   * element carrying a `data-i18n` key is filled from it. The keys live in
-   * `locales/*.yml`, which `buddy build:locales` compiles into
-   * `public/locales/*.json`.
-   *
-   * English is what the markup already says, so a failed fetch, an unknown key
-   * or a browser with scripting off all leave a page that reads correctly in
-   * English rather than a page of empty boxes. That is the whole reason the
-   * English text is in the HTML rather than being filled in from a dictionary
-   * too.
-   *
-   * The interface is translated. The invented restaurant descriptions, menus
-   * and reviews are not: they are content, and machine-translating a menu is
-   * how a demonstration starts lying about what a kitchen serves.
-   */
-  window.Smakelo = window.Smakelo || {}
-
   ;(function () {
-    const SUPPORTED = ['en', 'de', 'nl']
+    var holder = document.getElementById('smakelo-i18n')
+    var strings = {}
 
-    function chosen() {
-      const asked = new URLSearchParams(location.search).get('lang')
-
-      if (asked && SUPPORTED.includes(asked)) {
-        try {
-          localStorage.setItem('smakelo.lang', asked)
-        }
-        catch {}
-
-        return asked
-      }
-
-      try {
-        const saved = localStorage.getItem('smakelo.lang')
-
-        if (saved && SUPPORTED.includes(saved))
-          return saved
-      }
-      catch {}
-
-      // Only the language part: a Swiss German browser should get German
-      // rather than falling through to English on the region tag.
-      const browser = (navigator.language || 'en').slice(0, 2).toLowerCase()
-
-      return SUPPORTED.includes(browser) ? browser : 'en'
+    try {
+      strings = JSON.parse(holder && holder.dataset.strings ? holder.dataset.strings : '{}')
+    }
+    catch (error) {
+      // An unparseable blob leaves every lookup on its English fallback, which
+      // is a page in one language rather than a page of key names.
     }
 
-    const locale = chosen()
+    window.Smakelo = window.Smakelo || {}
+    window.Smakelo.locale = (holder && holder.dataset.locale) || 'en'
+    window.Smakelo.strings = strings
 
-    window.Smakelo.locale = locale
-    window.Smakelo.dictionary = {}
-    window.Smakelo.t = (key, fallback) => window.Smakelo.dictionary[key] || fallback || key
-
-    document.documentElement.lang = locale
-
-    if (locale === 'en')
-      return
-
-    fetch(`/locales/${locale}.json`)
-      .then(response => response.ok ? response.json() : {})
-      .then((dictionary) => {
-        window.Smakelo.dictionary = dictionary
-        apply()
-
-        // Surfaces that render themselves later ask for this rather than
-        // guessing when the dictionary arrived.
-        document.dispatchEvent(new CustomEvent('smakelo:locale', { detail: { locale, dictionary } }))
-      })
-      .catch(() => undefined)
-
-    function apply() {
-      for (const element of document.querySelectorAll('[data-i18n]')) {
-        const text = window.Smakelo.dictionary[element.dataset.i18n]
-
-        if (text)
-          element.textContent = text
-      }
-
-      // Placeholders and titles need the same treatment, keyed separately so
-      // one element can translate both its text and its placeholder.
-      for (const element of document.querySelectorAll('[data-i18n-placeholder]')) {
-        const text = window.Smakelo.dictionary[element.dataset.i18nPlaceholder]
-
-        if (text)
-          element.setAttribute('placeholder', text)
-      }
+    /*
+     * The lookup a client script calls.
+     *
+     * Takes the English text as its second argument rather than falling back
+     * to the key, so a string this list has not been told about renders as
+     * English rather than as `search.open_now`. A page in the wrong language
+     * is a bug; a page showing its own key names is a broken page.
+     */
+    window.Smakelo.t = function (key, english) {
+      return window.Smakelo.strings[key] || english || key
     }
-
-    window.Smakelo.applyTranslations = apply
   })()
 </script>

@@ -1,3 +1,6 @@
+import type { Palette } from './basemap-style'
+import { basemapStyle, DARK, LIGHT } from './basemap-style'
+
 /**
  * The one thing every map on this site has to be told.
  *
@@ -52,44 +55,79 @@ export function keepSized(map: any, element: HTMLElement): void {
 /**
  * The basemap.
  *
- * Not OpenStreetMap's own raster any more. That tileset is drawn to be read on
- * its own - saturated greens, heavy road casings, motorway shields - and next
- * to a page of food photographs it fought them for attention. Desaturating it
- * in CSS made it quieter without making it better: the same heavy geometry,
- * greyed, and still a 256px image on a display with twice the pixels.
+ * Vector tiles drawn in the browser, not a picture of somebody else's map.
  *
- * Wikimedia's `osm-intl` is drawn as a background - pale land, soft parks,
- * quiet water, roads with a hairline casing - and it serves `@2x`, which is
- * the half of this that CSS could never fix. It is the closest of the
- * no-key rasters to the map people already know how to read.
+ * Every raster basemap this went through failed the same way. OpenStreetMap's
+ * own is drawn to be read on its own and fought the photographs beside it;
+ * desaturating it in CSS made it quieter without making it better, and could
+ * not touch a 256px image on a display with twice the pixels. Wikimedia's is
+ * sharp at @2x and still a picture: its colours and its typeface were decided
+ * when the tile was drawn, so dark mode could only ever be an inversion.
  *
- * CARTO's Voyager is closer still and was the first choice; their basemaps now
- * answer without a key and return a tile with API KEY REQUIRED written across
- * it, which a status check happily calls a 200. Esri's light grey canvas is
- * free and keyless but nearly monochrome.
+ * Vector tiles carry the geometry and leave the drawing to us. The palettes
+ * are in ./basemap-style, and the labels are set in the page's own typeface,
+ * because the glyphs are rasterised from a browser font rather than shipped as
+ * pictures of letters.
  *
- * ONE PLACE TO CHANGE. Wikimedia ask that third parties not lean on their
- * tile servers, and this is a third party. For anything with real traffic,
- * put a keyed provider here - MapTiler, Stadia and Thunderforest all serve a
- * style like this one - and nothing else in the app needs to know.
+ * Tiles are OpenFreeMap - free, keyless, credit-only. The URL is versioned and
+ * the version rotates, so it is read from their TileJSON at load rather than
+ * pinned here and left to go stale.
  */
-const BASEMAP = 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}@2x.png'
+const TILEJSON = 'https://tiles.openfreemap.org/planet'
+
+function prefersDark(): boolean {
+  try {
+    return matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  catch {
+    return false
+  }
+}
+
+function paletteNow(): Palette {
+  return prefersDark() ? DARK : LIGHT
+}
 
 /**
- * Add the basemap.
+ * Add the basemap, and keep it on the right side of the theme.
  *
- * There is no dark variant of this tileset, so dark mode inverts it in CSS -
- * see the `.tsmap-tile` rule in the head partial. That is the one thing a
- * filter is genuinely good for: turning a light map dark is a change to every
- * pixel, which is what a filter does, rather than an attempt to restyle
- * cartography that was already drawn.
+ * The ground colour is the element's own background rather than a layer: the
+ * tiles paint what is on the land, and what is under all of it is one flat
+ * colour that should be there before a single tile arrives.
  */
-export function basemap(tileLayerFactory: any, map: any): void {
-  tileLayerFactory(BASEMAP, {
+export async function basemap(vectorTileLayerFactory: any, map: any, element: HTMLElement): Promise<void> {
+  const paint = (palette: Palette) => { element.style.background = palette.land }
+
+  paint(paletteNow())
+
+  const meta = await fetch(TILEJSON).then(response => response.json()).catch(() => null)
+
+  // No tiles, no map - but the ground colour is already down, so the pane is a
+  // flat surface rather than a white hole with controls floating on it.
+  if (!meta?.tiles?.[0])
+    return
+
+  const layer = vectorTileLayerFactory({
+    url: meta.tiles[0],
+    // Past this there are no tiles to fetch; the grid keeps going and draws a
+    // slice of the deepest ancestor, which is what every vector map does.
+    sourceMaxZoom: Number(meta.maxzoom) || 14,
     maxZoom: 19,
-    // The tiles are 512px images standing in for 256px ones. Saying so is what
-    // keeps labels at their intended size instead of half of it.
-    tileSize: 256,
-    detectRetina: false,
-  }).addTo(map)
+    renderer: 'canvas2d',
+    layers: basemapStyle(paletteNow()),
+  })
+
+  layer.addTo(map)
+
+  try {
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      const palette = paletteNow()
+
+      paint(palette)
+      layer.setStyleLayers?.(basemapStyle(palette))
+    })
+  }
+  catch {
+    // A browser without matchMedia listeners keeps the theme it loaded with.
+  }
 }

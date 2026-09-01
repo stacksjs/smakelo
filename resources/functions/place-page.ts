@@ -205,7 +205,7 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
   if (!element || !Number.isFinite(point?.lat))
     return
 
-  const { divIcon, Marker, tileLayer, TsMap } = await import('ts-maps')
+  const { divIcon, Marker, TsMap, vectorTileLayer } = await import('ts-maps')
 
   /*
    * Set up like the discover map, because it is the same map.
@@ -224,7 +224,7 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
     fadeAnimation: false,
   })
 
-  basemap(tileLayer, map)
+  basemap(vectorTileLayer, map, element)
 
   // Filled, the way a partner's pin is on the discover map: you are looking at
   // this one place, so it is the one thing on the map worth the accent colour.
