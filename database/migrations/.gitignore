@@ -1,0 +1,13 @@
+# Migrations are source, not build output.
+#
+# A global ignore of `*.sql` kept 120 of these out of the repo, which is
+# invisible locally - the files are on disk, every deploy from a laptop works -
+# and fatal from CI, whose checkout only has what git tracks. The deploy drops
+# the schema and rebuilds it from these files, so a partial set rebuilt a
+# partial database: `migrate:fresh` reported "0 applied - no migration files
+# found?", and the seed then died on `no such table: csa_plans`.
+#
+# A negation here rather than `git add -f` each time, because the next
+# generated migration would be ignored again and nobody would notice until the
+# next deploy from somewhere that is not this machine.
+!*.sql
