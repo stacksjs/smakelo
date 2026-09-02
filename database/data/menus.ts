@@ -576,8 +576,220 @@ const DE_MENUS: Record<string, SeedMenuSection[]> = {
  * inline here, so the two languages stay in one block each instead of
  * interleaving down a thousand lines.
  */
+/**
+ * What a home kitchen sells.
+ *
+ * Short on purpose. A restaurant's menu is a range; a home kitchen's is what
+ * one person can cook well in one kitchen on one day, and writing these as
+ * twenty-line menus would have described a restaurant with a domestic address.
+ * Three to five dishes, a portion size where a portion is the real question,
+ * and a heat level where the cook would otherwise have to ask.
+ */
+const HOME_KITCHEN_MENUS: Record<string, SeedMenuSection[]> = {
+  'ammas-table': [
+    {
+      name: 'Rice and Curry',
+      items: [
+        {
+          name: 'Rice and Five Curries',
+          description: 'Red rice, dhal, a coconut sambol, and whatever three vegetables were good this week.',
+          priceCents: 1600,
+          prepMinutes: 40,
+          allergens: ['nuts'],
+          modifierGroups: [
+            {
+              name: 'Heat',
+              description: 'Cooked to order, so this is a real choice rather than a sauce on the side.',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Mild' },
+                { name: 'As we eat it', isDefault: true },
+                { name: 'Hot' },
+              ],
+            },
+            {
+              name: 'Add',
+              min: 0,
+              max: 2,
+              options: [
+                { name: 'Chicken curry', priceDeltaCents: 450 },
+                { name: 'Fish ambul thiyal', priceDeltaCents: 550 },
+                { name: 'Extra pol sambol', priceDeltaCents: 200 },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'Kottu',
+          description: 'Godamba roti chopped on the griddle with egg and leeks. Friday and Saturday only.',
+          priceCents: 1400,
+          prepMinutes: 25,
+          allergens: ['gluten', 'egg'],
+          modifierGroups: [
+            { name: 'Heat', min: 1, max: 1, options: [{ name: 'Mild' }, { name: 'As we eat it', isDefault: true }, { name: 'Hot' }] },
+          ],
+        },
+        { name: 'Watalappan', description: 'Jaggery and coconut custard, steamed. One cup.', priceCents: 550, allergens: ['egg', 'dairy', 'nuts'] },
+      ],
+    },
+  ],
+
+  'dona-elvia-tamales': [
+    {
+      name: 'Tamales',
+      items: [
+        {
+          name: 'Tamal Oaxaqueño',
+          description: 'Banana leaf, black mole, chicken. Steamed overnight.',
+          priceCents: 550,
+          prepMinutes: 10,
+          allergens: ['nuts'],
+          modifierGroups: [
+            {
+              name: 'How many',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'One', isDefault: true },
+                { name: 'Half dozen', priceDeltaCents: 2500 },
+                { name: 'Dozen', priceDeltaCents: 5000 },
+              ],
+            },
+          ],
+        },
+        { name: 'Tamal de Rajas', description: 'Poblano strips and cheese, in corn husk.', priceCents: 500, allergens: ['dairy'] },
+        { name: 'Atole de Champurrado', description: 'Masa and chocolate, thick, in a cup you keep.', priceCents: 400, allergens: ['dairy'] },
+      ],
+    },
+  ],
+
+  'kusina-ni-baby': [
+    {
+      name: 'Ulam',
+      items: [
+        {
+          name: 'Chicken Adobo',
+          description: 'Vinegar, soy, garlic, a lot of pepper. With rice.',
+          priceCents: 1300,
+          prepMinutes: 35,
+          allergens: ['soy'],
+          modifierGroups: [
+            {
+              name: 'Portion',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'One person', isDefault: true },
+                { name: 'Family, feeds three', priceDeltaCents: 1800 },
+              ],
+            },
+          ],
+        },
+        { name: 'Kare-Kare', description: 'Oxtail in peanut sauce, with bagoong on the side.', priceCents: 1800, prepMinutes: 45, allergens: ['nuts', 'shellfish'] },
+        { name: 'Pancit Bihon', description: 'Rice noodles, whatever vegetables the market had, calamansi.', priceCents: 1100, prepMinutes: 25, allergens: ['soy'] },
+        { name: 'Leche Flan', description: 'One slice, in its own tin.', priceCents: 450, allergens: ['egg', 'dairy'] },
+      ],
+    },
+  ],
+
+  'ayses-kueche': [
+    {
+      name: 'Aus der Küche',
+      items: [
+        {
+          name: 'Mantı',
+          description: 'Handgefaltet, mit Joghurt und Butter mit Paprika. Ein Teller.',
+          priceCents: 1200,
+          prepMinutes: 40,
+          allergens: ['gluten', 'egg', 'dairy'],
+          modifierGroups: [
+            {
+              name: 'Portion',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Eine Person', isDefault: true },
+                { name: 'Für zwei', priceDeltaCents: 900 },
+              ],
+            },
+          ],
+        },
+        { name: 'Dolma', description: 'Weinblätter mit Reis, Pinienkernen und Zitrone. Sechs Stück, kalt.', priceCents: 800, allergens: ['nuts'] },
+        { name: 'Mercimek Çorbası', description: 'Rote Linsensuppe, im Glas zum Mitnehmen.', priceCents: 550, allergens: ['celery'] },
+        { name: 'İrmik Helvası', description: 'Grieß, Butter, Pinienkerne. Warm besser als kalt.', priceCents: 450, allergens: ['gluten', 'dairy', 'nuts'] },
+      ],
+    },
+  ],
+
+  'pierogarnia-ostersbaum': [
+    {
+      name: 'Pierogi',
+      items: [
+        {
+          name: 'Pierogi ruskie',
+          description: 'Kartoffel, Quark, Zwiebel. Zwölf Stück, gekocht oder angebraten.',
+          priceCents: 1100,
+          prepMinutes: 30,
+          allergens: ['gluten', 'egg', 'dairy'],
+          modifierGroups: [
+            {
+              name: 'Zubereitung',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Gekocht', isDefault: true },
+                { name: 'In Butter angebraten', priceDeltaCents: 150 },
+              ],
+            },
+            {
+              name: 'Dazu',
+              min: 0,
+              max: 2,
+              options: [
+                { name: 'Schmand', priceDeltaCents: 120 },
+                { name: 'Röstzwiebeln', priceDeltaCents: 100 },
+              ],
+            },
+          ],
+        },
+        { name: 'Pierogi z mięsem', description: 'Mit Rinderhack und Majoran. Zwölf Stück.', priceCents: 1300, prepMinutes: 30, allergens: ['gluten', 'egg'] },
+        { name: 'Barszcz', description: 'Rote Bete, klar, im Glas. Ein Liter.', priceCents: 700, allergens: ['celery'] },
+      ],
+    },
+  ],
+
+  'mittagstisch-bei-rita': [
+    {
+      name: 'Heute',
+      items: [
+        {
+          name: 'Gericht des Tages',
+          description: 'Ein Gericht, jeden Tag ein anderes. Montags Eintopf, freitags Fisch, dazwischen was der Hof hergibt.',
+          priceCents: 850,
+          prepMinutes: 20,
+          modifierGroups: [
+            {
+              name: 'Gefäß',
+              description: 'Eigene Schüssel mitbringen spart das Pfand.',
+              min: 1,
+              max: 1,
+              options: [
+                { name: 'Eigene Schüssel', isDefault: true },
+                { name: 'Pfandglas', priceDeltaCents: 150 },
+              ],
+            },
+          ],
+        },
+        { name: 'Nachtisch', description: 'Rote Grütze oder Kompott, je nachdem.', priceCents: 350, allergens: ['dairy'] },
+      ],
+    },
+  ],
+}
+
 export const MENUS: Record<string, SeedMenuSection[]> = {
   ...DE_MENUS,
+  ...HOME_KITCHEN_MENUS,
 
   'aster-and-ash': [
     {

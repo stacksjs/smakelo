@@ -35,7 +35,7 @@ export interface SeedHours {
 export interface SeedBusiness {
   name: string
   slug: string
-  type: 'restaurant' | 'cafe' | 'farm' | 'bakery' | 'bar' | 'grocery'
+  type: 'restaurant' | 'cafe' | 'farm' | 'bakery' | 'bar' | 'grocery' | 'home_kitchen'
   cuisine: string
   description: string
   address: string
@@ -820,6 +820,133 @@ import { OSM_LISTINGS_GESCHER } from './osm-listings-gescher'
 import { OSM_LISTINGS_WUPPERTAL } from './osm-listings-wuppertal'
 
 /**
+ * Home kitchens.
+ *
+ * The one type on this site that can only ever be a partner. A restaurant, a
+ * bakery or a farm shop is premises: anybody can walk past one, and a mapper
+ * can record it without asking. A home kitchen is somebody's flat. It appears
+ * here only because the person cooking in it put it here, which is why not one
+ * of these is imported and not one of them is real.
+ *
+ * They are invented in the same way the restaurant partners are, and for the
+ * same reason - the transactional half of the app has to be exercised without
+ * putting words in a real person's mouth - but the shape is different enough
+ * to matter. A home kitchen cooks a handful of dishes rather than a menu,
+ * cooks them on the days it says and not otherwise, and hands them over at a
+ * door rather than across a counter. `app/Commands/Seed.ts` turns that into
+ * capabilities: pickup always, delivery only when the cook is doing the
+ * driving, and never a table.
+ *
+ * The street lines here are real streets, as everywhere else in this file, so
+ * distances and the map behave. They are not anybody's address, and the app
+ * does not show them: see `placeViewModel`, which gives a home kitchen its
+ * neighbourhood and holds the door number back until there is an order to
+ * bring to it.
+ */
+export const HOME_KITCHENS: SeedBusiness[] = [
+  {
+    name: 'Amma\'s Table',
+    slug: 'ammas-table',
+    type: 'home_kitchen',
+    cuisine: 'Sri Lankan, Rice and Curry',
+    description: 'One cook, five curries, Thursday to Sunday. Rice and curry the way it is eaten at home, in a box you carry away warm.',
+    address: 'Palms Blvd',
+    city: 'Mar Vista',
+    postalCode: '90066',
+    latitude: 34.0086,
+    longitude: -118.4312,
+    priceTier: 1,
+    partner: true,
+    hours: [4, 5, 6, 0].map(day => ({ day, open: 960, close: 1200 })),
+  },
+  {
+    name: 'Doña Elvia Tamales',
+    slug: 'dona-elvia-tamales',
+    type: 'home_kitchen',
+    cuisine: 'Oaxacan, Tamales',
+    description: 'Tamales in banana leaf, steamed through the night and gone by ten. Order the evening before.',
+    address: 'E 1st St',
+    city: 'Boyle Heights',
+    postalCode: '90033',
+    latitude: 34.0442,
+    longitude: -118.2093,
+    priceTier: 1,
+    partner: true,
+    hours: [6, 0].map(day => ({ day, open: 420, close: 600 })),
+  },
+  {
+    name: 'Kusina ni Baby',
+    slug: 'kusina-ni-baby',
+    type: 'home_kitchen',
+    cuisine: 'Filipino, Home Cooking',
+    description: 'Adobo, kare-kare and whatever the market had, cooked in batches on Friday and Saturday.',
+    address: 'Temple St',
+    city: 'Los Angeles',
+    postalCode: '90026',
+    latitude: 34.0705,
+    longitude: -118.2769,
+    priceTier: 1,
+    partner: true,
+    hours: [5, 6].map(day => ({ day, open: 1020, close: 1260 })),
+  },
+]
+
+/**
+ * The same idea in Nordrhein-Westfalen, written in German for the same reason
+ * the restaurant partners there are.
+ */
+export const NRW_HOME_KITCHENS: SeedBusiness[] = [
+  {
+    name: 'Ayşes Küche',
+    slug: 'ayses-kueche',
+    type: 'home_kitchen',
+    cuisine: 'Türkisch, Hausmannskost',
+    description: 'Mantı, Dolma und Linsensuppe, freitags und samstags gekocht. Abholung an der Haustür, Lieferung nur im Viertel.',
+    address: 'Hochstraße',
+    city: 'Wuppertal',
+    postalCode: '42105',
+    latitude: 51.2578,
+    longitude: 7.1502,
+    priceTier: 1,
+    partner: true,
+    region: 'wuppertal',
+    hours: [5, 6].map(day => ({ day, open: 960, close: 1200 })),
+  },
+  {
+    name: 'Pierogarnia Ostersbaum',
+    slug: 'pierogarnia-ostersbaum',
+    type: 'home_kitchen',
+    cuisine: 'Polnisch, Pierogi',
+    description: 'Pierogi, von Hand gefaltet, im Dutzend. Donnerstags und sonntags, solange der Teig reicht.',
+    address: 'Hochstraße',
+    city: 'Wuppertal',
+    postalCode: '42107',
+    latitude: 51.2645,
+    longitude: 7.1573,
+    priceTier: 1,
+    partner: true,
+    region: 'wuppertal',
+    hours: [4, 0].map(day => ({ day, open: 900, close: 1140 })),
+  },
+  {
+    name: 'Mittagstisch bei Rita',
+    slug: 'mittagstisch-bei-rita',
+    type: 'home_kitchen',
+    cuisine: 'Westfälisch, Mittagstisch',
+    description: 'Ein Gericht am Tag, montags bis freitags, in der eigenen Schüssel abgeholt oder im Glas.',
+    address: 'Armlandstraße',
+    city: 'Gescher',
+    postalCode: '48712',
+    latitude: 51.9553,
+    longitude: 7.0068,
+    priceTier: 1,
+    partner: true,
+    region: 'gescher',
+    hours: [1, 2, 3, 4, 5].map(day => ({ day, open: 690, close: 810 })),
+  },
+]
+
+/**
  * Everything the seeder loads.
  *
  * Curated first, then the OpenStreetMap imports minus anything already
@@ -833,7 +960,7 @@ import { OSM_LISTINGS_WUPPERTAL } from './osm-listings-wuppertal'
  * that every row carries the slug of the one it belongs to.
  */
 export const ALL_BUSINESSES: SeedBusiness[] = (() => {
-  const curated = [...LISTINGS, ...PARTNERS, ...NRW_PARTNERS]
+  const curated = [...LISTINGS, ...PARTNERS, ...NRW_PARTNERS, ...HOME_KITCHENS, ...NRW_HOME_KITCHENS]
   const taken = new Set(curated.map(business => business.slug))
   const imported = [...OSM_LISTINGS, ...OSM_LISTINGS_WUPPERTAL, ...OSM_LISTINGS_GESCHER]
 

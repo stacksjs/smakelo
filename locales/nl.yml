@@ -38,7 +38,7 @@ types:
   bakery: Bakkers
   bar: Cafés
   grocery: Winkels
-
+  home_kitchen: Thuiskeukens
 region:
   label: Waar
   los-angeles: Los Angeles
@@ -216,6 +216,8 @@ meta:
   codes_title: Tafelcodes - Smakelo
   codes_description: Printbare codes voor elke tafel.
 
+  home_kitchens_title: Thuiskeukens - Smakelo
+  home_kitchens_description: Eén persoon, een korte kaart en de dagen dat er echt gekookt wordt. Hoe thuiskeukens op Smakelo werken, voor wie kookt en voor wie bestelt.
 order:
   add_to_cart: Toevoegen
   subtotal: Subtotaal
@@ -378,6 +380,7 @@ footer:
   sources: Vermeldingen uit OpenStreetMap en Foursquare Open Source Places. Reviews, bestellingen en accounts zijn verzonnen.
   language: Taal
 
+  home_kitchens: Koken vanuit huis
 common:
   cancel: Annuleren
   save: Opslaan
@@ -565,6 +568,32 @@ cart:
   order_note: Opmerking bij de hele bestelling
   order_note_placeholder: Graag aanbellen in plaats van kloppen…
   group_needs_choice: Kies iets bij "{group}".
+
+home_kitchen:
+  address_note: De buurt, niet het adres. Het huisnummer gaat naar wie het komt ophalen.
+  nav: Thuiskeukens
+  headline: Een keuken hoeft geen restaurant te zijn om de moeite van het bestellen waard te zijn.
+  intro: Wie op donderdag vijf curry's kookt, moet gevonden worden, bestellingen aannemen en betaald krijgen. Een kassasysteem, een koeriersvloot en een kaart met veertig gerechten horen daar niet bij. Thuiskeukens krijgen dezelfde vermelding als elk restaurant hier, zonder de onderdelen die alleen voor een pand kloppen.
+  cooks_head: Wat een kok krijgt
+  eaters_head: Wat jij krijgt als je bestelt
+  cooks_address_title: Je adres blijft van jou
+  cooks_address_body: De pagina toont je buurt. Het huisnummer reist mee met de bestelling, naar wie het komt ophalen, en de kaart tekent een cirkel van ruim een kilometer in plaats van een speld op je huis.
+  cooks_days_title: Kook op de dagen dat je kookt
+  cooks_days_body: De openingstijden zijn de uren dat er echt gekookt wordt. Donderdag tot zondag, of de twee ochtenden dat de tamales klaar zijn. Daarbuiten staat er gesloten, in plaats van een bestelling aan te nemen die niemand kan maken.
+  cooks_menu_title: Een korte kaart is het idee
+  cooks_menu_body: Drie gerechten zijn een kaart. Waar de portie of de pittigheid de echte vraag is, staat die bij het gerecht - en niet als opmerking die iemand moet onthouden.
+  cooks_money_title: Ophalen altijd, bezorgen als jij rijdt
+  cooks_money_body: Bij elke thuiskeuken kun je ophalen. Bezorgen staat alleen aan als de kok zelf rijdt, en het bereik is een paar straten en geen stad - voor één bak curry rijdt er geen koerier naar een flat.
+  eaters_when_title: Je ziet wanneer er gekookt wordt
+  eaters_when_body: De uren op de pagina zijn de uren aan het fornuis, en de wachttijd is een echte wachttijd, want er wordt pas gekookt als je bestelt.
+  eaters_what_title: Je ziet wat erin zit
+  eaters_what_body: Dezelfde allergenenregel, dezelfde keuzegroepen en dezelfde opmerking aan de keuken als overal op deze site. Een thuiskeuken is geen mindere vermelding.
+  eaters_who_title: Je weet dat het één persoon is
+  eaters_who_body: Een thuiskeuken staat als zodanig aangegeven, en de korte kaart, de twee kookdagen en het ophalen zijn de vorm van het ding - geen onafgemaakte vermelding.
+  honest_head: Wat hier verzonnen is
+  honest_body: Elke thuiskeuken op deze site is verzonnen en blijft dat. De restaurants, cafés en bakkers komen uit open data en bestaan echt - een pand mag iedereen in kaart brengen. Een thuiskeuken is iemands woning en kan hier alleen staan omdat de kok hem er zelf op heeft gezet. Dus zijn ze verzonnen, net als de restaurantpartners, en de straten zijn alleen echt zodat afstanden en de kaart kloppen.
+  see_one: Bekijk een thuiskeuken
+  browse: Thuiskeukens bekijken
 
 checkout:
   loading_menu: Menu wordt geladen…

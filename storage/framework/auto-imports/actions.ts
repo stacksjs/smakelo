@@ -15,6 +15,7 @@ export const actions = {
   'Actions/Business/identity': '../../../app/Actions/Business/identity.ts',
   'Actions/Business/imagery': '../../../app/Actions/Business/imagery.ts',
   'Actions/Business/place-view': '../../../app/Actions/Business/place-view.ts',
+  'Actions/Business/privacy': '../../../app/Actions/Business/privacy.ts',
   'Actions/Business/regions': '../../../app/Actions/Business/regions.ts',
   'Actions/Business/search': '../../../app/Actions/Business/search.ts',
   'Actions/Claim/claims': '../../../app/Actions/Claim/claims.ts',

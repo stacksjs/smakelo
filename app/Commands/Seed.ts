@@ -262,10 +262,21 @@ async function seedBusinesses(marketIds: Record<string, number>): Promise<Record
       offers_pickup: partner ? 1 : 0,
       offers_dine_in: partner && (seed.type === 'restaurant' || seed.type === 'cafe') ? 1 : 0,
       offers_shop: partner && seed.type === 'farm' ? 1 : 0,
-      self_delivery: partner && seed.type === 'farm' ? 1 : 0,
-      delivery_radius_meters: seed.type === 'farm' ? 40_000 : 8000,
+      /*
+       * A home kitchen drives its own deliveries, like a farm and unlike a
+       * restaurant: there is one person cooking, and dispatching a courier to
+       * a flat for one box of curry is not a thing that happens. The radius is
+       * the walk-or-short-drive they would actually do, which is why it is a
+       * fraction of a restaurant's and a fortieth of a farm's.
+       */
+      self_delivery: partner && (seed.type === 'farm' || seed.type === 'home_kitchen') ? 1 : 0,
+      delivery_radius_meters: seed.type === 'farm' ? 40_000 : seed.type === 'home_kitchen' ? 3000 : 8000,
       minimum_order_cents: seed.type === 'farm' ? 2500 : 0,
-      prep_time_minutes: seed.type === 'cafe' ? 8 : seed.type === 'farm' ? 0 : 25,
+      /*
+       * Cooked to order in one pan, so the wait is a real wait rather than the
+       * time it takes to plate something already on the pass.
+       */
+      prep_time_minutes: seed.type === 'cafe' ? 8 : seed.type === 'farm' ? 0 : seed.type === 'home_kitchen' ? 45 : 25,
       rating_average: 0,
       rating_count: 0,
       source: partner ? 'partner' : 'curated',

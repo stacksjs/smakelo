@@ -1374,7 +1374,8 @@
               "farm",
               "bakery",
               "bar",
-              "grocery"
+              "grocery",
+              "home_kitchen"
             ],
             "enumTypeName": "businesses_type_type"
           },
@@ -15552,7 +15553,7 @@
       }
     ]
   },
-  "hash": "9b2ecebf34382943048f7feb937bf06db3f4d0b13c3a5fe26e049afc78dbaf14",
+  "hash": "0ee21c413c6c42ff93918e55c6cbb40e15bba337335287be36450c0b386c824e",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-30T05:48:22.668Z"
+  "updatedAt": "2026-09-02T00:43:49.266Z"
 }

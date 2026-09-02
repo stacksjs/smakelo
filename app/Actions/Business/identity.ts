@@ -75,6 +75,21 @@ const CUISINE_ICONS: Array<[string, string]> = [
   ['stone fruit', 'apple-01'],
   ['citrus', 'apple-01'],
   ['farm', 'plant-01'],
+  /*
+   * The cuisines the home kitchens brought with them.
+   *
+   * Appended rather than slotted in, because the list returns its first match
+   * and nothing above these needs to change: no listing that existed before
+   * contains any of these words. Without them all six home kitchens fell
+   * through to the type icon and every one of them looked identical, which is
+   * the one thing the icon is there to prevent.
+   */
+  ['rice and curry', 'rice-bowl-01'],
+  ['sri lankan', 'rice-bowl-01'],
+  ['filipino', 'rice-bowl-01'],
+  ['tamal', 'taco-01'],
+  ['oaxacan', 'taco-01'],
+  ['pierogi', 'noodles'],
 ]
 
 /** Type to icon, for when the cuisine says nothing useful. */
@@ -85,6 +100,9 @@ const TYPE_ICONS: Record<string, string> = {
   bakery: 'bread-01',
   grocery: 'shopping-basket-01',
   bar: 'drink',
+  // A lidded pot. `chef-hat` belongs to the kitchen board and `restaurant-01`
+  // is crossed cutlery, which reads as a place with tables.
+  home_kitchen: 'pot-01',
 }
 
 export function visualFor(input: { name?: unknown, slug?: unknown, type?: unknown, cuisine?: unknown }): BusinessVisual {

@@ -38,7 +38,7 @@ types:
   bakery: Bäckereien
   bar: Kneipen
   grocery: Läden
-
+  home_kitchen: Hausküchen
 region:
   label: Wo
   los-angeles: Los Angeles
@@ -216,6 +216,8 @@ meta:
   codes_title: Tischcodes - Smakelo
   codes_description: Druckbare Codes für jeden Tisch.
 
+  home_kitchens_title: Hausküchen - Smakelo
+  home_kitchens_description: Eine Person, eine kurze Karte und die Tage, an denen wirklich gekocht wird. Wie Hausküchen bei Smakelo funktionieren - für Kochende und für Bestellende.
 order:
   add_to_cart: Hinzufügen
   subtotal: Zwischensumme
@@ -378,6 +380,7 @@ footer:
   sources: Einträge aus OpenStreetMap und Foursquare Open Source Places. Bewertungen, Bestellungen und Konten sind erfunden.
   language: Sprache
 
+  home_kitchens: Von zu Hause kochen
 common:
   cancel: Stornieren
   save: Speichern
@@ -565,6 +568,32 @@ cart:
   order_note: Hinweis zur ganzen Bestellung
   order_note_placeholder: Bitte klingeln statt klopfen…
   group_needs_choice: Bitte etwas bei „{group}“ auswählen.
+
+home_kitchen:
+  address_note: Das Viertel, nicht die Adresse. Die Hausnummer bekommt, wer die Bestellung abholt.
+  nav: Hausküchen
+  headline: Eine Küche muss kein Restaurant sein, damit sich das Bestellen lohnt.
+  intro: Wer donnerstags fünf Currys kocht, muss gefunden werden, Bestellungen annehmen und Geld dafür bekommen. Eine Kasse, eine Fahrerflotte und eine Karte mit vierzig Gerichten braucht es dafür nicht. Hausküchen bekommen denselben Eintrag wie jedes Restaurant hier - ohne die Teile, die nur für Geschäftsräume Sinn ergeben.
+  cooks_head: Was Kochende bekommen
+  eaters_head: Was du beim Bestellen bekommst
+  cooks_address_title: Deine Adresse bleibt deine
+  cooks_address_body: Die Seite zeigt dein Viertel. Die Hausnummer geht mit der Bestellung an die Person, die abholt, und die Karte zeichnet einen Kreis von rund einem Kilometer statt einer Nadel auf deinem Haus.
+  cooks_days_title: Koch an den Tagen, an denen du kochst
+  cooks_days_body: Die Öffnungszeiten sind die Zeiten, in denen wirklich gekocht wird. Donnerstag bis Sonntag, oder die zwei Vormittage, an denen die Tamales fertig sind. Sonst steht dort geschlossen, statt eine Bestellung anzunehmen, die niemand erfüllen kann.
+  cooks_menu_title: Eine kurze Karte ist der Punkt
+  cooks_menu_body: Drei Gerichte sind eine Karte. Wo die Portion oder die Schärfe die eigentliche Frage ist, steht sie am Gericht - und nicht als Hinweis, den sich jemand merken muss.
+  cooks_money_title: Abholung immer, Lieferung wenn du fährst
+  cooks_money_body: Jede Hausküche kann abgeholt werden. Geliefert wird nur, wenn die Person selbst fährt, und der Umkreis sind ein paar Straßen und keine Stadt - für eine Schüssel Curry fährt kein Kurier zu einer Wohnung.
+  eaters_when_title: Du siehst, wann gekocht wird
+  eaters_when_body: Die Zeiten auf der Seite sind die Zeiten am Herd, und die Wartezeit ist eine echte Wartezeit, weil erst nach der Bestellung gekocht wird.
+  eaters_what_title: Du siehst, was drin ist
+  eaters_what_body: Dieselbe Allergenzeile, dieselben Auswahlgruppen und derselbe Hinweis an die Küche wie überall sonst hier. Eine Hausküche ist kein Eintrag zweiter Klasse.
+  eaters_who_title: Du weißt, dass da eine Person kocht
+  eaters_who_body: Eine Hausküche ist als solche gekennzeichnet, und die kurze Karte, die zwei Kochtage und die Abholung sind die Form der Sache - kein unfertiger Eintrag.
+  honest_head: Was hier erfunden ist
+  honest_body: Jede Hausküche auf dieser Seite ist erfunden und bleibt es. Die Restaurants, Cafés und Bäckereien stammen aus offenen Daten und sind echt - Geschäftsräume darf jeder kartieren. Eine Hausküche ist jemandes Wohnung und kann hier nur stehen, weil die Person sie selbst eingetragen hat. Also sind sie erfunden, wie die Restaurant-Partner, und die Straßen sind nur deshalb echt, damit Entfernungen und Karte stimmen.
+  see_one: Eine Hausküche ansehen
+  browse: Hausküchen durchsuchen
 
 checkout:
   loading_menu: Speisekarte wird geladen…

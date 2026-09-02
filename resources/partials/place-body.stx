@@ -53,7 +53,7 @@ import { t } from '../../app/Actions/Locale/translate'
 
           <div class="flex flex-wrap gap-2 items-center">
             <span class="px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-              {{ vm.type }}
+              {{ vm.typeLabel }}
             </span>
             @if (vm.isPartner)
               <span class="px-3 py-1 text-[10px] font-medium tracking-[0.16em] uppercase rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">
@@ -86,6 +86,17 @@ import { t } from '../../app/Actions/Locale/translate'
           <p class="mt-4 text-[14px]" style="color: var(--ink-soft)">
             {{ vm.location }}
           </p>
+
+          {{-- Why there is a neighbourhood here and not a street.
+
+            Saying it plainly is the point: a reader who sees only "Mar Vista"
+            should know the address exists and is being kept back, rather than
+            assume the listing is half-finished. --}}
+          @if (vm.addressWithheld)
+            <p class="mt-1.5 text-[13px]" style="color: var(--ink-soft)">
+              {{ t('home_kitchen.address_note') }}
+            </p>
+          @endif
 
           {{-- Saving is private and says nothing about the business, so a real
             listing can be saved as freely as an invented partner. --}}

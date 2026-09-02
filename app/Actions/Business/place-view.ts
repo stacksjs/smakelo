@@ -1,6 +1,7 @@
 import { translateFor } from '../Locale/translate'
 import { formatMinuteOfDay } from './hours'
 import { visualFor } from './identity'
+import { hidesAddress, publicAddress, publicCoordinates, publicLocation } from './privacy'
 
 /**
  * Everything a place page renders, computed once.
@@ -45,6 +46,11 @@ export interface PlaceViewModel {
   name: string
   slug: string
   type: string
+  /**
+   * The type as the badge shows it: the column value with its underscores
+   * opened out. See `typeLabel`.
+   */
+  typeLabel: string
   /** The photograph and the colour behind it; see Business/identity.ts. */
   photoId: string
   /** Smallest variant, for `src`. */
@@ -71,6 +77,11 @@ export interface PlaceViewModel {
   city: string
   /** Address and city, joined by what is actually there. */
   location: string
+  /**
+   * Whether the street line is being held back because this is somebody's
+   * home. See `hidesAddress` in ./privacy.
+   */
+  addressWithheld: boolean
   priceLabel: string
   ratingAverage: number
   ratingCount: number
@@ -138,17 +149,14 @@ export function placeViewModel(found: any, locale = 'en'): PlaceViewModel {
     ...withIconClass(visualFor({ name: business.name, slug: business.slug, type: business.type, cuisine: business.cuisine })),
     ratingPercent: Math.round((Number(business.rating_average ?? 0) / 5) * 100),
     type: String(business.type ?? ''),
+    typeLabel: typeLabel(business.type),
     description: String(business.description ?? ''),
     cuisine: String(business.cuisine ?? ''),
-    address: String(business.address ?? ''),
+    address: publicAddress(business.address, business.type),
     city: String(business.city ?? ''),
-    /*
-     * Joined here rather than as `{{ address }}, {{ city }}` in the template.
-     * 106 of the 280 listings have no street address - they came out of open
-     * data that way - and the template's comma was rendering a leading one on
-     * every one of them: ", Los Angeles".
-     */
-    location: [String(business.address ?? '').trim(), String(business.city ?? '').trim()].filter(Boolean).join(', '),
+    location: publicLocation(business.address, business.city, business.type),
+    /* Whether the door number is being withheld, so the page can say why. */
+    addressWithheld: hidesAddress(business.type),
     priceLabel: symbolFor(currency).repeat(Math.max(1, Math.min(4, Number(business.price_tier) || 2))),
     ratingAverage: Number(business.rating_average ?? 0),
     ratingCount: Number(business.rating_count ?? 0),
@@ -192,12 +200,18 @@ export function placeViewModel(found: any, locale = 'en'): PlaceViewModel {
      * TypeScript also sidesteps `{{ vm.slug }}` rendering empty in the dev
      * server (stacksjs/stacks#2392).
      */
-    mapPoint: JSON.stringify({
-      lat: Number(business.latitude ?? 0),
-      lng: Number(business.longitude ?? 0),
-      name,
-      slug: String(business.slug ?? ''),
-    }),
+    mapPoint: (() => {
+      const point = publicCoordinates(business.latitude, business.longitude, business.type)
+
+      return JSON.stringify({
+        lat: point.latitude,
+        lng: point.longitude,
+        name,
+        slug: String(business.slug ?? ''),
+        /* Draw an area rather than a pin; see `publicCoordinates`. */
+        approximate: point.approximate,
+      })
+    })(),
   }
 }
 
@@ -229,6 +243,24 @@ function symbolFor(currency: string): string {
  */
 function say(key: string, locale: string, values?: Record<string, string | number>): string {
   return translateFor(key, locale, values)
+}
+
+/**
+ * The type, as the badge above the name shows it.
+ *
+ * The badge prints the column value and lets CSS upper-case it, which reads as
+ * a label for every type spelled as one word and as `HOME_KITCHEN` for the one
+ * that is not. So the underscores are opened out and nothing else changes.
+ *
+ * Deliberately not the `types.*` translations: those are written for the
+ * category tiles and are plural - "Restaurants", "Farms" - and using them here
+ * would relabel the badge on all 452 existing pages as a side effect of adding
+ * one type. The badge has always shown the untranslated value; making it
+ * translated is a change worth making on its own, with singular strings, and
+ * not smuggled in behind this.
+ */
+function typeLabel(type: unknown): string {
+  return String(type ?? '').replace(/_/g, ' ')
 }
 
 function statusLabel(status: any, locale: string): string {

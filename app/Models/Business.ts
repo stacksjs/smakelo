@@ -22,7 +22,13 @@ import { schema } from '@stacksjs/validation'
  *
  * What a partner can actually do is a set of capability flags rather than a
  * type, because they do not correlate. A farm delivers but has no tables; a
- * coffee shop has tables but no delivery; a restaurant usually has both.
+ * coffee shop has tables but no delivery; a restaurant usually has both; a
+ * home kitchen has neither tables nor couriers, and cooks to order.
+ *
+ * `home_kitchen` is the one type that can only ever be a partner. The others
+ * describe premises anybody can walk past and a mapper can record; a home
+ * kitchen is somebody's flat, and the address only exists here because they
+ * put it here themselves. Nothing imported from open data is ever one.
  */
 export default defineModel({
   name: 'Business',
@@ -83,8 +89,8 @@ export default defineModel({
       fillable: true,
       default: 'restaurant',
       validation: {
-        rule: schema.enum(['restaurant', 'cafe', 'farm', 'bakery', 'bar', 'grocery']),
-        message: { enum: 'Type must be one of: restaurant, cafe, farm, bakery, bar, grocery' },
+        rule: schema.enum(['restaurant', 'cafe', 'farm', 'bakery', 'bar', 'grocery', 'home_kitchen']),
+        message: { enum: 'Type must be one of: restaurant, cafe, farm, bakery, bar, grocery, home_kitchen' },
       },
       factory: faker => faker.helpers.arrayElement(['restaurant', 'cafe', 'farm']),
     },

@@ -39,7 +39,7 @@ types:
   bakery: Bakeries
   bar: Bars
   grocery: Grocers
-
+  home_kitchen: Home kitchens
 region:
   label: Where
   los-angeles: Los Angeles
@@ -217,6 +217,8 @@ meta:
   codes_title: Table codes - Smakelo
   codes_description: Printable codes for every table.
 
+  home_kitchens_title: Home kitchens - Smakelo
+  home_kitchens_description: One person, a short menu and the days they actually cook. How home kitchens work on Smakelo, for the people cooking and the people ordering.
 order:
   add_to_cart: Add
   subtotal: Subtotal
@@ -379,6 +381,7 @@ footer:
   sources: Listings from OpenStreetMap and Foursquare Open Source Places. Reviews, orders and accounts are invented.
   language: Language
 
+  home_kitchens: Cook from home
 common:
   cancel: Cancel
   save: Save
@@ -566,6 +569,32 @@ cart:
   order_note: Note for the whole order
   order_note_placeholder: Ring the bell rather than knocking…
   group_needs_choice: Pick an option for "{group}".
+
+home_kitchen:
+  address_note: The neighbourhood, not the address. The door number goes to whoever is coming to collect.
+  nav: Home kitchens
+  headline: A kitchen does not have to be a restaurant to be worth ordering from.
+  intro: Someone cooking five curries on a Thursday needs a way to be found, take an order and be paid for it. They do not need a point-of-sale, a courier fleet, or a menu of forty things. Home kitchens are the same listing every restaurant here gets, with the parts that only make sense for premises taken out.
+  cooks_head: What a cook gets
+  eaters_head: What you get ordering from one
+  cooks_address_title: Your address stays yours
+  cooks_address_body: The page shows your neighbourhood. The door number travels with the order, to the person coming to collect it, and the map draws a circle roughly a kilometre across rather than a pin on your house.
+  cooks_days_title: Cook on the days you cook
+  cooks_days_body: Opening hours are the hours you are actually cooking. Thursday to Sunday, or the two mornings the tamales are ready. Outside them the page says closed rather than taking an order you cannot fill.
+  cooks_menu_title: A short menu is the point
+  cooks_menu_body: Three dishes is a menu. Where a portion or a heat level is the real question, it is a question on the dish rather than a note somebody has to remember to read.
+  cooks_money_title: Pickup first, delivery if you are driving
+  cooks_money_body: Every home kitchen takes collection. Delivery is on only when the cook is doing the driving, and the radius is a few streets rather than a city - there is no courier to dispatch to a flat for one box.
+  eaters_when_title: You can see when it is cooked
+  eaters_when_body: The hours on the page are the hours somebody is at the stove, and the wait is a real wait, because it is being cooked when you order it and not before.
+  eaters_what_title: You can read what is in it
+  eaters_what_body: The same allergen line, the same modifier groups and the same note to the kitchen as everywhere else on this site. A home kitchen is not a lesser listing.
+  eaters_who_title: You know it is one person
+  eaters_who_body: A home kitchen is marked as one, and the small menu, the two cooking days and the collection-only pickup are the shape of the thing rather than an unfinished listing.
+  honest_head: What is invented here
+  honest_body: Every home kitchen on this site is fictional, and always will be. The restaurants, cafes and bakeries you can browse are real places taken from open data - anyone can map premises. A home kitchen is somebody's flat, and it can only ever appear here because the person cooking in it put it there. So these are invented, like the restaurant partners, and the streets they sit on are real only so that distances and the map behave.
+  see_one: See a home kitchen
+  browse: Browse home kitchens
 
 checkout:
   loading_menu: Loading the menu…

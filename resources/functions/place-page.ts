@@ -297,9 +297,18 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
    * map answers "where is it", and a reader who wants to move around it has
    * the whole of /discover for that.
    */
+  /*
+   * A home kitchen is shown as an area rather than a point, and further out.
+   *
+   * Its coordinates arrive rounded to about a kilometre (see `mapCoordinates`
+   * in place-view.ts), so zoom 15 would render that rounding as a confident
+   * pin on one particular house - the wrong house, and stated far more
+   * precisely than it is known. Zoom 13 puts the whole rounded square on
+   * screen, which is the honest reading of the number.
+   */
   const map = new TsMap(element, {
     center: [point.lat, point.lng],
-    zoom: 15,
+    zoom: point.approximate ? 13 : 15,
     zoomControl: false,
     attributionControl: false,
     fadeAnimation: false,
@@ -318,12 +327,24 @@ export async function placeMap(element: HTMLElement | null, point: any): Promise
    * pointing at a spot half its own height further up the street.
    */
   new Marker([point.lat, point.lng], {
-    icon: divIcon({
-      className: 'pin-wrap',
-      html: '<span class="pin-shadow"></span><span class="pin-marker"></span>',
-      iconSize: [30, 38],
-      iconAnchor: [15, 38],
-    }),
+    icon: point.approximate
+      /*
+       * A soft disc, centred on its coordinate rather than anchored at a tip.
+       * A pin points; this is the shape for "somewhere in here", and it is
+       * roughly the size of the area the rounding leaves at zoom 13.
+       */
+      ? divIcon({
+          className: 'pin-wrap',
+          html: '<span class="pin-area"></span>',
+          iconSize: [96, 96],
+          iconAnchor: [48, 48],
+        })
+      : divIcon({
+          className: 'pin-wrap',
+          html: '<span class="pin-shadow"></span><span class="pin-marker"></span>',
+          iconSize: [30, 38],
+          iconAnchor: [15, 38],
+        }),
   }).addTo(map)
 
   keepSized(map, element)

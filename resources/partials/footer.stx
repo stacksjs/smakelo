@@ -62,6 +62,7 @@ const footerTagline = t('footer.tagline', { regions: regionNames })
         <h2 class="text-[12px] font-semibold tracking-[0.14em] uppercase" style="color: var(--ink-soft)">{{ t('footer.for_business') }}</h2>
         <ul class="flex flex-col gap-2.5 mt-4 text-[14px]">
           <li><a href="/partner" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.list_your_place') }}</a></li>
+          <li><a href="/home-kitchens" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.home_kitchens') }}</a></li>
           <li><a href="/manage" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.manage_place') }}</a></li>
           <li><a href="/kitchen" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.kitchen_screen') }}</a></li>
           <li><a href="/courier" class="transition-opacity duration-500 hover:opacity-70">{{ t('footer.courier') }}</a></li>

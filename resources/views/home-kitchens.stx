@@ -1,0 +1,173 @@
+<script server>
+/*
+ * Home kitchens, explained.
+ *
+ * The one business type on this site that could not be imported from open
+ * data, and the one that needed the product to bend rather than the listing to
+ * be squeezed into a restaurant's shape. This page is where that is written
+ * down: what a cook gets, what somebody ordering gets, and - because it is the
+ * question a page like this usually dodges - which of it is invented.
+ *
+ * Two columns of claims, each linking into the screen that actually does the
+ * thing, in the same spirit as /partner. A feature page that describes
+ * behaviour nobody can go and look at is a brochure.
+ */
+import { currentLocale, t } from '../../app/Actions/Locale/translate'
+
+const pageTitle = t('meta.home_kitchens_title')
+const pageDescription = t('meta.home_kitchens_description')
+const canonicalPath = '/home-kitchens'
+
+/* What the cook is spared, and where to go and see it. */
+const forCooks = [
+  {
+    title: t('home_kitchen.cooks_address_title'),
+    body: t('home_kitchen.cooks_address_body'),
+    icon: 'i-hugeicons-location-01',
+    href: '/places/ammas-table',
+  },
+  {
+    title: t('home_kitchen.cooks_days_title'),
+    body: t('home_kitchen.cooks_days_body'),
+    icon: 'i-hugeicons-calendar-03',
+    href: '/places/dona-elvia-tamales',
+  },
+  {
+    title: t('home_kitchen.cooks_menu_title'),
+    body: t('home_kitchen.cooks_menu_body'),
+    icon: 'i-hugeicons-menu-restaurant',
+    href: '/places/kusina-ni-baby',
+  },
+  {
+    title: t('home_kitchen.cooks_money_title'),
+    body: t('home_kitchen.cooks_money_body'),
+    icon: 'i-hugeicons-delivery-truck-01',
+    href: '/places/ayses-kueche',
+  },
+]
+
+/* And what it looks like from the other side of the door. */
+const forEaters = [
+  {
+    title: t('home_kitchen.eaters_when_title'),
+    body: t('home_kitchen.eaters_when_body'),
+    icon: 'i-hugeicons-clock-01',
+  },
+  {
+    title: t('home_kitchen.eaters_what_title'),
+    body: t('home_kitchen.eaters_what_body'),
+    icon: 'i-hugeicons-checkmark-circle-02',
+  },
+  {
+    title: t('home_kitchen.eaters_who_title'),
+    body: t('home_kitchen.eaters_who_body'),
+    icon: 'i-hugeicons-pot-01',
+  },
+]
+</script>
+
+<!DOCTYPE html>
+<html lang="{{ currentLocale() }}">
+  <head>
+    @include('head')
+  </head>
+
+  <body>
+    @include('chrome')
+
+    <main class="mx-auto px-4 sm:px-8 max-w-4xl">
+      <section class="pt-16 pb-14 sm:pt-24">
+        <span class="inline-flex gap-2 items-center px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
+          <i class="w-3.5 h-3.5 i-hugeicons-pot-01"></i>
+          {{ t('home_kitchen.nav') }}
+        </span>
+
+        <h1 class="mt-6 text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-balance">
+          {{ t('home_kitchen.headline') }}
+        </h1>
+
+        <p class="mt-6 max-w-2xl text-[17px] leading-relaxed" style="color: var(--ink-soft)">
+          {{ t('home_kitchen.intro') }}
+        </p>
+
+        <div class="flex flex-wrap gap-3 mt-8">
+          <a href="/discover?type=home_kitchen" class="inline-flex gap-3 items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group" style="background: var(--accent); color: #fff">
+            <span>{{ t('home_kitchen.browse') }}</span>
+            <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.2)">
+              <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
+            </span>
+          </a>
+
+          <a href="/places/ammas-table" class="inline-flex gap-2 items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-500 hover:opacity-70" style="border: 1px solid var(--line); color: var(--ink-soft)">
+            {{ t('home_kitchen.see_one') }}
+          </a>
+        </div>
+      </section>
+
+      <section class="pb-14">
+        <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('home_kitchen.cooks_head') }}</h2>
+
+        <div class="mt-5 space-y-3">
+          @foreach (forCooks as claim)
+            <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+              <div class="flex gap-6 justify-between items-start p-6 rounded-[calc(1.5rem-0.375rem)]">
+                <div class="flex gap-4 items-start min-w-0">
+                  <span class="flex justify-center items-center w-10 h-10 rounded-[0.85rem] shrink-0" style="background: var(--accent-soft); color: var(--accent)">
+                    <i class="w-5 h-5 {{ claim.icon }}"></i>
+                  </span>
+
+                  <div class="min-w-0">
+                    <p class="text-[16px] font-semibold">{{ claim.title }}</p>
+                    <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ claim.body }}</p>
+                  </div>
+                </div>
+
+                {{-- Each claim links to the listing that demonstrates it, so
+                  none of this has to be taken on trust. --}}
+                <a href="{{ claim.href }}" class="px-3 py-1 text-[11px] rounded-full shrink-0 transition-opacity duration-500 hover:opacity-70" style="background: var(--accent-soft); color: var(--accent)">
+                  {{ t('partner.see_it') }}
+                </a>
+              </div>
+            </div>
+          @endforeach
+        </div>
+      </section>
+
+      <section class="pb-14">
+        <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('home_kitchen.eaters_head') }}</h2>
+
+        <div class="grid grid-cols-1 gap-3 mt-5 sm:grid-cols-3">
+          @foreach (forEaters as claim)
+            <div class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
+              <div class="p-6 h-full rounded-[calc(1.5rem-0.375rem)]">
+                <span class="flex justify-center items-center w-10 h-10 rounded-[0.85rem]" style="background: var(--accent-soft); color: var(--accent)">
+                  <i class="w-5 h-5 {{ claim.icon }}"></i>
+                </span>
+                <p class="mt-4 text-[15px] font-semibold">{{ claim.title }}</p>
+                <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ claim.body }}</p>
+              </div>
+            </div>
+          @endforeach
+        </div>
+      </section>
+
+      {{-- The part a feature page usually leaves out.
+
+        Every home kitchen here is fictional and has to be, which is worth
+        stating on the page that sells the feature rather than in a footnote
+        somebody finds later. --}}
+      <section class="pb-24 sm:pb-40">
+        <div class="p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
+          <div class="p-8 rounded-[calc(2rem-0.375rem)]">
+            <h2 class="text-[20px] font-semibold tracking-[-0.02em]">{{ t('home_kitchen.honest_head') }}</h2>
+            <p class="mt-3 max-w-2xl text-[15px] leading-relaxed" style="color: var(--ink-soft)">
+              {{ t('home_kitchen.honest_body') }}
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    @include('footer')
+  </body>
+</html>

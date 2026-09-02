@@ -209,6 +209,13 @@ const CUISINE_BUCKETS: Array<[string, string]> = [
   ['wine', 'bar'],
   ['cocktail', 'bar'],
   ['beer', 'bar'],
+  /* The home kitchens' cuisines; see the matching list in identity.ts. */
+  ['rice and curry', 'rice'],
+  ['sri lankan', 'rice'],
+  ['filipino', 'rice'],
+  ['tamal', 'taco'],
+  ['oaxacan', 'taco'],
+  ['pierogi', 'noodles'],
 ]
 
 /** Type to bucket, for when the cuisine says nothing useful. */
@@ -219,6 +226,13 @@ const TYPE_BUCKETS: Record<string, string> = {
   bakery: 'bakery',
   grocery: 'grocery',
   bar: 'bar',
+  /*
+   * No bucket of its own. A home kitchen is not a kind of food - it is a kind
+   * of kitchen - and every one of them cooks something the cuisine already
+   * names, which is chosen before this fallback is reached. A stock photograph
+   * of somebody's hob would say less than a photograph of the curry.
+   */
+  home_kitchen: 'restaurant',
 }
 
 export interface PhotoInput {

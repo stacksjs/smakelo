@@ -1,6 +1,7 @@
 import type { OpeningInterval, OpenState } from './hours'
 import { db } from '@stacksjs/database'
 import { boundingBox, distanceInMeters } from './geo'
+import { publicAddress, publicCoordinates } from './privacy'
 import { visualFor } from './identity'
 import { dishPhotoFor } from './imagery'
 import { openStatus } from './hours'
@@ -54,6 +55,8 @@ export interface BusinessResult {
   prepTimeMinutes: number
   /** Metres from the requested centre, or null when none was given. */
   distanceMeters: number | null
+  /** Whether the coordinates above are a rounded stand-in; see ./privacy. */
+  approximateLocation: boolean
   openState: OpenState
   closesInMinutes?: number
   opensInMinutes?: number
@@ -167,6 +170,18 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
     if (query.openNow && status.state === 'closed')
       continue
 
+    /*
+     * What we publish about where this is.
+     *
+     * The distance above was worked out from the row's real coordinates; what
+     * goes out on the wire is whatever ./privacy will let us say. For a home
+     * kitchen that is the neighbourhood and a point rounded to about a
+     * kilometre, so a result card cannot print somebody's street and the
+     * results map cannot pin their front door - while "1.2 km away" stays as
+     * accurate as it is for everybody else.
+     */
+    const point = publicCoordinates(row.latitude, row.longitude, row.type)
+
     results.push({
       id: Number(row.id),
       name: String(row.name),
@@ -174,10 +189,12 @@ export async function searchBusinesses(query: BusinessSearchQuery = {}): Promise
       type: String(row.type),
       cuisine: String(row.cuisine ?? ''),
       description: String(row.description ?? ''),
-      address: String(row.address ?? ''),
+      address: publicAddress(row.address, row.type),
       city: String(row.city ?? ''),
-      latitude,
-      longitude,
+      latitude: point.latitude,
+      longitude: point.longitude,
+      /* Draw an area rather than a pin. */
+      approximateLocation: point.approximate,
       priceTier: Number(row.price_tier ?? 2),
       ratingAverage: Number(row.rating_average ?? 0),
       ratingCount: Number(row.rating_count ?? 0),
