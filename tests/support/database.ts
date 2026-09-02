@@ -170,8 +170,17 @@ function ensureDatabase(path: string): Database {
   if (shared)
     return shared
 
+  /*
+   * The template first, because building it is what creates the directory.
+   * Sweeping before that read a directory which does not exist on a fresh
+   * checkout - it existed on this machine from earlier runs, so it passed
+   * here and failed on CI, which is the second time that shape of mistake has
+   * cost a pipeline in this suite.
+   */
+  const template = schemaTemplate()
+
   sweepAbandoned(path)
-  copyFileSync(schemaTemplate(), path)
+  copyFileSync(template, path)
   shared = new Database(path)
 
   return shared
@@ -195,6 +204,9 @@ const ABANDONED_AFTER_MS = 10 * 60 * 1000
 
 function sweepAbandoned(keep: string): void {
   const ours = keep.split('/').pop()
+
+  if (fileChangedAt(TESTING_DIR) === null)
+    return
 
   for (const name of readdirSync(TESTING_DIR)) {
     if (!name.startsWith('test-') || name.startsWith(ours ?? ''))
