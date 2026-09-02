@@ -1,724 +1,85 @@
 <script server>
 /*
- * Ordering.
+ * The old ordering screen, kept only to send people to the new one.
  *
- * Client-rendered against `/api/businesses/{slug}/menu`, unlike the browse and
- * place pages which are server-rendered. Not a preference: a per-request stx
- * view silently drops awaited values and imported-function results, so a page
- * that has to read `?business=` from the URL cannot fetch anything on the
- * server (stacksjs/stacks#2390). The API is the reliable path for a screen that
- * changes as somebody uses it anyway.
+ * Ordering used to happen here, at `/order?business=<slug>`: a second copy of
+ * a menu somebody had just read on the restaurant's own page, behind a query
+ * string, with the first copy offering nothing to press. The menu on the place
+ * page is now the menu you order from, so there is nothing left for this URL
+ * to show.
  *
- * Every price shown here is one the server calculated. The quote endpoint runs
- * the same `priceOrder` that placement runs, so what the customer is shown and
- * what they are charged cannot drift apart.
+ * It stays because links to it do - printed, bookmarked, indexed - and a URL
+ * that has been shared should not become a 404 because the screen behind it
+ * was folded into a better one. Routes here are generated from the views, so
+ * there is no place to return a 301; the redirect is a meta refresh plus a
+ * script, with a real link underneath for anyone who arrives with neither.
+ *
+ * `noindex` so search engines drop this rather than keep it alongside the page
+ * it forwards to.
  */
 import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
-/*
- * The strings this page's own script writes, already translated.
- *
- * Built here and carried to the markup on a data attribute, the same way the
- * rest of this app hands the client a payload. Written inline in the markup
- * instead, stx sometimes reads it as a client expression and leaves the
- * literal `{{ JSON.stringify(` in the attribute, which is a page whose script
- * silently falls back to English. The shared strings are in partials/head.stx.
- */
-const clientStrings = JSON.stringify({
-  'checkout.placed_body': t('checkout.placed_body', { name: '{name}' }),
-  'checkout.contains': t('checkout.contains', { allergens: '{allergens}' }),
-  'checkout.group_required': t('checkout.group_required'),
-  'checkout.group_optional': t('checkout.group_optional'),
-  'checkout.group_up_to': t('checkout.group_up_to', { max: '{max}' }),
-  'allergen.gluten': t('allergen.gluten'),
-  'allergen.dairy': t('allergen.dairy'),
-  'allergen.egg': t('allergen.egg'),
-  'allergen.fish': t('allergen.fish'),
-  'allergen.shellfish': t('allergen.shellfish'),
-  'allergen.crustaceans': t('allergen.crustaceans'),
-  'allergen.nuts': t('allergen.nuts'),
-  'allergen.soy': t('allergen.soy'),
-  'allergen.sesame': t('allergen.sesame'),
-  'allergen.celery': t('allergen.celery'),
-  'checkout.home': t('checkout.home'),
-  'checkout.none': t('checkout.none'),
-  'checkout.could_not_place': t('checkout.could_not_place'),
-  'checkout.talking_to_stripe': t('checkout.talking_to_stripe'),
-  'checkout.paid_test_mode': t('checkout.paid_test_mode'),
-  'order.delivery': t('order.delivery'),
-  'order.pickup': t('order.pickup'),
-  'order.dine_in': t('order.dine_in'),
-})
-
 const pageTitle = t('meta.checkout_title')
 const pageDescription = t('meta.checkout_description')
-const canonicalPath = '/order'
+const canonicalPath = '/discover'
 </script>
 
 <!DOCTYPE html>
 <html lang="{{ currentLocale() }}">
   <head>
+    <meta name="robots" content="noindex, follow">
     @include('head')
   </head>
 
   <body>
     @include('chrome')
 
-    <main class="mx-auto px-4 sm:px-8 max-w-6xl" data-stx-content>
-      <div class="pt-10 pb-24 sm:pb-40">
-        {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
+    <main class="mx-auto px-4 sm:px-8 max-w-3xl" data-stx-content>
+      <div class="py-24 text-center">
+        <h1 class="text-[26px] font-semibold tracking-[-0.02em]">{{ t('order.moved_title') }}</h1>
+        <p class="mx-auto mt-3 max-w-md text-[15px] leading-relaxed" style="color: var(--ink-soft)">{{ t('order.moved_body') }}</p>
 
-        <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('checkout.loading_menu') }}</p>
-
-        <p :if="!loading() && !slug()" class="text-[15px]">
-          {{ t('checkout.pick_a_place_prefix') }} <a class="underline underline-offset-4" href="/discover">{{ t('nav.discover') }}</a> {{ t('checkout.pick_a_place_suffix') }}
-        </p>
-
-        <p :if="!loading() && slug() && !menu()" class="text-[15px]">{{ t('checkout.unavailable') }}</p>
-
-        {{-- After the order is placed. --}}
-        <div :if="placed()" class="mx-auto max-w-xl p-1.5 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
-          <div class="p-8 text-center rounded-[calc(2rem-0.375rem)]">
-            <h1 class="text-[26px] font-semibold tracking-[-0.02em]">{{ t('checkout.order_placed') }}</h1>
-            <p class="mt-3 text-[15px]" style="color: var(--ink-soft)">
-              {{ placedBody(menu().business.name) }}
-            </p>
-
-            <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">{{ t('order.total') }}</p>
-            <p class="text-[32px] font-semibold tracking-[-0.03em]">{{ money(placed().pricing.totalCents, currency()) }}</p>
-
-            <p :if="!payment()" class="mt-6 text-[13px]" style="color: var(--ink-soft)">{{ t('checkout.setting_up') }}</p>
-
-            {{-- No provider configured: say so rather than show a card form
-              that could not work. --}}
-            <div :if="payment() && !payment().configured" class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
-              <p class="text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.payment') }}</p>
-              <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ payment().reason }}</p>
-            </div>
-
-            <div :if="payment() && payment().configured" class="p-5 mt-8 text-left rounded-[1.25rem]" style="background: var(--paper)">
-              <p class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
-                {{ t('checkout.stripe_test') }}
-              </p>
-              <p class="mt-3 text-[13px] leading-relaxed" style="color: var(--ink-soft)">
-                {{ t('checkout.stripe_card') }}
-              </p>
-
-              <div id="card-element" class="p-4 mt-4 rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)"></div>
-
-              <button @click="pay()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--accent); color: #fff">
-                {{ t('checkout.pay_test_mode') }}
-              </button>
-
-              <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">{{ payStatus() }}</p>
-            </div>
-
-            <a
-              :href="'/track?code=' + placed().trackingToken"
-              class="inline-flex gap-3 items-center px-5 py-2.5 mt-8 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
-              style="background: var(--ink); color: var(--paper)"
-            >
-              <span>{{ t('checkout.track_it') }}</span>
-              <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.14)">
-                <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
-              </span>
-            </a>
-          </div>
-        </div>
-
-        {{-- The menu and the cart. --}}
-        <div :if="menu() && !placed()">
-          <div class="flex flex-wrap gap-4 justify-between items-baseline">
-            <div class="flex gap-4 items-center">
-              <div class="cover flex justify-center items-center w-14 h-14 rounded-[1rem] shrink-0" :style="'--h: ' + menu().business.hue + '; --h2: ' + menu().business.hueEnd">
-                <i class="cover-mark w-6 h-6" :class="menu().business.iconClass"></i>
-                <img class="cover-photo" :src="menu().business.photoThumb" alt="" decoding="async" width="160" height="160">
-              </div>
-
-              <div>
-                <a :href="'/places/' + menu().business.slug" class="text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">{{ menu().business.name }}</a>
-                <h1 class="mt-1 text-[clamp(1.9rem,4vw,2.75rem)] font-semibold tracking-[-0.03em]">{{ t('checkout.order') }}</h1>
-              </div>
-            </div>
-
-            <div class="flex gap-1 p-1 rounded-full" style="background: var(--paper-raised); border: 1px solid var(--line)">
-              <button
-                :for="mode in fulfilments()"
-                @click="setFulfilment(mode.value)"
-                class="px-4 py-1.5 text-[13px] rounded-full transition-all duration-500"
-                :style="fulfilment() === mode.value ? 'background: var(--ink); color: var(--paper)' : 'color: var(--ink-soft)'"
-              >{{ mode.label }}</button>
-            </div>
-          </div>
-
-          <p :if="error()" class="px-4 py-3 mt-6 text-[14px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ error() }}</p>
-
-          {{-- Only for delivery, and only then. An address field on a pickup
-            order is a question with no reason behind it. --}}
-          <div :if="fulfilment() === 'delivery'" class="p-1.5 mt-6 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-            <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-              <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.deliver_to') }}</p>
-
-              <div :if="addresses().length > 0" class="flex flex-wrap gap-2 mt-3">
-                <button
-                  :for="address in addresses()"
-                  @click="chooseAddress(address)"
-                  class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
-                  :style="chosenAddress() && chosenAddress().id === address.id ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-                >{{ address.label }} · {{ address.line }}</button>
-              </div>
-
-              <input
-                placeholder="{{ t('checkout.street_number') }}"
-                maxlength="255"
-                :value="addressLine()"
-                @input="addressLine.set($event.target.value)"
-                class="px-4 py-3 mt-3 w-full text-[15px] rounded-[1rem]"
-                style="background: var(--paper); border: 1px solid var(--line)"
-              >
-
-              <div class="flex flex-wrap gap-2 items-center mt-3">
-                <input
-                  placeholder="{{ t('checkout.label_it') }}"
-                  maxlength="40"
-                  :value="addressLabel()"
-                  @input="addressLabel.set($event.target.value)"
-                  class="px-4 py-2.5 flex-1 min-w-[160px] text-[14px] rounded-full"
-                  style="background: var(--paper); border: 1px solid var(--line)"
-                >
-                <button @click="keepAddress()" class="px-4 py-2.5 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('checkout.save_it') }}</button>
-              </div>
-
-              <p :if="addressError()" class="mt-3 text-[13px]" style="color: var(--accent)">{{ addressError() }}</p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 gap-10 mt-10 lg:grid-cols-12">
-            <div class="space-y-10 lg:col-span-7">
-              <section :for="section in menu().sections">
-                <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ section.name }}</h2>
-
-                <div class="mt-4 space-y-3">
-                  <div :for="item in section.items" class="p-1.5 rounded-[1.5rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03), 0 14px 28px -20px rgba(20,17,15,0.12)">
-                    <div class="p-5 rounded-[calc(1.5rem-0.375rem)]">
-                      <div class="flex gap-4 justify-between items-start">
-                        <div class="cover flex justify-center items-center w-11 h-11 rounded-[0.85rem] shrink-0" :style="'--h: ' + menu().business.hue + '; --h2: ' + menu().business.hueEnd">
-                          <i class="cover-mark w-5 h-5" :class="item.iconClass"></i>
-                        </div>
-
-                        <div class="flex-1 min-w-0">
-                          <p class="text-[15px] font-medium">{{ item.name }}</p>
-                          <p class="mt-1.5 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ item.description }}</p>
-                          <p :if="item.allergens.length > 0" class="mt-2 text-[12px]" style="color: var(--ink-soft)">{{ allergenLine(item.allergens) }}</p>
-                        </div>
-                        <p class="text-[15px] font-medium tabular-nums shrink-0">{{ money(item.priceCents, currency()) }}</p>
-                      </div>
-
-                      <div :for="group in item.groups" class="mt-4">
-                        <p class="text-[12px] font-medium" style="color: var(--ink-soft)">
-                          {{ group.name }}
-                          <span style="opacity:.7">{{ groupRule(group) }}</span>
-                        </p>
-
-                        <div class="flex flex-wrap gap-2 mt-2">
-                          <button
-                            :for="option in group.options"
-                            @click="toggleOption(item, group, option.id)"
-                            class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
-                            :style="isChosen(item.id, group.id, option.id) ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-                          >{{ option.name }}{{ option.priceDeltaCents ? (option.priceDeltaCents > 0 ? ' +' : ' ') + money(option.priceDeltaCents, currency()) : '' }}</button>
-                        </div>
-                      </div>
-
-                      <button @click="addToCart(item)" class="inline-flex gap-2 items-center px-4 py-2 mt-5 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--ink); color: var(--paper)">
-                        {{ t('order.add_to_cart') }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <aside class="lg:col-span-5">
-              <div class="p-1.5 rounded-[2rem] lg:sticky lg:top-24" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
-                <div class="p-7 rounded-[calc(2rem-0.375rem)]">
-                  <h2 class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.your_order') }}</h2>
-
-                  <p :if="cart().length === 0" class="mt-4 text-[14px]" style="color: var(--ink-soft)">{{ t('checkout.nothing_yet') }}</p>
-
-                  <ul :if="cart().length > 0" class="mt-4 space-y-3">
-                    <li :for="line in numberedCart()" class="flex gap-4 justify-between items-start text-[14px]">
-                      <div class="min-w-0">
-                        <p>{{ line.quantity }} × {{ line.name }}</p>
-                        <p :if="line.labels.length > 0" class="text-[12px]" style="color: var(--ink-soft)">{{ line.labels.join(', ') }}</p>
-                      </div>
-                      <button @click="removeLine(line.index)" class="text-[12px] shrink-0 transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">{{ t('checkout.remove') }}</button>
-                    </li>
-                  </ul>
-
-                  <div :if="cart().length > 0" class="pt-5 mt-5 border-t" style="border-color: var(--line)">
-                    <p class="text-[12px] font-medium" style="color: var(--ink-soft)">{{ t('order.tip') }}</p>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                      <button
-                        :for="option in tipOptions()"
-                        @click="setTip(option.cents)"
-                        class="px-3 py-1.5 text-[12px] rounded-full transition-all duration-500"
-                        :style="tipCents() === option.cents ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
-                      >{{ option.label }}</button>
-                    </div>
-                  </div>
-
-                  <dl :if="quote()" class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
-                    <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">{{ t('order.subtotal') }}</dt>
-                      <dd class="tabular-nums">{{ money(quote().subtotalCents, currency()) }}</dd>
-                    </div>
-                    <div :if="quote().deliveryFeeCents" class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">{{ t('order.delivery_fee') }}</dt>
-                      <dd class="tabular-nums">{{ money(quote().deliveryFeeCents, currency()) }}</dd>
-                    </div>
-                    <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">{{ t('order.service_fee') }}</dt>
-                      <dd class="tabular-nums">{{ money(quote().serviceFeeCents, currency()) }}</dd>
-                    </div>
-                    <div class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">{{ t('order.tax') }}</dt>
-                      <dd class="tabular-nums">{{ money(quote().taxCents, currency()) }}</dd>
-                    </div>
-                    <div :if="quote().tipCents" class="flex justify-between">
-                      <dt style="color: var(--ink-soft)">{{ t('order.tip') }}</dt>
-                      <dd class="tabular-nums">{{ money(quote().tipCents, currency()) }}</dd>
-                    </div>
-                    <div class="flex justify-between pt-2 text-[16px] font-semibold border-t" style="border-color: var(--line)">
-                      <dt>{{ t('order.total') }}</dt>
-                      <dd class="tabular-nums">{{ money(quote().totalCents, currency()) }}</dd>
-                    </div>
-                  </dl>
-
-                  <button
-                    :if="quote()"
-                    @click="submit()"
-                    class="flex gap-3 justify-center items-center px-5 py-3 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-                    style="background: var(--accent); color: #fff"
-                  >{{ t('order.place_order') }}</button>
-
-                  <p :if="quote()" class="mt-3 text-[11px] text-center" style="color: var(--ink-soft)">{{ t('checkout.test_mode') }}</p>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </div>
+        {{-- Written by the script below once it knows which restaurant this
+          was for; a link rather than a button, so it works before the script
+          runs and for anyone who has none. --}}
+        <a
+          id="order-moved-link"
+          href="/discover"
+          class="inline-flex gap-3 items-center px-5 py-3 mt-8 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
+          style="background: var(--accent); color: #fff"
+        >
+          <span>{{ t('order.moved_link') }}</span>
+          <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.2)">
+            <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
+          </span>
+        </a>
       </div>
     </main>
 
     <script client>
-      import { money, send, visitorToken } from '../functions/session'
-
       /*
-       * The words this script writes, in the language the server served.
+       * Send them on, and keep the back button usable.
        *
-       * The English text is the second argument rather than a fallback to the
-       * key, so a string no holder carries reads as English rather than as its
-       * own name. The page's holder is in the markup above; the shared bundle
-       * is in partials/head.stx.
-       */
-      function say(key, english) {
-        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
-      }
-
-      const slug = state('')
-      const menu = state(null)
-      const loading = state(true)
-      const cart = state([])
-      const fulfilment = state('pickup')
-      const tipCents = state(0)
-      const quote = state(null)
-      const error = state('')
-      const placed = state(null)
-      const payment = state(null)
-      const payStatus = state('')
-
-      const addresses = state([])
-      /*
-       * What a dish contains, named in the language being read.
+       * `replace` rather than `assign`: this page has nothing to come back to,
+       * and leaving it in the history means Back from the restaurant lands
+       * here and forwards again, which is a page nobody can leave.
        *
-       * The allergens arrive as the codes the menu was written with - gluten,
-       * celery, egg - which are the same in every language and readable in
-       * none of them beyond English. An unknown code falls through as itself
-       * rather than disappearing: a missing allergen is the one kind of
-       * missing word that matters.
+       * The slug is checked against the shape a slug has before it is put in a
+       * path, because it arrives from the query string - which is to say, from
+       * anyone who can get someone to click a link.
        */
-      function allergenLine(allergens) {
-        const named = (allergens || []).map(code => say(`allergen.${code}`, String(code)))
+      const asked = new URLSearchParams(location.search).get('business') || ''
+      const slug = /^[a-z0-9-]{1,120}$/.test(asked) ? asked : ''
+      const destination = slug ? `/places/${slug}` : '/discover'
 
-        return say('checkout.contains', 'Contains {allergens}').replace('{allergens}', named.join(', '))
-      }
+      const link = document.getElementById('order-moved-link')
 
-      /* Whether a modifier group must be answered, and how many it takes. */
-      function groupRule(group) {
-        const rule = group.min > 0
-          ? say('checkout.group_required', 'required')
-          : say('checkout.group_optional', 'optional')
+      if (link)
+        link.href = destination
 
-        if (!(group.max > 1))
-          return rule
-
-        return rule + say('checkout.group_up_to', ', up to {max}').replace('{max}', group.max)
-      }
-
-      /* The line under "order placed", with the restaurant's name where the
-         sentence wants it. */
-      function placedBody(name) {
-        return say('checkout.placed_body', '{name} has it, and the kitchen has started. You can follow it from here.').replace('{name}', name)
-      }
-
-      const chosenAddress = state(null)
-      const addressLine = state('')
-      const addressLabel = state(say('checkout.home', 'Home'))
-      const addressError = state('')
-
-      /*
-       * Chosen options, as plain data rather than a Map of Sets.
-       *
-       * A signal notices a new value, not a mutated one, so every change here
-       * builds a new object. Mutating a Set in place would leave the buttons
-       * showing the previous selection.
-       */
-      const choices = state({})
-
-      const currency = derived(() => menu() ? menu().business.currency : 'usd')
-
-      const fulfilments = derived(() => {
-        const business = menu() ? menu().business : null
-
-        if (!business)
-          return []
-
-        return [
-          business.offersDelivery ? { value: 'delivery', label: say('order.delivery', 'Delivery') } : null,
-          business.offersPickup ? { value: 'pickup', label: say('order.pickup', 'Pickup') } : null,
-          business.offersDineIn ? { value: 'dine_in', label: say('order.dine_in', 'Dine in') } : null,
-        ].filter(Boolean)
-      })
-
-      const tipOptions = derived(() => [0, 200, 400, 600].map(cents => ({
-        cents,
-        label: cents === 0 ? say('checkout.none', 'None') : money(cents, currency()),
-      })))
-
-      // `:for` yields the item, not its index, and removing a line needs the
-      // index, so it travels with the line.
-      const numberedCart = derived(() => cart().map((line, index) => ({ ...line, index })))
-
-      function isChosen(itemId, groupId, optionId) {
-        const perItem = choices()[itemId] || {}
-
-        return (perItem[groupId] || []).includes(optionId)
-      }
-
-      async function load() {
-        const asked = new URLSearchParams(location.search).get('business') || ''
-
-        slug.set(asked)
-
-        if (!asked) {
-          loading.set(false)
-          return
-        }
-
-        const response = await fetch(`/api/businesses/${encodeURIComponent(asked)}/menu`)
-
-        if (!response.ok) {
-          loading.set(false)
-          return
-        }
-
-        const { data } = await response.json()
-
-        // Preselect whatever the menu marks as default, so a required group is
-        // usually already satisfied and the common order is two taps.
-        const initial = {}
-
-        for (const section of data.sections) {
-          for (const item of section.items) {
-            const perGroup = {}
-
-            for (const group of item.groups)
-              perGroup[group.id] = group.options.filter(option => option.isDefault).map(option => option.id)
-
-            initial[item.id] = perGroup
-          }
-        }
-
-        choices.set(initial)
-        menu.set(data)
-
-        fulfilment.set(data.business.offersPickup
-          ? 'pickup'
-          : data.business.offersDelivery ? 'delivery' : 'dine_in')
-
-        loading.set(false)
-      }
-
-      function toggleOption(item, group, optionId) {
-        const perItem = choices()[item.id] || {}
-        const chosen = perItem[group.id] || []
-
-        let next
-
-        if (chosen.includes(optionId)) {
-          // A required group keeps at least its minimum; unticking the last
-          // choice would leave an order the server will refuse.
-          if (chosen.length <= group.min)
-            return
-
-          next = chosen.filter(id => id !== optionId)
-        }
-        else if (group.max === 1) {
-          next = [optionId]
-        }
-        else if (chosen.length >= group.max) {
-          return
-        }
-        else {
-          next = [...chosen, optionId]
-        }
-
-        choices.set({ ...choices(), [item.id]: { ...perItem, [group.id]: next } })
-      }
-
-      function addToCart(item) {
-        const perItem = choices()[item.id] || {}
-        const modifierIds = []
-        const labels = []
-
-        for (const group of item.groups) {
-          const chosen = perItem[group.id] || []
-
-          if (chosen.length < group.min) {
-            error.set(`${item.name} needs a choice for "${group.name}".`)
-            return
-          }
-
-          for (const id of chosen) {
-            modifierIds.push(id)
-
-            const option = group.options.find(candidate => candidate.id === id)
-
-            if (option)
-              labels.push(option.name)
-          }
-        }
-
-        error.set('')
-        cart.set([...cart(), { productId: item.id, name: item.name, quantity: 1, modifierIds, labels }])
-        refreshQuote()
-      }
-
-      function removeLine(index) {
-        cart.set(cart().filter((_, position) => position !== index))
-        refreshQuote()
-      }
-
-      function setFulfilment(value) {
-        fulfilment.set(value)
-        refreshQuote()
-      }
-
-      function setTip(cents) {
-        tipCents.set(cents)
-        refreshQuote()
-      }
-
-      async function loadAddresses() {
-        const response = await fetch('/api/addresses', { headers: { 'x-visitor': visitorToken() } })
-
-        if (!response.ok)
-          return
-
-        const { data } = await response.json()
-
-        addresses.set(data)
-
-        // A person with one address should never have to choose it.
-        const preferred = data.find(address => address.isDefault) ?? data[0]
-
-        if (preferred && !chosenAddress())
-          chooseAddress(preferred)
-      }
-
-      function chooseAddress(address) {
-        chosenAddress.set(address)
-        addressLine.set(address.line)
-        addressLabel.set(address.label)
-        refreshQuote()
-      }
-
-      async function keepAddress() {
-        const response = await send('/api/addresses', {
-          label: addressLabel(),
-          line: addressLine(),
-        })
-
-        if (!response.ok) {
-          addressError.set((await response.json()).message)
-          return
-        }
-
-        addressError.set('')
-        chosenAddress.set((await response.json()).data)
-        loadAddresses()
-      }
-
-      function lines() {
-        return cart().map(line => ({
-          productId: line.productId,
-          quantity: line.quantity,
-          modifierIds: line.modifierIds,
-        }))
-      }
-
-      /*
-       * The address travels with the quote as well as the order, because the
-       * delivery fee is distance-based: quoting without it and charging with it
-       * would show a total that changes at the last step.
-       */
-      function deliveryFields() {
-        if (fulfilment() !== 'delivery')
-          return {}
-
-        const address = chosenAddress()
-
-        return {
-          deliveryAddress: addressLine() || (address ? address.line : ''),
-          deliveryLatitude: address ? address.latitude : undefined,
-          deliveryLongitude: address ? address.longitude : undefined,
-        }
-      }
-
-      async function refreshQuote() {
-        if (cart().length === 0) {
-          quote.set(null)
-          return
-        }
-
-        const response = await send('/api/orders/quote', {
-          businessSlug: slug(),
-          fulfilment: fulfilment(),
-          tipCents: tipCents(),
-          lines: lines(),
-          ...deliveryFields(),
-        })
-
-        const payload = await response.json()
-
-        quote.set(response.ok ? payload.data : null)
-        error.set(response.ok ? '' : payload.message || '')
-      }
-
-      async function submit() {
-        const response = await send('/api/orders', {
-          businessSlug: slug(),
-          fulfilment: fulfilment(),
-          tipCents: tipCents(),
-          lines: lines(),
-          ...deliveryFields(),
-        })
-
-        const payload = await response.json()
-
-        if (!response.ok) {
-          error.set(payload.message || say('checkout.could_not_place', 'That order could not be placed.'))
-          return
-        }
-
-        placed.set(payload.data)
-
-        // The order exists and is priced; now offer to pay for it. Placing and
-        // paying are separate steps on purpose: the kitchen board shows the
-        // order either way, which is what happens in a restaurant when a card
-        // is declined.
-        startPayment(payload.data.orderId)
-      }
-
-      /*
-       * Payment.
-       *
-       * Sandbox only. The server refuses live Stripe keys outright, so the
-       * worst a misconfiguration can do here is fail to take a test payment.
-       */
-      async function startPayment(orderId) {
-        const response = await send(`/api/payment/${orderId}/intent`)
-        const { data } = await response.json()
-
-        payment.set(data)
-
-        if (!data.configured || !data.clientSecret)
-          return
-
-        // Stripe mounts a real element into the DOM, so it waits for the branch
-        // that holds it rather than assuming it is already there.
-        whenPresent('card-element', () => mountStripe(data))
-      }
-
-      function whenPresent(id, done, attempts = 20) {
-        if (document.getElementById(id)) {
-          done()
-          return
-        }
-
-        if (attempts > 0)
-          setTimeout(() => whenPresent(id, done, attempts - 1), 50)
-      }
-
-      let elements = null
-      let stripe = null
-
-      async function mountStripe(setup) {
-        if (!window.Stripe) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script')
-            script.src = 'https://js.stripe.com/v3/'
-            script.onload = resolve
-            script.onerror = reject
-            document.head.append(script)
-          }).catch(() => undefined)
-        }
-
-        const mount = document.getElementById('card-element')
-
-        if (!window.Stripe || !mount)
-          return
-
-        stripe = window.Stripe(setup.publishableKey)
-        elements = stripe.elements({ clientSecret: setup.clientSecret })
-        elements.create('payment').mount(mount)
-      }
-
-      async function pay() {
-        if (!stripe || !elements)
-          return
-
-        payStatus.set(say('checkout.talking_to_stripe', 'Talking to Stripe…'))
-
-        const result = await stripe.confirmPayment({ elements, redirect: 'if_required' })
-
-        if (result.error) {
-          payStatus.set(result.error.message)
-          return
-        }
-
-        // Tell the server which intent to look at. It asks Stripe whether the
-        // money arrived rather than believing this page about it.
-        const confirmed = await send('/api/payment/confirm', { transactionId: result.paymentIntent.id })
-
-        payStatus.set(confirmed.ok ? say('checkout.paid_test_mode', 'Paid, in test mode. No money moved.') : (await confirmed.json()).message)
-      }
-
-      load()
-      loadAddresses()
+      location.replace(destination)
     </script>
+
     @include('footer')
   </body>
 </html>

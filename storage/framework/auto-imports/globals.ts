@@ -36,6 +36,7 @@ declare global {
   const forgetMe: typeof autoImports.forgetMe
   const may: typeof autoImports.may
   const codeSheet: typeof autoImports.codeSheet
+  const cartHandlers: typeof autoImports.cartHandlers
   const startTracking: typeof autoImports.startTracking
 }
 

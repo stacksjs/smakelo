@@ -229,7 +229,9 @@ order:
   pickup: Afhalen
   dine_in: Ter plaatse
   address: Bezorgadres
-
+  moved_title: Bestellen is verhuisd
+  moved_body: Je bestelt nu op de eigen pagina van het restaurant, op dezelfde kaart die je las.
+  moved_link: Naar de kaart
 status:
   pending: Bestelling ontvangen
   processing: Wordt bereid
@@ -550,6 +552,19 @@ account:
   demo_nothing_run: Bestellen, plekken bewaren, recensies schrijven.
   demo_runs_operations: Controles, vermeldingen, claims, alle afrekeningen.
   demo_runs_courier: Bestellingen bezorgen.
+
+cart:
+  your_order: Je bestelling
+  add: Toevoegen
+  add_one: Eentje erbij
+  remove_one: Eentje eraf
+  add_to_order: Aan bestelling toevoegen
+  how: Hoe
+  note_label: Moet de keuken iets weten?
+  note_placeholder: Zonder ui, saus apart…
+  order_note: Opmerking bij de hele bestelling
+  order_note_placeholder: Graag aanbellen in plaats van kloppen…
+  group_needs_choice: Kies iets bij "{group}".
 
 checkout:
   loading_menu: Menu wordt geladen…

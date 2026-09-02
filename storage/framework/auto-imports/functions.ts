@@ -11,6 +11,8 @@ export { csrfToken, visitorToken, authToken, setAuthToken, clearAuthToken, send,
 export type { MeState } from '../../../resources/functions/session'
 export { codeSheet } from '../../../resources/functions/code-sheet'
 export type { SheetSignals } from '../../../resources/functions/code-sheet'
+export { cartHandlers } from '../../../resources/functions/cart'
+export type { CartSignals } from '../../../resources/functions/cart'
 export { startTracking } from '../../../resources/functions/courier-tracking'
 export type { TrackingHandle } from '../../../resources/functions/courier-tracking'
 export { resolveApiBaseUrl } from '../defaults/functions/api-url'

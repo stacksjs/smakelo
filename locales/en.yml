@@ -230,7 +230,9 @@ order:
   pickup: Pickup
   dine_in: Dine in
   address: Delivery address
-
+  moved_title: Ordering moved
+  moved_body: You now order from the restaurant's own page, on the same menu you were reading.
+  moved_link: Go to the menu
 status:
   pending: Order received
   processing: Being prepared
@@ -551,6 +553,19 @@ account:
   demo_nothing_run: Ordering, saving places, writing reviews.
   demo_runs_operations: Guards, listings, claims, every ledger.
   demo_runs_courier: Carrying orders.
+
+cart:
+  your_order: Your order
+  add: Add
+  add_one: One more
+  remove_one: One fewer
+  add_to_order: Add to order
+  how: How
+  note_label: Anything the kitchen should know?
+  note_placeholder: No onions, sauce on the side…
+  order_note: Note for the whole order
+  order_note_placeholder: Ring the bell rather than knocking…
+  group_needs_choice: Pick an option for "{group}".
 
 checkout:
   loading_menu: Loading the menu…

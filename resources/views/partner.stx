@@ -20,7 +20,7 @@ const surfaces = [
     icon: 'i-hugeicons-menu-restaurant',
     detail: t('partner.menu_body'),
     state: t('partner.built'),
-    href: '/order?business=marisol-cocina',
+    href: '/places/marisol-cocina',
   },
   {
     name: t('partner.hours_title'),

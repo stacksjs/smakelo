@@ -103,6 +103,30 @@ const clientStrings = JSON.stringify({
   'review.stars_of_five': t('review.stars_of_five', { count: '{count}' }),
   'place.every_day': t('place.every_day', { day: '{day}' }),
   'place.box_ready_on': t('place.box_ready_on', { price: '{price}', day: '{day}' }),
+  'cart.group_needs_choice': t('cart.group_needs_choice', { group: '{group}' }),
+  'checkout.group_required': t('checkout.group_required'),
+  'checkout.group_optional': t('checkout.group_optional'),
+  'checkout.group_up_to': t('checkout.group_up_to', { max: '{max}' }),
+  'checkout.contains': t('checkout.contains', { allergens: '{allergens}' }),
+  'checkout.placed_body': t('checkout.placed_body', { name: '{name}' }),
+  'checkout.could_not_place': t('checkout.could_not_place'),
+  'checkout.talking_to_stripe': t('checkout.talking_to_stripe'),
+  'checkout.paid_test_mode': t('checkout.paid_test_mode'),
+  'checkout.none': t('checkout.none'),
+  'checkout.home': t('checkout.home'),
+  'order.delivery': t('order.delivery'),
+  'order.pickup': t('order.pickup'),
+  'order.dine_in': t('order.dine_in'),
+  'allergen.gluten': t('allergen.gluten'),
+  'allergen.dairy': t('allergen.dairy'),
+  'allergen.egg': t('allergen.egg'),
+  'allergen.fish': t('allergen.fish'),
+  'allergen.shellfish': t('allergen.shellfish'),
+  'allergen.crustaceans': t('allergen.crustaceans'),
+  'allergen.nuts': t('allergen.nuts'),
+  'allergen.soy': t('allergen.soy'),
+  'allergen.sesame': t('allergen.sesame'),
+  'allergen.celery': t('allergen.celery'),
 })
 
 // Read by the head partial.
@@ -122,6 +146,7 @@ const canonicalPath = vm.canonicalPath
     @include('place-body')
 
     <script client>
+      import { cartHandlers } from '../../functions/cart'
       import { placeHandlers, placeMap } from '../../functions/place-page'
       // \`money\` is used by the markup rather than by this script, which the
       // linter cannot see from here.
@@ -163,8 +188,59 @@ const canonicalPath = vm.canonicalPath
         ratingSummary, dishesLine, starLabel, load,
       } = placeHandlers({ slug: point.slug || '', saved, reviews, stats, canReview, loadingReviews, composer, plans, share, claim })
 
+      /*
+       * Ordering, on this page rather than on a second copy of this menu.
+       *
+       * \`menu\` is the same menu the rows above were rendered from, fetched
+       * again from the API for the parts a reader does not see: modifier
+       * groups, their minimums and maximums, and the allergens. The rows stay
+       * server-rendered - they are what a reader and a search engine get -
+       * and these signals are only what happens once somebody starts choosing.
+       */
+      const menu = state(null)
+      const cart = state([])
+      const cartOpen = state(false)
+      const config = state(null)
+      const checkout = state({ fulfilment: 'pickup', tipCents: 0, note: '', address: null, addressLine: '', addressLabel: '', addressError: '' })
+      const addresses = state([])
+      const quote = state(null)
+      const placed = state(null)
+      const payment = state({ configured: null, reason: '', status: '' })
+      const cartError = state('')
+
+      // The add buttons wait for this: the groups they need are not in the
+      // server-rendered row, so a button pressed before it would do nothing.
+      const menuReady = derived(() => menu() !== null)
+
+      /*
+       * Whether the item drawer is showing.
+       *
+       * A signal of its own rather than \`:open="!!config()"\` on the drawer.
+       * A component prop tracks a signal it is handed directly; hand it an
+       * expression and the drawer reads the value once, at hydration, and
+       * never hears about it again - so the panel stayed shut while its own
+       * contents rendered correctly inside it.
+       */
+      const itemOpen = derived(() => config() !== null)
+
+      const cartCount = derived(() => cart().reduce((total, line) => total + line.quantity, 0))
+
+      // \`:for\` yields the line, not its index, and every control on a basket
+      // row needs the index, so it travels with the line.
+      const cartLines = derived(() => cart().map((line, index) => ({ ...line, index })))
+
+      const {
+        loadMenu, itemById, qtyOf, addOne, removeOne,
+        openItem, closeItem, chosenIn, toggleChoice, setConfig, setConfigQuantity, configPrice, addConfigured,
+        openCart, closeCart, setLineQuantity, setLineNote, removeLine, clearCart, linePrice,
+        setCheckout, setFulfilment, setTip, chooseAddress, saveAddress, placeOrder, payNow,
+        price, allergenLine, groupRule, optionPrice, placedBody, fulfilmentChoices, tipChoices,
+        load: loadCart,
+      } = cartHandlers({ slug: point.slug || '', menu, cart, cartOpen, config, checkout, addresses, quote, placed, payment, cartError })
+
       placeMap(mapEl, point)
       load()
+      loadCart()
     </script>
 
   </body>

@@ -120,12 +120,25 @@ import { t } from '../../app/Actions/Locale/translate'
             <section>
               <div class="flex flex-wrap gap-4 justify-between items-center">
                 <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('business.menu') }}</h2>
-                <a href="/order?business={{ vm.slug }}" class="inline-flex gap-3 items-center px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group" style="background: var(--accent); color: #fff">
-                  <span>{{ t('place.order') }}</span>
-                  <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.2)">
-                    <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
-                  </span>
-                </a>
+
+                {{-- The basket, from the page the menu is on.
+
+                  This was a link to /order?business=<slug>, which rendered the
+                  same menu a second time behind a query string. There is one
+                  menu now and it is this one. --}}
+                <button
+                  :if="menuReady()"
+                  @click="openCart()"
+                  class="inline-flex gap-3 items-center px-5 py-2.5 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
+                  style="background: var(--accent); color: #fff"
+                >
+                  <span>{{ t('cart.your_order') }}</span>
+                  <span
+                    class="flex justify-center items-center px-2 h-7 min-w-7 text-[13px] tabular-nums rounded-full"
+                    style="background: rgba(255,255,255,0.2)"
+                    :text="cartCount()"
+                  ></span>
+                </button>
               </div>
 
               @foreach (vm.menu as section)
@@ -139,16 +152,80 @@ import { t } from '../../app/Actions/Locale/translate'
                           {{-- A picture of the kind of dish. Stock, and chosen
                             from the dish's own name, so it is honest about
                             being illustrative rather than a photograph of this
-                            kitchen's plate. --}}
-                          <div class="cover flex flex-none justify-center items-center w-20 h-20 rounded-[1rem] sm:w-24 sm:h-24" data-blur="{{ item.photoBlur }}" style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}">
+                            kitchen's plate.
+
+                            Tappable, because a photograph is the thing on a
+                            menu row people reach for first. It opens the same
+                            drawer the name does. --}}
+                          <button
+                            type="button"
+                            @click="openItem({{ item.id }})"
+                            class="cover flex flex-none justify-center items-center w-20 h-20 rounded-[1rem] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] sm:w-24 sm:h-24"
+                            data-blur="{{ item.photoBlur }}"
+                            style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}"
+                            aria-label="{{ item.name }}"
+                          >
                             <i class="cover-mark w-6 h-6 {{ vm.iconClass }}"></i>
                             <img class="cover-photo" src="{{ item.photo }}" srcset="{{ item.photoSrcset }}" sizes="96px" alt="" loading="lazy" decoding="async" width="400" height="280">
-                          </div>
+                          </button>
 
                           <div class="flex-1 min-w-0">
-                            <p class="text-[15px] font-medium">{{ item.name }}</p>
+                            <button type="button" @click="openItem({{ item.id }})" class="text-left transition-opacity duration-500 hover:opacity-70">
+                              <p class="text-[15px] font-medium">{{ item.name }}</p>
+                            </button>
                             <p class="mt-1.5 text-[14px] leading-relaxed line-clamp-2" style="color: var(--ink-soft)">{{ item.description }}</p>
                             <p class="mt-2 text-[15px] font-medium tabular-nums">{{ item.price }}</p>
+                          </div>
+
+                          {{-- Add, or change how many.
+
+                            Both states are rendered and one is shown, rather
+                            than one control that changes shape: a stepper that
+                            appears where an "Add" button was is the same
+                            element moving under the finger that just pressed
+                            it.
+
+                            Held back until the menu API answers, because the
+                            modifier groups these buttons need are not in the
+                            server-rendered row - a button pressed before then
+                            would look ordinary and do nothing. --}}
+                          <div class="flex-none self-center" :if="menuReady()">
+                            <button
+                              :if="qtyOf({{ item.id }}) === 0"
+                              @click="addOne({{ item.id }})"
+                              class="flex gap-1.5 items-center px-4 h-9 text-[13px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.95]"
+                              style="border: 1px solid var(--line); color: var(--ink)"
+                              aria-label="{{ t('cart.add') }} {{ item.name }}"
+                            >
+                              <i class="w-3.5 h-3.5 i-hugeicons-plus-sign"></i>
+                              <span>{{ t('cart.add') }}</span>
+                            </button>
+
+                            <div
+                              :if="qtyOf({{ item.id }}) > 0"
+                              class="flex gap-1 items-center p-1 rounded-full"
+                              style="background: var(--accent-soft)"
+                            >
+                              <button
+                                @click="removeOne({{ item.id }})"
+                                class="flex justify-center items-center w-7 h-7 rounded-full transition-all duration-500 active:scale-90"
+                                style="color: var(--accent)"
+                                aria-label="{{ t('cart.remove_one') }} {{ item.name }}"
+                              >
+                                <i class="w-3.5 h-3.5 i-hugeicons-minus-sign"></i>
+                              </button>
+
+                              <span class="w-6 text-[14px] font-medium tabular-nums text-center" style="color: var(--accent)" :text="qtyOf({{ item.id }})"></span>
+
+                              <button
+                                @click="addOne({{ item.id }})"
+                                class="flex justify-center items-center w-7 h-7 rounded-full transition-all duration-500 active:scale-90"
+                                style="background: var(--accent); color: #fff"
+                                aria-label="{{ t('cart.add_one') }} {{ item.name }}"
+                              >
+                                <i class="w-3.5 h-3.5 i-hugeicons-plus-sign"></i>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -473,5 +550,336 @@ import { t } from '../../app/Actions/Locale/translate'
         </aside>
       </div>
     </main>
+
+    {{-- One dish, opened to be configured.
+
+      DoorDash and Uber Eats both put this in a sheet rather than expanding the
+      row, and for the same reason: the choices for a burrito are longer than
+      the row is tall, and pushing the rest of the menu down to make room loses
+      the reader's place in it. --}}
+    <Drawer
+      :open="itemOpen()"
+      @close="closeItem()"
+      size="xl"
+      panelStyle="background: var(--paper-raised); color: var(--ink)"
+      backdropClass="bg-black/40"
+    >
+      <div :if="config()">
+        <div class="cover flex overflow-hidden relative justify-center items-center -mt-6 h-44 rounded-[1.25rem]" :data-blur="config().item.photoBlur" style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}">
+          <i class="cover-mark w-10 h-10" :class="config().item.iconClass"></i>
+          <img class="cover-photo" :src="config().item.photo" alt="" decoding="async" width="400" height="280">
+        </div>
+
+        <h2 class="mt-5 text-[22px] font-semibold tracking-[-0.02em]">{{ config().item.name }}</h2>
+        <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ config().item.description }}</p>
+        <p :if="config().item.allergens.length > 0" class="mt-2 text-[12px]" style="color: var(--ink-soft)">{{ allergenLine(config().item.allergens) }}</p>
+
+        {{-- What has to be chosen, and what may be. --}}
+        <div :for="group in config().item.groups" class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+          <p class="text-[13px] font-medium">
+            {{ group.name }}
+            <span class="ml-1 text-[12px]" style="color: var(--ink-soft)">{{ groupRule(group) }}</span>
+          </p>
+          <p :if="group.description" class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ group.description }}</p>
+
+          <div class="flex flex-wrap gap-2 mt-3">
+            <button
+              :for="option in group.options"
+              @click="toggleChoice(group, option.id)"
+              class="px-3.5 py-2 text-[13px] rounded-full transition-all duration-500"
+              :style="chosenIn(group.id, option.id) ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+            >{{ option.name }}{{ optionPrice(option) }}</button>
+          </div>
+        </div>
+
+        {{-- A note to the kitchen.
+
+          The order API has taken a per-line note all along and nothing ever
+          sent one, so "no onions" had nowhere to go but a review. --}}
+        <div class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+          <label class="text-[13px] font-medium" for="item-note">{{ t('cart.note_label') }}</label>
+          <textarea
+            id="item-note"
+            rows="2"
+            maxlength="300"
+            placeholder="{{ t('cart.note_placeholder') }}"
+            :value="config().note"
+            @input="setConfig('note', $event.target.value)"
+            class="px-4 py-3 mt-2 w-full text-[14px] rounded-[1rem] resize-none"
+            style="background: var(--paper); border: 1px solid var(--line); color: var(--ink)"
+          ></textarea>
+        </div>
+
+        <p :if="config().error" class="px-4 py-3 mt-4 text-[13px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ config().error }}</p>
+
+        <div class="flex gap-3 items-center pt-5 mt-5 border-t" style="border-color: var(--line)">
+          <div class="flex gap-1 items-center p-1 rounded-full shrink-0" style="border: 1px solid var(--line)">
+            <button
+              @click="setConfigQuantity(config().quantity - 1)"
+              class="flex justify-center items-center w-8 h-8 rounded-full transition-all duration-500 active:scale-90"
+              style="color: var(--ink-soft)"
+              aria-label="{{ t('cart.remove_one') }}"
+            >
+              <i class="w-3.5 h-3.5 i-hugeicons-minus-sign"></i>
+            </button>
+            <span class="w-7 text-[15px] font-medium tabular-nums text-center">{{ config().quantity }}</span>
+            <button
+              @click="setConfigQuantity(config().quantity + 1)"
+              class="flex justify-center items-center w-8 h-8 rounded-full transition-all duration-500 active:scale-90"
+              style="color: var(--ink-soft)"
+              aria-label="{{ t('cart.add_one') }}"
+            >
+              <i class="w-3.5 h-3.5 i-hugeicons-plus-sign"></i>
+            </button>
+          </div>
+
+          <button
+            @click="addConfigured()"
+            class="flex flex-1 gap-3 justify-between items-center px-5 py-3 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+            style="background: var(--accent); color: #fff"
+          >
+            <span>{{ t('cart.add_to_order') }}</span>
+            <span class="tabular-nums">{{ configPrice() }}</span>
+          </button>
+        </div>
+      </div>
+    </Drawer>
+
+    {{-- The order itself. --}}
+    <Drawer
+      :open="cartOpen()"
+      @close="closeCart()"
+      size="xl"
+      panelStyle="background: var(--paper-raised); color: var(--ink)"
+      backdropClass="bg-black/40"
+    >
+      {{-- After it is placed: what happens next, and paying for it. --}}
+      <div :if="placed()">
+        <h2 class="text-[22px] font-semibold tracking-[-0.02em]">{{ t('checkout.order_placed') }}</h2>
+        <p class="mt-3 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ placedBody(menu().business.name) }}</p>
+
+        <p class="mt-6 text-[13px]" style="color: var(--ink-soft)">{{ t('order.total') }}</p>
+        <p class="text-[30px] font-semibold tracking-[-0.03em] tabular-nums">{{ price(placed().pricing.totalCents) }}</p>
+
+        <div :if="payment().configured === false" class="p-5 mt-6 rounded-[1.25rem]" style="background: var(--paper)">
+          <p class="text-[12px] font-medium tracking-[0.16em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.payment') }}</p>
+          <p class="mt-2 text-[14px] leading-relaxed" style="color: var(--ink-soft)">{{ payment().reason }}</p>
+        </div>
+
+        <div :if="payment().configured" class="p-5 mt-6 rounded-[1.25rem]" style="background: var(--paper)">
+          <p class="inline-block px-3 py-1 text-[10px] font-medium tracking-[0.2em] uppercase rounded-full" style="background: var(--accent-soft); color: var(--accent)">
+            {{ t('checkout.stripe_test') }}
+          </p>
+          <p class="mt-3 text-[13px] leading-relaxed" style="color: var(--ink-soft)">{{ t('checkout.stripe_card') }}</p>
+
+          <div id="card-element" class="p-4 mt-4 rounded-[1rem]" style="background: var(--paper-raised); border: 1px solid var(--line)"></div>
+
+          <button @click="payNow()" class="px-5 py-2.5 mt-4 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]" style="background: var(--accent); color: #fff">
+            {{ t('checkout.pay_test_mode') }}
+          </button>
+
+          <p class="mt-3 text-[13px]" style="color: var(--ink-soft)">{{ payment().status }}</p>
+        </div>
+
+        <a
+          :href="'/track?code=' + placed().trackingToken"
+          class="inline-flex gap-3 items-center px-5 py-3 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
+          style="background: var(--ink); color: var(--paper)"
+        >
+          <span>{{ t('checkout.track_it') }}</span>
+          <span class="flex justify-center items-center w-7 h-7 rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5" style="background: rgba(255,255,255,0.14)">
+            <i class="w-3.5 h-3.5 i-hugeicons-arrow-right-01"></i>
+          </span>
+        </a>
+      </div>
+
+      <div :if="!placed()">
+        <h2 class="text-[22px] font-semibold tracking-[-0.02em]">{{ t('cart.your_order') }}</h2>
+        <p class="mt-1 text-[13px]" style="color: var(--ink-soft)">{{ vm.name }}</p>
+
+        <p :if="cartCount() === 0" class="mt-6 text-[14px]" style="color: var(--ink-soft)">{{ t('checkout.nothing_yet') }}</p>
+
+        {{-- What is in it. --}}
+        <ul :if="cartCount() > 0" class="mt-6 space-y-4">
+          <li :for="line in cartLines()" class="flex gap-3 items-start">
+            <div class="cover flex flex-none justify-center items-center w-14 h-14 rounded-[0.85rem]" :data-blur="line.photoBlur" style="--h: {{ vm.hue }}; --h2: {{ vm.hueEnd }}">
+              <img class="cover-photo" :src="line.photo" alt="" decoding="async" width="400" height="280">
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex gap-3 justify-between items-baseline">
+                <p class="text-[14px] font-medium">{{ line.name }}</p>
+                <p class="text-[14px] tabular-nums shrink-0">{{ linePrice(line) }}</p>
+              </div>
+
+              <p :if="line.labels.length > 0" class="mt-0.5 text-[12px]" style="color: var(--ink-soft)">{{ line.labels.join(', ') }}</p>
+              <p :if="line.notes" class="mt-0.5 text-[12px] italic" style="color: var(--ink-soft)">{{ line.notes }}</p>
+
+              <div class="flex gap-3 items-center mt-2">
+                <div class="flex gap-1 items-center p-0.5 rounded-full" style="border: 1px solid var(--line)">
+                  <button
+                    @click="setLineQuantity(line.index, line.quantity - 1)"
+                    class="flex justify-center items-center w-6 h-6 rounded-full transition-all duration-500 active:scale-90"
+                    style="color: var(--ink-soft)"
+                    aria-label="{{ t('cart.remove_one') }}"
+                  >
+                    <i class="w-3 h-3 i-hugeicons-minus-sign"></i>
+                  </button>
+                  <span class="w-5 text-[13px] tabular-nums text-center">{{ line.quantity }}</span>
+                  <button
+                    @click="setLineQuantity(line.index, line.quantity + 1)"
+                    class="flex justify-center items-center w-6 h-6 rounded-full transition-all duration-500 active:scale-90"
+                    style="color: var(--ink-soft)"
+                    aria-label="{{ t('cart.add_one') }}"
+                  >
+                    <i class="w-3 h-3 i-hugeicons-plus-sign"></i>
+                  </button>
+                </div>
+
+                <button @click="removeLine(line.index)" class="text-[12px] transition-opacity duration-500 hover:opacity-60" style="color: var(--ink-soft)">
+                  {{ t('checkout.remove') }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <div :if="cartCount() > 0">
+          {{-- How they want it. --}}
+          <div class="pt-5 mt-6 border-t" style="border-color: var(--line)">
+            <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('cart.how') }}</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button
+                :for="mode in fulfilmentChoices()"
+                @click="setFulfilment(mode.value)"
+                class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
+                :style="checkout().fulfilment === mode.value ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+              >{{ mode.label }}</button>
+            </div>
+          </div>
+
+          {{-- Only for delivery. An address field on a pickup order is a
+            question with no reason behind it. --}}
+          <div :if="checkout().fulfilment === 'delivery'" class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+            <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('checkout.deliver_to') }}</p>
+
+            <div :if="addresses().length > 0" class="flex flex-wrap gap-2 mt-3">
+              <button
+                :for="address in addresses()"
+                @click="chooseAddress(address)"
+                class="px-3.5 py-2 text-[13px] rounded-full transition-all duration-500"
+                :style="checkout().address && checkout().address.id === address.id ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+              >{{ address.label }} · {{ address.line }}</button>
+            </div>
+
+            <input
+              placeholder="{{ t('checkout.street_number') }}"
+              maxlength="255"
+              :value="checkout().addressLine"
+              @input="setCheckout('addressLine', $event.target.value)"
+              class="px-4 py-3 mt-3 w-full text-[14px] rounded-[1rem]"
+              style="background: var(--paper); border: 1px solid var(--line); color: var(--ink)"
+            >
+
+            <div class="flex flex-wrap gap-2 items-center mt-2">
+              <input
+                placeholder="{{ t('checkout.label_it') }}"
+                maxlength="40"
+                :value="checkout().addressLabel"
+                @input="setCheckout('addressLabel', $event.target.value)"
+                class="px-4 py-2.5 flex-1 min-w-[140px] text-[13px] rounded-full"
+                style="background: var(--paper); border: 1px solid var(--line); color: var(--ink)"
+              >
+              <button @click="saveAddress()" class="px-4 py-2.5 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('checkout.save_it') }}</button>
+            </div>
+
+            <p :if="checkout().addressError" class="mt-2 text-[13px]" style="color: var(--accent)">{{ checkout().addressError }}</p>
+          </div>
+
+          {{-- A note for the whole order, alongside the per-dish ones. --}}
+          <div class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+            <label class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)" for="order-note">{{ t('cart.order_note') }}</label>
+            <textarea
+              id="order-note"
+              rows="2"
+              maxlength="500"
+              placeholder="{{ t('cart.order_note_placeholder') }}"
+              :value="checkout().note"
+              @input="setCheckout('note', $event.target.value)"
+              class="px-4 py-3 mt-2 w-full text-[14px] rounded-[1rem] resize-none"
+              style="background: var(--paper); border: 1px solid var(--line); color: var(--ink)"
+            ></textarea>
+          </div>
+
+          <div class="pt-5 mt-5 border-t" style="border-color: var(--line)">
+            <p class="text-[12px] font-medium tracking-[0.18em] uppercase" style="color: var(--ink-soft)">{{ t('order.tip') }}</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button
+                :for="option in tipChoices()"
+                @click="setTip(option.cents)"
+                class="px-3.5 py-2 text-[13px] rounded-full transition-all duration-500"
+                :style="checkout().tipCents === option.cents ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
+              >{{ option.label }}</button>
+            </div>
+          </div>
+
+          <p :if="cartError()" class="px-4 py-3 mt-5 text-[13px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ cartError() }}</p>
+
+          {{-- Every number here came from the server. --}}
+          <dl :if="quote()" class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
+            <div class="flex justify-between">
+              <dt style="color: var(--ink-soft)">{{ t('order.subtotal') }}</dt>
+              <dd class="tabular-nums">{{ price(quote().subtotalCents) }}</dd>
+            </div>
+            <div :if="quote().deliveryFeeCents" class="flex justify-between">
+              <dt style="color: var(--ink-soft)">{{ t('order.delivery_fee') }}</dt>
+              <dd class="tabular-nums">{{ price(quote().deliveryFeeCents) }}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt style="color: var(--ink-soft)">{{ t('order.service_fee') }}</dt>
+              <dd class="tabular-nums">{{ price(quote().serviceFeeCents) }}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt style="color: var(--ink-soft)">{{ t('order.tax') }}</dt>
+              <dd class="tabular-nums">{{ price(quote().taxCents) }}</dd>
+            </div>
+            <div :if="quote().tipCents" class="flex justify-between">
+              <dt style="color: var(--ink-soft)">{{ t('order.tip') }}</dt>
+              <dd class="tabular-nums">{{ price(quote().tipCents) }}</dd>
+            </div>
+            <div class="flex justify-between pt-3 text-[16px] font-semibold border-t" style="border-color: var(--line)">
+              <dt>{{ t('order.total') }}</dt>
+              <dd class="tabular-nums">{{ price(quote().totalCents) }}</dd>
+            </div>
+          </dl>
+
+          <button
+            :if="quote()"
+            @click="placeOrder()"
+            class="flex gap-3 justify-center items-center px-5 py-3.5 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+            style="background: var(--accent); color: #fff"
+          >{{ t('order.place_order') }}</button>
+
+          <p :if="quote()" class="mt-3 mb-2 text-[11px] text-center" style="color: var(--ink-soft)">{{ t('checkout.test_mode') }}</p>
+        </div>
+      </div>
+    </Drawer>
+
+    {{-- The basket, always within reach.
+
+      Fixed rather than in the flow, because the menu is the length of a menu
+      and a basket you have to scroll back up to is one people lose track of.
+      Hidden while it is empty: there is nothing to look at, and nothing to
+      press. --}}
+    <button
+      :if="cartCount() > 0 && !cartOpen() && !placed()"
+      @click="openCart()"
+      class="flex fixed right-4 bottom-4 z-40 gap-3 items-center px-5 py-3.5 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] sm:right-8 sm:bottom-8"
+      style="background: var(--ink); color: var(--paper); box-shadow: 0 8px 30px -8px rgba(20,17,15,0.45)"
+    >
+      <span class="flex justify-center items-center px-2 h-6 min-w-6 text-[12px] font-semibold tabular-nums rounded-full" style="background: rgba(255,255,255,0.18)" :text="cartCount()"></span>
+      <span>{{ t('cart.your_order') }}</span>
+      <span :if="quote()" class="tabular-nums" style="opacity: .75">{{ price(quote().totalCents) }}</span>
+    </button>
 
     @include('footer')

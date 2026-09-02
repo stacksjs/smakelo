@@ -229,7 +229,9 @@ order:
   pickup: Abholung
   dine_in: Vor Ort
   address: Lieferadresse
-
+  moved_title: Bestellen ist umgezogen
+  moved_body: Bestellt wird jetzt direkt auf der Seite des Restaurants, auf derselben Karte, die du gerade gelesen hast.
+  moved_link: Zur Karte
 status:
   pending: Bestellung eingegangen
   processing: Wird zubereitet
@@ -550,6 +552,19 @@ account:
   demo_nothing_run: Bestellen, Orte merken, Bewertungen schreiben.
   demo_runs_operations: Prüfungen, Einträge, Ansprüche, alle Abrechnungen.
   demo_runs_courier: Bestellungen ausfahren.
+
+cart:
+  your_order: Deine Bestellung
+  add: Hinzufügen
+  add_one: Eins mehr
+  remove_one: Eins weniger
+  add_to_order: Zur Bestellung
+  how: Wie
+  note_label: Soll die Küche etwas wissen?
+  note_placeholder: Ohne Zwiebeln, Soße separat…
+  order_note: Hinweis zur ganzen Bestellung
+  order_note_placeholder: Bitte klingeln statt klopfen…
+  group_needs_choice: Bitte etwas bei „{group}“ auswählen.
 
 checkout:
   loading_menu: Speisekarte wird geladen…
