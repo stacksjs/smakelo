@@ -4,6 +4,7 @@ import { HOME_KITCHENS, NRW_HOME_KITCHENS } from '../../database/data/businesses
 import { MENUS } from '../../database/data/menus'
 import { visualFor } from '../../app/Actions/Business/identity'
 import { placeViewModel } from '../../app/Actions/Business/place-view'
+import { aBusiness, useDatabase } from '../support/database'
 
 /**
  * Home kitchens.
@@ -232,6 +233,40 @@ describe('the category is spelled the same everywhere', () => {
  * still go through it.
  */
 describe('every surface publishes the same thing', () => {
+  const database = useDatabase()
+
+  test('a home kitchen comes back without its street, on a rounded point', async () => {
+    // Run against real rows rather than the source, because the source can be
+    // right and the wiring still wrong. The rows are this test's own: the
+    // first version of this asked the developer's seeded database and passed
+    // here while returning nothing on a runner.
+    database.insert('businesses', [
+      aBusiness({ slug: 'a-home-kitchen', type: 'home_kitchen', address: 'Palms Blvd', city: 'Mar Vista', latitude: 34.0086, longitude: -118.4312 }),
+    ])
+
+    const { searchBusinesses } = await import('../../app/Actions/Business/search')
+    const [found] = await searchBusinesses({ type: 'home_kitchen' })
+
+    expect(found.address).toBe('')
+    expect(found.city).toBe('Mar Vista')
+    expect(found.latitude).toBe(34.01)
+    expect(found.longitude).toBe(-118.43)
+    expect(found.approximateLocation).toBe(true)
+  })
+
+  test('every other type comes back with its street and its real point', async () => {
+    database.insert('businesses', [
+      aBusiness({ slug: 'a-restaurant', type: 'restaurant', address: 'Palms Blvd', city: 'Mar Vista', latitude: 34.0086, longitude: -118.4312 }),
+    ])
+
+    const { searchBusinesses } = await import('../../app/Actions/Business/search')
+    const [found] = await searchBusinesses({ type: 'restaurant' })
+
+    expect(found.address).toBe('Palms Blvd')
+    expect(found.latitude).toBe(34.0086)
+    expect(found.approximateLocation).toBe(false)
+  })
+
   test('the search API shapes its results through the rule', () => {
     // Asserted against the source rather than by running a search, because a
     // search needs a seeded database and CI has none - the first version of
