@@ -187,6 +187,36 @@ function ensureDatabase(path: string): Database {
 }
 
 /**
+ * The tables the framework owns rather than this app.
+ *
+ * `database/migrations/` holds the app's own schema. Sessions, tokens, roles
+ * and permissions are the framework's, created by `buddy migrate` in a
+ * separate step - which is why the output of that command says "including auth
+ * tables" - and they are not in the corpus this template is built from.
+ *
+ * Asked for rather than copied out of a developer's database, so what a test
+ * authenticates against is whatever the installed framework builds today. A
+ * snapshot would be the same mistake as a fixture schema: right until the day
+ * the package changes.
+ *
+ * Only a test that signs somebody in needs them, and building them costs a
+ * second, so `refreshDatabase({ auth: true })` asks explicitly.
+ */
+let authTablesReady = false
+
+async function ensureAuthTables(): Promise<void> {
+  if (authTablesReady)
+    return
+
+  const { migrateAuthTables, migrateRbacTables } = await import('@stacksjs/database')
+
+  await migrateAuthTables()
+  await migrateRbacTables()
+
+  authTablesReady = true
+}
+
+/**
  * Clear out databases left by runs that are over.
  *
  * The file is named for its process and is no longer deleted when a file
@@ -220,11 +250,14 @@ function sweepAbandoned(keep: string): void {
   }
 }
 
-export function refreshDatabase(): TestDatabase {
+export function refreshDatabase(options: { auth?: boolean } = {}): TestDatabase {
   const path = testDatabasePath()
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ensureDatabase(path)
+
+    if (options.auth)
+      await ensureAuthTables()
 
     // Whatever the previous file left, in case it had no `afterEach` of its
     // own - a file should open on an empty database however it got here.
@@ -246,14 +279,28 @@ export function refreshDatabase(): TestDatabase {
     const database = open()
     const ids: number[] = []
 
+    /*
+     * `RETURNING id` only where there is one. A pivot - `user_roles`,
+     * `role_permissions` - is two foreign keys and no key of its own, and
+     * asking it for an id fails on "no such column" rather than on anything
+     * to do with the row being inserted.
+     */
+    const keyed = hasIdColumn(database, table)
+
     for (const row of rows) {
       const columns = Object.keys(row)
       const placeholders = columns.map(() => '?').join(', ')
-      const statement = database.prepare(
-        `INSERT INTO "${table}" (${columns.map(column => `"${column}"`).join(', ')}) VALUES (${placeholders}) RETURNING id`,
-      )
+      const names = columns.map(column => `"${column}"`).join(', ')
+      const values = columns.map(column => normalise(row[column]))
 
-      const inserted = statement.get(...columns.map(column => normalise(row[column]))) as { id: number } | null
+      if (!keyed) {
+        database.prepare(`INSERT INTO "${table}" (${names}) VALUES (${placeholders})`).run(...values)
+        continue
+      }
+
+      const inserted = database
+        .prepare(`INSERT INTO "${table}" (${names}) VALUES (${placeholders}) RETURNING id`)
+        .get(...values) as { id: number } | null
 
       if (inserted)
         ids.push(Number(inserted.id))
@@ -275,6 +322,14 @@ export function refreshDatabase(): TestDatabase {
       return null
 
     return value as string | number | null
+  }
+
+  /** Whether a table has its own primary key, as opposed to being a pivot. */
+  function hasIdColumn(database: Database, table: string): boolean {
+    return database
+      .query<{ name: string }, []>(`PRAGMA table_info("${table}")`)
+      .all()
+      .some(column => column.name === 'id')
   }
 
   function truncate(): void {
