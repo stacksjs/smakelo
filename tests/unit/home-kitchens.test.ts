@@ -232,31 +232,35 @@ describe('the category is spelled the same everywhere', () => {
  * still go through it.
  */
 describe('every surface publishes the same thing', () => {
-  test('the search API withholds the street and rounds the point', async () => {
-    const { searchBusinesses } = await import('../../app/Actions/Business/search')
-    const found = await searchBusinesses({ type: 'home_kitchen' })
+  test('the search API shapes its results through the rule', () => {
+    // Asserted against the source rather than by running a search, because a
+    // search needs a seeded database and CI has none - the first version of
+    // this called `searchBusinesses`, passed on a developer machine and
+    // returned zero rows on the runner, which is a test that only ever fails
+    // where nobody is looking.
+    //
+    // What matters is that this file cannot go back to reading the row
+    // directly. The rule's own behaviour is covered below, and on real data by
+    // the place-page tests above.
+    const source = readFileSync('app/Actions/Business/search.ts', 'utf8')
 
-    expect(found.length).toBeGreaterThan(0)
+    expect(source).toContain('publicAddress(row.address, row.type)')
+    expect(source).toContain('publicCoordinates(row.latitude, row.longitude, row.type)')
+    expect(source).toContain('approximateLocation: point.approximate')
 
-    for (const result of found) {
-      expect(result.address).toBe('')
-      expect(result.approximateLocation).toBe(true)
-      // Two decimal places, which is the grid the rounding lands on.
-      expect(Math.abs(result.latitude * 100 - Math.round(result.latitude * 100))).toBeLessThan(1e-9)
-    }
+    // The street straight off the row is exactly what this replaced.
+    expect(source).not.toContain('address: String(row.address')
   })
 
-  test('the search API still gives every other type its street', async () => {
-    const { searchBusinesses } = await import('../../app/Actions/Business/search')
-    const found = await searchBusinesses({ type: 'restaurant' })
-    const withStreet = found.filter(result => result.address !== '')
+  test('the distance is still measured from the real position', () => {
+    // Rounding for display must not cost a kilometre of accuracy in "1.2 km
+    // away", so the distance is computed before the coordinates are blurred.
+    const source = readFileSync('app/Actions/Business/search.ts', 'utf8')
+    const distance = source.indexOf('distanceInMeters(')
+    const blur = source.indexOf('publicCoordinates(')
 
-    // Most imported listings have no street at all, so this asserts that the
-    // ones that do were not swept up by the home-kitchen rule.
-    expect(withStreet.length).toBeGreaterThan(0)
-
-    for (const result of found)
-      expect(result.approximateLocation).toBe(false)
+    expect(distance).toBeGreaterThan(-1)
+    expect(blur).toBeGreaterThan(distance)
   })
 
   test('the rule is stated in one place', async () => {
