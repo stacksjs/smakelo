@@ -4,7 +4,7 @@ import { HOME_KITCHENS, NRW_HOME_KITCHENS } from '../../database/data/businesses
 import { MENUS } from '../../database/data/menus'
 import { visualFor } from '../../app/Actions/Business/identity'
 import { placeViewModel } from '../../app/Actions/Business/place-view'
-import { aBusiness, useDatabase } from '../support/database'
+import { factory, refreshDatabase } from '../support/database'
 
 /**
  * Home kitchens.
@@ -233,15 +233,15 @@ describe('the category is spelled the same everywhere', () => {
  * still go through it.
  */
 describe('every surface publishes the same thing', () => {
-  const database = useDatabase()
+  const database = refreshDatabase()
 
   test('a home kitchen comes back without its street, on a rounded point', async () => {
     // Run against real rows rather than the source, because the source can be
     // right and the wiring still wrong. The rows are this test's own: the
     // first version of this asked the developer's seeded database and passed
     // here while returning nothing on a runner.
-    database.insert('businesses', [
-      aBusiness({ slug: 'a-home-kitchen', type: 'home_kitchen', address: 'Palms Blvd', city: 'Mar Vista', latitude: 34.0086, longitude: -118.4312 }),
+    database.seed('businesses', [
+      factory.business({ slug: 'a-home-kitchen', type: 'home_kitchen', address: 'Palms Blvd', city: 'Mar Vista', latitude: 34.0086, longitude: -118.4312 }),
     ])
 
     const { searchBusinesses } = await import('../../app/Actions/Business/search')
@@ -255,8 +255,8 @@ describe('every surface publishes the same thing', () => {
   })
 
   test('every other type comes back with its street and its real point', async () => {
-    database.insert('businesses', [
-      aBusiness({ slug: 'a-restaurant', type: 'restaurant', address: 'Palms Blvd', city: 'Mar Vista', latitude: 34.0086, longitude: -118.4312 }),
+    database.seed('businesses', [
+      factory.business({ slug: 'a-restaurant', type: 'restaurant', address: 'Palms Blvd', city: 'Mar Vista', latitude: 34.0086, longitude: -118.4312 }),
     ])
 
     const { searchBusinesses } = await import('../../app/Actions/Business/search')

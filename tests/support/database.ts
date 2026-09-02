@@ -1,10 +1,10 @@
 import { Database } from 'bun:sqlite'
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
-import { afterAll, afterEach, beforeAll } from 'bun:test'
+import { afterEach, beforeAll } from 'bun:test'
 
 /**
- * A database a test may write to, in the spirit of Laravel's RefreshDatabase.
+ * A database a test may write to: Laravel's RefreshDatabase, in TypeScript.
  *
  * The suite had no way to exercise anything that reads a table. Tests that
  * needed rows either skipped the code that queries them or - worse, and this
@@ -24,11 +24,11 @@ import { afterAll, afterEach, beforeAll } from 'bun:test'
  *
  * Usage:
  *
- *   const database = useDatabase()
+ *   const database = refreshDatabase()
  *
  *   test('…', async () => {
- *     database.insert('businesses', [aBusiness({ type: 'home_kitchen' })])
- *     …
+ *     database.seed('businesses', [factory.business({ type: 'home_kitchen' })])
+ *     assertDatabaseCount('businesses', 1)
  *   })
  *
  * Rows are cleared after each test, so no test can be made to pass by another
@@ -123,8 +123,14 @@ function fileChangedAt(path: string): number | null {
 }
 
 export interface TestDatabase {
-  /** Insert rows into a table, returning the ids sqlite assigned. */
-  insert: (table: string, rows: Array<Record<string, unknown>>) => number[]
+  /**
+   * Put rows in a table, returning the ids sqlite assigned.
+   *
+   * Named for Laravel's `$this->seed()` rather than `insert`, because that is
+   * what it is for: the arranging step of a test, not an assertion about
+   * inserting.
+   */
+  seed: (table: string, rows: Array<Record<string, unknown>>) => number[]
   /** Empty every table, keeping the schema. */
   truncate: () => void
   /** The open connection, for a test that needs to read one back. */
@@ -134,40 +140,97 @@ export interface TestDatabase {
 /**
  * Give this test file a database of its own.
  *
- * Call at the top level of the file, once. The schema is created before the
- * first test and the rows are cleared after each one.
+ * The equivalent of putting `use RefreshDatabase;` on a Laravel test case:
+ * call it at the top level of the file, once. The schema is created before the
+ * first test and the rows are cleared after each one, so no test can be made
+ * to pass by another one's leftovers.
  */
-export function useDatabase(): TestDatabase {
+let shared: Database | null = null
+
+/**
+ * The one database this process gets, created on first use.
+ *
+ * Deliberately not one per file. `bun test` runs a whole directory in a single
+ * process, and `config/database.ts` reads DB_DATABASE_PATH exactly once - when
+ * the first file to import `@stacksjs/database` evaluates it - so every file
+ * shares one app connection to one path.
+ *
+ * Giving each file a fresh copy of that path is what the first version did,
+ * and it looked fine one file at a time: every file passed alone and 31 tests
+ * failed together. Replacing the file leaves the app's open connection bound
+ * to the inode that was there before, which is now unlinked - so the query
+ * builder went on reading a deleted database while the tests wrote to a new
+ * one at the same name.
+ *
+ * So the file is created once and only ever emptied afterwards. Truncating is
+ * what isolates one test from the next, and it does not move the file out from
+ * under anybody.
+ */
+function ensureDatabase(path: string): Database {
+  if (shared)
+    return shared
+
+  sweepAbandoned(path)
+  copyFileSync(schemaTemplate(), path)
+  shared = new Database(path)
+
+  return shared
+}
+
+/**
+ * Clear out databases left by runs that are over.
+ *
+ * The file is named for its process and is no longer deleted when a file
+ * finishes - deleting it is what broke the app's connection - so without this
+ * every `bun test` leaves another three files behind, and they are a megabyte
+ * each.
+ *
+ * Age rather than liveness: another test process running right now has a file
+ * it has touched in the last few seconds, and one from a run that has ended
+ * has not been touched since. Checking whether a pid is alive would be exact
+ * and would also delete a database out from under a process that recycled the
+ * number.
+ */
+const ABANDONED_AFTER_MS = 10 * 60 * 1000
+
+function sweepAbandoned(keep: string): void {
+  const ours = keep.split('/').pop()
+
+  for (const name of readdirSync(TESTING_DIR)) {
+    if (!name.startsWith('test-') || name.startsWith(ours ?? ''))
+      continue
+
+    const file = join(TESTING_DIR, name)
+    const changed = fileChangedAt(file)
+
+    if (changed !== null && Date.now() - changed > ABANDONED_AFTER_MS)
+      rmSync(file, { force: true })
+  }
+}
+
+export function refreshDatabase(): TestDatabase {
   const path = testDatabasePath()
-  let connection: Database | null = null
 
   beforeAll(() => {
-    copyFileSync(schemaTemplate(), path)
-    connection = new Database(path)
+    ensureDatabase(path)
+
+    // Whatever the previous file left, in case it had no `afterEach` of its
+    // own - a file should open on an empty database however it got here.
+    truncate()
   })
 
   afterEach(() => {
     truncate()
   })
 
-  afterAll(() => {
-    connection?.close()
-    connection = null
-
-    // `-wal` and `-shm` outlive the database they belong to, and a stale pair
-    // beside a fresh copy is a database that opens and disagrees with itself.
-    for (const suffix of ['', '-wal', '-shm'])
-      rmSync(path + suffix, { force: true })
-  })
-
   function open(): Database {
-    if (!connection)
-      throw new Error('useDatabase() must be called at the top level of the file, before any test runs')
+    if (!shared)
+      throw new Error('refreshDatabase() must be called at the top level of the file, before any test runs')
 
-    return connection
+    return shared
   }
 
-  function insert(table: string, rows: Array<Record<string, unknown>>): number[] {
+  function seed(table: string, rows: Array<Record<string, unknown>>): number[] {
     const database = open()
     const ids: number[] = []
 
@@ -216,15 +279,103 @@ export function useDatabase(): TestDatabase {
     database.exec('PRAGMA foreign_keys = ON')
   }
 
-  return { insert, truncate, connection: open }
+  return { seed, truncate, connection: open }
 }
 
 /**
- * A business row with every not-null column filled in.
+ * The connection the assertions below read.
  *
- * Defaults to the commonest case - a real listing, copied from open data, that
- * cannot take an order - so a test that cares about one column says only that
- * column and the rest reads as "and nothing unusual".
+ * Laravel's `assertDatabaseHas` is a method on the test case, which already
+ * knows its connection. These are free functions, so they read the one this
+ * process opened - and a file that calls one without `refreshDatabase()` gets
+ * told so, rather than quietly querying nothing and passing.
+ */
+function assertionConnection(): Database {
+  if (!shared)
+    throw new Error('assertDatabase* needs refreshDatabase() at the top level of this file')
+
+  return shared
+}
+
+/** The `where` half of an assertion, as SQL and its bindings. */
+function matching(columns: Record<string, unknown>): { clause: string, values: Array<string | number | null> } {
+  const names = Object.keys(columns)
+
+  if (names.length === 0)
+    return { clause: '1 = 1', values: [] }
+
+  return {
+    clause: names.map(name => `"${name}" IS ?`).join(' AND '),
+    values: names.map(name => bindable(columns[name])),
+  }
+}
+
+function countMatching(table: string, columns: Record<string, unknown>): number {
+  const { clause, values } = matching(columns)
+  const row = assertionConnection()
+    .query<{ n: number }, any[]>(`SELECT COUNT(*) n FROM "${table}" WHERE ${clause}`)
+    .get(...values)
+
+  return row?.n ?? 0
+}
+
+/** Laravel's `assertDatabaseHas`: this table holds a row like this. */
+export function assertDatabaseHas(table: string, columns: Record<string, unknown>): void {
+  const found = countMatching(table, columns)
+
+  if (found === 0) {
+    throw new Error(
+      `Expected "${table}" to hold a row matching ${JSON.stringify(columns)}, and it holds none.`,
+    )
+  }
+}
+
+/** Laravel's `assertDatabaseMissing`: and this one it does not. */
+export function assertDatabaseMissing(table: string, columns: Record<string, unknown>): void {
+  const found = countMatching(table, columns)
+
+  if (found > 0) {
+    throw new Error(
+      `Expected "${table}" to hold no row matching ${JSON.stringify(columns)}, and it holds ${found}.`,
+    )
+  }
+}
+
+/** Laravel's `assertDatabaseCount`. */
+export function assertDatabaseCount(table: string, expected: number): void {
+  const row = assertionConnection().query<{ n: number }, []>(`SELECT COUNT(*) n FROM "${table}"`).get()
+  const found = row?.n ?? 0
+
+  if (found !== expected)
+    throw new Error(`Expected "${table}" to hold ${expected} row(s), and it holds ${found}.`)
+}
+
+function bindable(value: unknown): string | number | null {
+  if (typeof value === 'boolean')
+    return value ? 1 : 0
+
+  if (value === undefined)
+    return null
+
+  return value as string | number | null
+}
+
+/**
+ * Rows with every not-null column already filled in.
+ *
+ * Laravel would spell this `Business::factory()->create()`; there is no model
+ * factory here, so it is a plain object a test can hand to `seed`. Each one
+ * defaults to the commonest case, so a test that cares about one column names
+ * only that column and the rest reads as "and nothing unusual".
+ */
+export const factory = {
+  business: aBusiness,
+  product: aProduct,
+}
+
+/**
+ * A business: by default a real listing, copied from open data, that cannot
+ * take an order - which is what most rows in this table are.
  */
 export function aBusiness(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -251,6 +402,19 @@ export function aBusiness(overrides: Record<string, unknown> = {}): Record<strin
     rating_average: 0,
     rating_count: 0,
     source: 'curated',
+    ...overrides,
+  }
+}
+
+/** A product on some business's menu. `business_id` is the one thing to pass. */
+export function aProduct(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    name: 'A Dish',
+    description: '',
+    price: 1000,
+    is_available: 1,
+    preparation_time: 15,
+    allergens: '[]',
     ...overrides,
   }
 }
