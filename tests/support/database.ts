@@ -383,6 +383,9 @@ function bindable(value: unknown): string | number | null {
 export const factory = {
   business: aBusiness,
   product: aProduct,
+  market: aMarket,
+  courier: aCourier,
+  csaPlan: aCsaPlan,
 }
 
 /**
@@ -427,6 +430,62 @@ export function aProduct(overrides: Record<string, unknown> = {}): Record<string
     is_available: 1,
     preparation_time: 15,
     allergens: '[]',
+    ...overrides,
+  }
+}
+
+/** A market, which is what gives a business its currency, tax and timezone. */
+export function aMarket(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    name: 'Los Angeles',
+    slug: `los-angeles-${Math.random().toString(36).slice(2, 8)}`,
+    city: 'Los Angeles',
+    country_code: 'US',
+    currency: 'usd',
+    tax_mode: 'exclusive',
+    default_tax_rate: 0,
+    timezone: 'America/Los_Angeles',
+    locale: 'en',
+    center_latitude: 34.0195,
+    center_longitude: -118.4912,
+    is_active: 1,
+    ...overrides,
+  }
+}
+
+/**
+ * A courier, free and positioned.
+ *
+ * `status: 'active'` is the one that means available - `on_delivery` is the
+ * busy one - and a courier with no coordinates is treated as unpositioned by
+ * the dispatcher, so both are filled in by default.
+ */
+export function aCourier(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    name: 'A Courier',
+    phone: '',
+    vehicle_number: 'BIKE-1',
+    license: '',
+    status: 'active',
+    latitude: 34.0195,
+    longitude: -118.4912,
+    heading: 0,
+    speed: 0,
+    ...overrides,
+  }
+}
+
+/** A weekly vegetable share, open, collected on Wednesdays. */
+export function aCsaPlan(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    name: 'Weekly Box',
+    description: '',
+    price_cents: 3000,
+    cadence: 'weekly',
+    feeds: '2-3 people',
+    day_of_week: 3,
+    offers_delivery: 0,
+    is_active: 1,
     ...overrides,
   }
 }
