@@ -77,9 +77,9 @@
     "sync:map-css": "printf '%s\\n' \"$(sed -n '1,/^$/p' resources/assets/styles/ts-maps.css)\" > /tmp/hdr.css && cat /tmp/hdr.css node_modules/ts-maps/src/core-map/ts-maps.css > resources/assets/styles/ts-maps.css && rm /tmp/hdr.css"
   },
   "dependencies": {
-    "@stacksjs/components": "^0.2.263",
-    "@stacksjs/stx": "^0.2.263",
-    "bun-plugin-stx": "^0.2.263",
+    "@stacksjs/components": "^0.2.265",
+    "@stacksjs/stx": "^0.2.265",
+    "bun-plugin-stx": "^0.2.265",
     "pickier": "^0.1.65",
     "stacks": "^0.74.3",
     "ts-images": "^0.2.14",
@@ -101,6 +101,6 @@
     "commit-msg": "bun x gitlint --edit \"$1\""
   },
   "devDependencies": {
-    "better-dx": "^0.2.24"
+    "better-dx": "^0.2.25"
   }
 }
