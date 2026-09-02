@@ -114,13 +114,41 @@ function build() {
   return { page, cart: cartHandlers(page) }
 }
 
+/** localStorage, small enough to read and to assert against. */
+function fakeStorage() {
+  const held = new Map<string, string>()
+
+  return {
+    held,
+    getItem: (key: string) => held.get(key) ?? null,
+    setItem: (key: string, value: string) => { held.set(key, String(value)) },
+    removeItem: (key: string) => { held.delete(key) },
+  }
+}
+
+let storage: ReturnType<typeof fakeStorage>
+
+const CART_KEY = 'smakelo.cart.nonna-pia'
+
+/** A basket as it would have been written, `age` milliseconds ago. */
+function writeStoredCart(lines: any[], age = 0, key = CART_KEY): void {
+  storage.setItem(key, JSON.stringify({ savedAt: Date.now() - age, lines }))
+}
+
+function storedCart(key = CART_KEY): any {
+  const raw = storage.getItem(key)
+
+  return raw ? JSON.parse(raw) : null
+}
+
 /*
  * Adding a line asks the server to re-price the basket. The quote is covered
  * by its own tests; here it only has to not be a network call.
  */
 beforeEach(() => {
+  storage = fakeStorage()
   ;(globalThis as any).document = { cookie: '' }
-  ;(globalThis as any).localStorage = { getItem: () => null, setItem: () => undefined }
+  ;(globalThis as any).localStorage = storage
   ;(globalThis as any).fetch = async () => new Response(JSON.stringify({ data: null }), { status: 200 })
 })
 
@@ -454,5 +482,184 @@ describe('wording', () => {
 
     expect(cart.optionPrice({ priceDeltaCents: 500 })).toBe(' +$5.00')
     expect(cart.optionPrice({ priceDeltaCents: 0 })).toBe('')
+  })
+})
+
+/**
+ * A basket that survives a reload.
+ *
+ * It used to live only in the page's own memory, so refreshing the menu - or
+ * following a link to the reviews and coming back - emptied it without saying
+ * so. What is written back has to be worth restoring, though: a basket priced
+ * off a menu that has since changed is a decision somebody never made.
+ */
+describe('a basket kept between visits', () => {
+  test('is written under this restaurant\'s own key', () => {
+    const { cart } = build()
+
+    cart.addOne(PLAIN.id)
+
+    // Two restaurants are two baskets. Sharing one key would serve half an
+    // order from one place under another's name.
+    expect(storedCart().lines.length).toBe(1)
+    expect(storage.getItem('smakelo.cart.other-place')).toBe(null)
+  })
+
+  test('comes back with its quantities, options and notes', () => {
+    const first = build()
+
+    first.cart.openItem(TOPPED.id)
+    first.cart.toggleChoice(TOPPED.groups[0], 201)
+    first.cart.setConfig('note', 'well done please')
+    first.cart.setConfigQuantity(2)
+    first.cart.addConfigured()
+
+    // A second page, the same browser: everything is gone but what was written.
+    const { page, cart } = build()
+
+    expect(page.cart()).toEqual([])
+
+    cart.restoreCart()
+
+    const line = page.cart()[0]
+
+    expect(page.cart().length).toBe(1)
+    expect(line.name).toBe('Margherita')
+    expect(line.quantity).toBe(2)
+    expect(line.modifierIds).toEqual([201])
+    expect(line.labels).toEqual(['Anchovy'])
+    expect(line.notes).toBe('well done please')
+  })
+
+  test('waits for the menu, because the rows are read against it', async () => {
+    const { page, cart } = build()
+
+    page.menu.set(null)
+    writeStoredCart([{ productId: PLAIN.id, quantity: 1, modifierIds: [], notes: '' }])
+
+    ;(globalThis as any).fetch = async (url: string) => new Response(
+      JSON.stringify({ data: String(url).includes('/menu') ? MENU : [] }),
+      { status: 200 },
+    )
+
+    // Restoring first would put lines on the screen that cannot say what they
+    // cost: `linePrice` and the row steppers both go through `itemById`.
+    await cart.load()
+
+    expect(page.menu()).not.toBe(null)
+    expect(cart.linePrice(page.cart()[0])).toBe('$6.00')
+  })
+
+  test('is priced off today\'s menu, not the one it was filled from', () => {
+    const { page, cart } = build()
+
+    // Focaccia has gone up since this was written.
+    writeStoredCart([{ productId: PLAIN.id, quantity: 1, unitCents: 300, modifierIds: [], notes: '' }])
+
+    cart.restoreCart()
+
+    expect(page.cart()[0].unitCents).toBe(600)
+  })
+
+  test('is dropped once it is older than a day', () => {
+    const { page, cart } = build()
+
+    writeStoredCart([{ productId: PLAIN.id, quantity: 1, modifierIds: [], notes: '' }], 25 * 60 * 60 * 1000)
+
+    cart.restoreCart()
+
+    // A stale basket looks like a decision somebody made, and they made it
+    // about a menu that has moved since. Empty is the honest answer.
+    expect(page.cart()).toEqual([])
+    expect(storage.getItem(CART_KEY)).toBe(null)
+  })
+
+  test('keeps what is still on the menu when a dish has come off it', () => {
+    const { page, cart } = build()
+
+    writeStoredCart([
+      { productId: 9999, name: 'Bucatini', quantity: 2, modifierIds: [], notes: '' },
+      { productId: PLAIN.id, quantity: 1, modifierIds: [], notes: '' },
+    ])
+
+    cart.restoreCart()
+
+    // Refusing the whole basket over one delisted side throws away more than
+    // the kitchen did.
+    expect(page.cart().length).toBe(1)
+    expect(page.cart()[0].name).toBe('Focaccia')
+    expect(storedCart().lines.length).toBe(1)
+  })
+
+  test('drops an option that has come off a dish, keeping the dish', () => {
+    const { page, cart } = build()
+
+    writeStoredCart([{ productId: TOPPED.id, quantity: 1, modifierIds: [200, 777], notes: '' }])
+
+    cart.restoreCart()
+
+    // The server prices from the menu it has; an id it no longer knows would
+    // be refused at placement, after the basket had been shown as orderable.
+    expect(page.cart()[0].modifierIds).toEqual([200])
+    expect(page.cart()[0].labels).toEqual(['Olives'])
+  })
+
+  test('leaves nothing behind when every dish has gone', () => {
+    const { page, cart } = build()
+
+    writeStoredCart([{ productId: 9999, quantity: 1, modifierIds: [], notes: '' }])
+
+    cart.restoreCart()
+
+    expect(page.cart()).toEqual([])
+    expect(storage.getItem(CART_KEY)).toBe(null)
+  })
+
+  test('survives nothing but nonsense in the slot', () => {
+    const { page, cart } = build()
+
+    storage.setItem(CART_KEY, 'not json')
+
+    cart.restoreCart()
+
+    expect(page.cart()).toEqual([])
+    expect(storage.getItem(CART_KEY)).toBe(null)
+  })
+
+  test('is forgotten when the basket is emptied', () => {
+    const { cart } = build()
+
+    cart.addOne(PLAIN.id)
+    cart.clearCart()
+
+    expect(storage.getItem(CART_KEY)).toBe(null)
+  })
+
+  test('is forgotten once the order has gone to the kitchen', async () => {
+    const { cart } = build()
+
+    cart.addOne(PLAIN.id)
+    ;(globalThis as any).fetch = async () => new Response(JSON.stringify({ data: { orderId: 7 } }), { status: 200 })
+
+    await cart.placeOrder()
+
+    // Otherwise the next visit opens onto a basket that has already been sent
+    // and paid for, inviting somebody to send it again.
+    expect(storage.getItem(CART_KEY)).toBe(null)
+  })
+
+  test('a browser that refuses storage still takes orders', () => {
+    const { page, cart } = build()
+
+    ;(globalThis as any).localStorage = {
+      getItem: () => { throw new Error('denied') },
+      setItem: () => { throw new Error('denied') },
+      removeItem: () => { throw new Error('denied') },
+    }
+
+    cart.addOne(PLAIN.id)
+    cart.restoreCart()
+
+    expect(page.cart().length).toBe(1)
   })
 })

@@ -25,6 +25,25 @@ import { money, send, visitorToken } from './session'
  * total they are charged cannot drift apart. Nothing here adds up a bill.
  */
 
+/**
+ * Where a basket waits between visits.
+ *
+ * Keyed by slug, because two restaurants are two baskets: half an order from
+ * one appearing under another's name is worse than having lost it.
+ */
+const CART_KEY_PREFIX = 'smakelo.cart.'
+
+/**
+ * How long a basket is worth keeping.
+ *
+ * A basket is an intention to eat, and an intention has a shelf life. A
+ * three-day-old one, priced off a menu that has since changed, is worse than
+ * an empty one: it looks like a decision somebody made, and they did not make
+ * this one. A day covers the walk home and the following morning, which is as
+ * far as the intention usually survives anyway.
+ */
+const CART_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
 export interface CartSignals {
   slug: string
   /** The menu as the API gives it: modifier groups, allergens, defaults. */
@@ -148,6 +167,160 @@ export function cartHandlers(page: CartSignals) {
 
     if (preferred && !page.checkout().address)
       chooseAddress(preferred)
+  }
+
+  /* ------------------------------------------------------------- keeping -- */
+
+  /*
+   * The basket, kept where a reload cannot reach it.
+   *
+   * It used to live only in the page: `const cart = state([])`, declared by
+   * every generated place page, emptied by the first refresh or by following
+   * a link to the reviews and coming back. Nothing said so - the drawer just
+   * opened onto nothing, as if the last ten minutes had not happened.
+   *
+   * Only the lines are written. `placed` and `payment` stay in memory on
+   * purpose: an order that has already gone to a kitchen must not come back
+   * on the next visit looking like a basket somebody still has to send.
+   */
+
+  function cartKey(): string {
+    return CART_KEY_PREFIX + slug
+  }
+
+  function remember(lines: any[]): void {
+    try {
+      if (lines.length === 0) {
+        localStorage.removeItem(cartKey())
+        return
+      }
+
+      localStorage.setItem(cartKey(), JSON.stringify({ savedAt: Date.now(), lines }))
+    }
+    catch {
+      // A browser refusing storage still gets to order; the basket just does
+      // not outlive the page, which is where it was before this existed.
+    }
+  }
+
+  function forget(): void {
+    try {
+      localStorage.removeItem(cartKey())
+    }
+    catch {}
+  }
+
+  /** Set the basket, and keep the written copy in step with it. */
+  function setCart(lines: any[]): void {
+    page.cart.set(lines)
+    remember(lines)
+  }
+
+  /** What was written here, if it is still young enough to be true. */
+  function storedLines(): any[] | null {
+    let raw: string | null = null
+
+    try {
+      raw = localStorage.getItem(cartKey())
+    }
+    catch {
+      return null
+    }
+
+    if (!raw)
+      return null
+
+    try {
+      const stored = JSON.parse(raw)
+      const savedAt = Number(stored?.savedAt)
+
+      if (!Array.isArray(stored?.lines) || !(savedAt > 0) || Date.now() - savedAt > CART_MAX_AGE_MS) {
+        forget()
+        return null
+      }
+
+      return stored.lines
+    }
+    catch {
+      // Something else wrote here, or a half-written value survived a crash.
+      forget()
+      return null
+    }
+  }
+
+  /**
+   * One stored line, read again against the menu as it stands today.
+   *
+   * The name, the photograph and the unit price come from the menu rather
+   * than from the copy saved with the line, and an option that has since come
+   * off the item goes with it. What the basket shows has to be what the
+   * server would price, and the server prices from the menu it has.
+   */
+  function relineFrom(item: any, line: any): any {
+    const wanted = (Array.isArray(line.modifierIds) ? line.modifierIds : []).map(Number)
+    const modifierIds: number[] = []
+    const labels: string[] = []
+
+    for (const group of item.groups ?? []) {
+      for (const option of group.options) {
+        if (wanted.includes(option.id)) {
+          modifierIds.push(option.id)
+          labels.push(option.name)
+        }
+      }
+    }
+
+    return {
+      productId: item.id,
+      name: item.name,
+      photo: item.photo,
+      photoBlur: item.photoBlur,
+      unitCents: item.priceCents,
+      quantity: Math.max(1, Math.min(50, Math.floor(Number(line.quantity)) || 1)),
+      modifierIds,
+      labels,
+      notes: String(line.notes ?? '').slice(0, 300),
+    }
+  }
+
+  /**
+   * Put the basket back.
+   *
+   * Only once the menu has answered: a row's price and its steppers are read
+   * through `itemById`, so restoring first would put lines on the screen that
+   * cannot say what they cost or be added to.
+   *
+   * A dish that has come off the menu is dropped rather than kept, and the
+   * rest of the basket survives it. The alternative - refusing the whole
+   * basket over one delisted side - throws away more than the kitchen did.
+   * Whatever is left is re-quoted, so the total under it is today's.
+   */
+  function restoreCart(): void {
+    if (!page.menu() || page.cart().length > 0)
+      return
+
+    const stored = storedLines()
+
+    if (!stored)
+      return
+
+    const index = itemsById()
+    const lines: any[] = []
+
+    for (const line of stored) {
+      const item = index.get(Number(line.productId))
+
+      if (item)
+        lines.push(relineFrom(item, line))
+    }
+
+    if (lines.length === 0) {
+      forget()
+      return
+    }
+
+    setCart(lines)
+    refreshQuote()
   }
 
   /* ---------------------------------------------------------------- rows -- */
@@ -384,7 +557,7 @@ export function cartHandlers(page: CartSignals) {
     }
 
     page.cartError.set('')
-    page.cart.set([...page.cart(), {
+    setCart([...page.cart(), {
       productId: item.id,
       name: item.name,
       photo: item.photo,
@@ -405,24 +578,24 @@ export function cartHandlers(page: CartSignals) {
       return
     }
 
-    page.cart.set(page.cart().map((line: any, position: number) =>
+    setCart(page.cart().map((line: any, position: number) =>
       position === index ? { ...line, quantity: Math.min(50, quantity) } : line))
 
     refreshQuote()
   }
 
   function setLineNote(index: number, note: string): void {
-    page.cart.set(page.cart().map((line: any, position: number) =>
+    setCart(page.cart().map((line: any, position: number) =>
       position === index ? { ...line, notes: note.slice(0, 300) } : line))
   }
 
   function removeLine(index: number): void {
-    page.cart.set(page.cart().filter((_: any, position: number) => position !== index))
+    setCart(page.cart().filter((_: any, position: number) => position !== index))
     refreshQuote()
   }
 
   function clearCart(): void {
-    page.cart.set([])
+    setCart([])
     page.quote.set(null)
     page.cartError.set('')
   }
@@ -561,6 +734,12 @@ export function cartHandlers(page: CartSignals) {
       return
     }
 
+    /*
+     * The order has gone to a kitchen, so the basket it came from is spent.
+     * Left written, the next visit would open onto a basket somebody has
+     * already sent and paid for, inviting them to send it again.
+     */
+    forget()
     page.placed.set(payload.data)
 
     /*
@@ -705,14 +884,20 @@ export function cartHandlers(page: CartSignals) {
     }))
   }
 
-  function load(): void {
-    loadMenu()
+  async function load(): Promise<void> {
     loadAddresses()
+
+    // Awaited, not fired alongside: `restoreCart` reads the restored lines
+    // against the menu, and has nothing to read them against until it lands.
+    await loadMenu()
+
+    restoreCart()
   }
 
   return {
     load,
     loadMenu,
+    restoreCart,
     itemById,
     qtyOf,
     addOne,
