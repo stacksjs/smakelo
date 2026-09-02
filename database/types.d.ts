@@ -20,6 +20,22 @@ declare module '@stacksjs/database' {
       ip_address: string
       user_id: number
     }
+    addresses: {
+      // columns
+      id: number
+      uuid: string
+      created_at: string
+      updated_at: string | null
+      label: string
+      line: string
+      city: string
+      postal_code: string
+      latitude: number
+      longitude: number
+      notes: string
+      is_default: number
+      customer_id: number
+    }
     analytics_events: {
       // columns
       id: number
@@ -212,7 +228,7 @@ declare module '@stacksjs/database' {
       deleted_at: string | null
       name: string
       slug: string
-      type: "restaurant" | "cafe" | "farm" | "bakery" | "bar" | "grocery"
+      type: "restaurant" | "cafe" | "farm" | "bakery" | "bar" | "grocery" | "home_kitchen"
       description: string
       cuisine: string
       price_tier: number

@@ -43,8 +43,10 @@ export default defineCommand((cli) => {
       const memberCount = await seedCsaMembers()
       const history = await seedOrders()
       const people = await seedAccounts(businessIds)
+      const carts = await seedAbandonedCarts()
+      const marketing = await seedMarketingSurface()
 
-      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares (${memberCount} members), ${history.orders} orders (${history.dispatched} dispatched), ${people.accounts} accounts across ${people.teams} teams`)
+      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares (${memberCount} members), ${history.orders} orders (${history.dispatched} dispatched), ${people.accounts} accounts across ${people.teams} teams, ${carts.carts} abandoned carts (${carts.recovered} recovered), ${marketing.lists} email list (${marketing.subscribers} subscribers), ${marketing.posts} social posts`)
     })
 })
 
@@ -107,6 +109,15 @@ async function clearDemoRows(): Promise<void> {
     'driver_pings',
     'business_reviews',
     'order_items',
+    // Marketing: sends point at campaigns, memberships at both the list and
+    // the subscriber.
+    'campaign_sends',
+    'campaigns',
+    'email_list_subscribers',
+    'email_lists',
+    'subscribers',
+    'social_posts',
+    'cart_items',
     'carts',
     'modifier_groups',
     'csa_plans',
@@ -1186,4 +1197,383 @@ async function reviewerId(name: string): Promise<number | null> {
     .executeTakeFirst() as { id: number } | undefined
 
   return created ? Number(created.id) : null
+}
+
+/**
+ * Carts that were filled and never checked out, and the campaign that chases them.
+ *
+ * The dashboard's Abandoned Carts screen reads the `carts` table directly, so
+ * without rows it is an honest but empty page: the shape of the feature with
+ * none of the argument for it. These are the rows that make the argument -
+ * a spread of ages and values, some already written to, and a few that came
+ * back after the email so the recovery rate is a real division rather than a
+ * zero.
+ *
+ * The campaign is an ordinary Campaign row. What makes it a recovery campaign
+ * is its `segment_definition`, which names the trigger and the rules it was
+ * written with; see `abandoned-cart-records.ts` for the whole of that contract.
+ */
+async function seedAbandonedCarts(): Promise<{ carts: number, recovered: number }> {
+  const existing = await db.selectFrom('carts').select(['id']).executeTakeFirst() as { id: number } | undefined
+
+  // Idempotent like the rest of the seeder. Re-running a deploy should not
+  // double the pile of money the recovery screen says is sitting there.
+  if (existing)
+    return { carts: 0, recovered: 0 }
+
+  const customers = await db.selectFrom('customers')
+    .orderBy('id', 'asc')
+    .limit(14)
+    .select(['id', 'email'])
+    .execute() as Array<{ id: number, email: string }>
+
+  const products = await db.selectFrom('products')
+    .orderBy('id', 'asc')
+    .select(['id', 'name', 'price'])
+    .execute() as Array<{ id: number, name: string, price: number }>
+
+  if (customers.length === 0 || products.length === 0)
+    return { carts: 0, recovered: 0 }
+
+  /*
+   * The same tiny LCG the order history uses, so two people running the
+   * seeder see the same demo and a screenshot keeps matching the database.
+   */
+  let seed = 20260901
+  const next = (bound: number): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return seed % bound
+  }
+
+  const hoursAgo = (hours: number): string =>
+    new Date(Date.now() - hours * 36e5).toISOString().slice(0, 19).replace('T', ' ')
+
+  const campaignSentAt = hoursAgo(30)
+
+  /*
+   * The id comes from a re-select rather than from the insert.
+   *
+   * `insertId` is empty on this query builder, and a zero id inserted as a
+   * foreign key fails the constraint rather than pointing at nothing quietly -
+   * which is the good outcome, but only once. `reviewerId` above does the
+   * same thing for the same reason.
+   */
+  const campaignUuid = crypto.randomUUID()
+
+  await db.insertInto('campaigns').values({
+    uuid: campaignUuid,
+    name: 'You left something behind',
+    description: 'Recovery campaign for carts idle 4h or more.',
+    type: 'email',
+    status: 'sent',
+    subject: 'Your basket is still here',
+    template: 'abandoned-cart',
+    text: 'Everything you picked is still in your basket. Pick up where you left off.',
+    from_name: 'Smakelo',
+    from_address: 'hello@demo.smakelo.invalid',
+    segment_definition: JSON.stringify({
+      trigger: 'abandoned_cart',
+      operator: 'and',
+      rules: [
+        { field: 'cart.state', operator: 'is', value: 'abandoned' },
+        { field: 'cart.idleHours', operator: 'gte', value: 4 },
+        { field: 'cart.value', operator: 'gte', value: 0 },
+      ],
+    }),
+    timezone: 'UTC',
+    sent_at: campaignSentAt,
+    audience_size: 0,
+    sent_count: 0,
+    spent: 0,
+    currency: 'EUR',
+  } as never).executeTakeFirst()
+
+  const campaignRow = await db.selectFrom('campaigns')
+    .where('uuid', '=', campaignUuid)
+    .select(['id'])
+    .executeTakeFirst() as { id: number } | undefined
+
+  const campaignId = campaignRow ? Number(campaignRow.id) : 0
+
+  /*
+   * The shape of the demo, written out rather than generated.
+   *
+   * `idleHours` is how long ago the cart was last touched, `chased` whether
+   * the campaign wrote to that customer, and `recovered` whether they came
+   * back afterwards. A recovered cart is `converted` and was written to
+   * BEFORE it was last touched - that ordering is the whole of the
+   * attribution, and a demo that got it backwards would show a recovery rate
+   * the code would never produce.
+   */
+  const plan = [
+    { idleHours: 5, lines: 2, chased: true, recovered: true },
+    { idleHours: 9, lines: 1, chased: true, recovered: true },
+    { idleHours: 14, lines: 3, chased: true, recovered: false },
+    { idleHours: 20, lines: 2, chased: true, recovered: false },
+    { idleHours: 26, lines: 1, chased: true, recovered: true },
+    { idleHours: 31, lines: 4, chased: true, recovered: false },
+    { idleHours: 2, lines: 2, chased: false, recovered: false },
+    { idleHours: 3, lines: 1, chased: false, recovered: false },
+    { idleHours: 7, lines: 3, chased: false, recovered: false },
+    { idleHours: 38, lines: 2, chased: false, recovered: false },
+    { idleHours: 52, lines: 1, chased: false, recovered: false },
+    { idleHours: 76, lines: 3, chased: false, recovered: false },
+    { idleHours: 120, lines: 2, chased: false, recovered: false, expired: true },
+    { idleHours: 190, lines: 1, chased: false, recovered: false, expired: true },
+  ]
+
+  let created = 0
+  let recovered = 0
+  let sends = 0
+
+  for (const [index, entry] of plan.entries()) {
+    const customer = customers[index % customers.length] as { id: number, email: string }
+    const lines: Array<{ name: string, unit: number, quantity: number }> = []
+
+    for (let line = 0; line < entry.lines; line++) {
+      const product = products[next(products.length)]
+
+      /*
+       * Cents to euros. Product prices are minor units everywhere in this
+       * app; the dashboard's commerce screens format these columns as a
+       * currency with `Intl.NumberFormat`, which reads them as major units -
+       * so a cart stored in cents reads as a hundred times the money.
+       */
+      if (product)
+        lines.push({ name: String(product.name), unit: Math.round(Number(product.price) || 0) / 100, quantity: 1 + next(2) })
+    }
+
+    if (lines.length === 0)
+      continue
+
+    const subtotal = Math.round(lines.reduce((sum, line) => sum + line.unit * line.quantity, 0) * 100) / 100
+    const totalItems = lines.reduce((sum, line) => sum + line.quantity, 0)
+    const touchedAt = hoursAgo(entry.idleHours)
+
+    const cartUuid = crypto.randomUUID()
+
+    await db.insertInto('carts').values({
+      uuid: cartUuid,
+      status: entry.recovered ? 'converted' : entry.expired ? 'expired' : 'abandoned',
+      total_items: totalItems,
+      subtotal,
+      tax_amount: 0,
+      discount_amount: 0,
+      total: subtotal,
+      // The framework's column is NOT NULL; a cart nobody came back to
+      // expires a fortnight after it was filled.
+      expires_at: hoursAgo(entry.idleHours - 336),
+      currency: 'EUR',
+      applied_coupon_id: '',
+      customer_id: Number(customer.id),
+      created_at: hoursAgo(entry.idleHours + 1),
+      updated_at: touchedAt,
+    } as never).executeTakeFirst()
+
+    const cartRow = await db.selectFrom('carts')
+      .where('uuid', '=', cartUuid)
+      .select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
+
+    if (!cartRow)
+      continue
+
+    const cartId = Number(cartRow.id)
+
+    for (const line of lines) {
+      await db.insertInto('cart_items').values({
+        uuid: crypto.randomUUID(),
+        cart_id: cartId,
+        quantity: line.quantity,
+        unit_price: line.unit,
+        total_price: line.unit * line.quantity,
+        product_name: line.name,
+        created_at: touchedAt,
+        updated_at: touchedAt,
+      } as never).executeTakeFirst()
+    }
+
+    if (entry.chased && campaignId > 0) {
+      /*
+       * The email goes out before the cart was last touched. For a recovered
+       * cart that ordering is what makes it recovered; for one still cold it
+       * is simply when it was chased.
+       */
+      const sentAt = hoursAgo(entry.idleHours + (entry.recovered ? 4 : -1))
+
+      await db.insertInto('campaign_sends').values({
+        uuid: crypto.randomUUID(),
+        campaign_id: campaignId,
+        status: 'delivered',
+        channel: 'email',
+        recipient: String(customer.email),
+        idempotency_key: `seed-cart-${cartId}`,
+        sent_at: sentAt,
+        delivered_at: sentAt,
+        opened_at: entry.recovered ? hoursAgo(entry.idleHours + 2) : null,
+        clicked_at: entry.recovered ? hoursAgo(entry.idleHours + 1) : null,
+        created_at: sentAt,
+        updated_at: sentAt,
+      } as never).executeTakeFirst()
+
+      sends++
+    }
+
+    created++
+
+    if (entry.recovered)
+      recovered++
+  }
+
+  if (campaignId > 0) {
+    await db.updateTable('campaigns')
+      .set({ audience_size: sends, sent_count: sends } as never)
+      .where('id', '=', campaignId)
+      .executeTakeFirst()
+  }
+
+  return { carts: created, recovered }
+}
+
+/**
+ * The rest of the marketing section: a list somebody subscribed to, and the
+ * posts that went out about the food.
+ *
+ * The dashboard's Marketing screens each read a real table, so without rows
+ * they render five correct, empty pages - which demonstrates the plumbing and
+ * none of the product. This is a small amount of data whose only job is to
+ * make those screens legible: one list with real subscribers behind it, and
+ * a handful of posts with the spread of statuses the screen is built to show.
+ */
+async function seedMarketingSurface(): Promise<{ lists: number, subscribers: number, posts: number }> {
+  const existing = await db.selectFrom('email_lists').select(['id']).executeTakeFirst() as { id: number } | undefined
+
+  if (existing)
+    return { lists: 0, subscribers: 0, posts: 0 }
+
+  const listUuid = crypto.randomUUID()
+
+  await db.insertInto('email_lists').values({
+    uuid: listUuid,
+    name: 'Smakelo Weekly',
+    slug: 'smakelo-weekly',
+    description: 'What opened, what is in season, and who is cooking it.',
+    status: 'active',
+    is_public: 1,
+    double_opt_in: 1,
+    subscriber_count: 0,
+    active_count: 0,
+    unsubscribed_count: 0,
+    bounced_count: 0,
+  } as never).executeTakeFirst()
+
+  const list = await db.selectFrom('email_lists')
+    .where('uuid', '=', listUuid)
+    .select(['id'])
+    .executeTakeFirst() as { id: number } | undefined
+
+  if (!list)
+    return { lists: 0, subscribers: 0, posts: 0 }
+
+  const listId = Number(list.id)
+
+  const people = await db.selectFrom('customers')
+    .orderBy('id', 'asc')
+    .limit(24)
+    .select(['email'])
+    .execute() as Array<{ email: string }>
+
+  let subscribed = 0
+  let unsubscribed = 0
+  let bounced = 0
+
+  for (const [index, person] of people.entries()) {
+    // A real list is not all "subscribed": the screen has counters for the
+    // people who left and the addresses that bounced, and a list without any
+    // is a list whose counters cannot be read.
+    const status = index % 11 === 10 ? 'bounced' : index % 7 === 6 ? 'unsubscribed' : 'subscribed'
+    const subscriberUuid = crypto.randomUUID()
+
+    await db.insertInto('subscribers').values({
+      uuid: subscriberUuid,
+      email: String(person.email),
+      status,
+      source: 'homepage',
+    } as never).executeTakeFirst()
+
+    const subscriber = await db.selectFrom('subscribers')
+      .where('uuid', '=', subscriberUuid)
+      .select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
+
+    if (!subscriber)
+      continue
+
+    await db.insertInto('email_list_subscribers').values({
+      uuid: crypto.randomUUID(),
+      email_list_id: listId,
+      subscriber_id: Number(subscriber.id),
+      status,
+      source: 'homepage',
+      subscribed_at: new Date(Date.now() - (index + 1) * 36e5 * 20).toISOString().slice(0, 19).replace('T', ' '),
+    } as never).executeTakeFirst()
+
+    if (status === 'subscribed')
+      subscribed++
+    else if (status === 'bounced')
+      bounced++
+    else
+      unsubscribed++
+  }
+
+  /*
+   * The list's own counters, kept in step with the rows behind them.
+   *
+   * `subscriber_count` is what the dashboard compares its own count against
+   * to flag a drifted list, and it counts the live membership - subscribed
+   * plus pending - not everybody who was ever on the list. Seeding the drift
+   * the screen exists to warn about would be a strange thing to ship.
+   */
+  await db.updateTable('email_lists')
+    .set({
+      subscriber_count: subscribed,
+      active_count: subscribed,
+      unsubscribed_count: unsubscribed,
+      bounced_count: bounced,
+    } as never)
+    .where('id', '=', listId)
+    .executeTakeFirst()
+
+  const author = await db.selectFrom('users').orderBy('id', 'asc').select(['id']).executeTakeFirst() as { id: number } | undefined
+
+  const posts = [
+    { content: 'Ocakbaşı Nordstadt fires the grill at five. The adana is worth the walk.', platform: 'instagram', status: 'published', likes: 412, shares: 38, comments: 21, reach: 5840, hoursAgo: 30 },
+    { content: 'Seven home kitchens joined this week. Real cooks, real living rooms, one neighbourhood at a time.', platform: 'facebook', status: 'published', likes: 168, shares: 54, comments: 12, reach: 3120, hoursAgo: 74 },
+    { content: 'CSA boxes for October open Monday. Twelve farms, one pickup.', platform: 'twitter', status: 'scheduled', likes: 0, shares: 0, comments: 0, reach: 0, hoursAgo: -48 },
+    { content: 'A photograph of every dish on every menu. It took a while.', platform: 'linkedin', status: 'draft', likes: 0, shares: 0, comments: 0, reach: 0, hoursAgo: 0 },
+  ]
+
+  let written = 0
+
+  for (const post of posts) {
+    const stamp = new Date(Date.now() - post.hoursAgo * 36e5).toISOString().slice(0, 19).replace('T', ' ')
+
+    await db.insertInto('social_posts').values({
+      uuid: crypto.randomUUID(),
+      content: post.content,
+      platform: post.platform,
+      status: post.status,
+      scheduled_at: post.status === 'scheduled' ? stamp : null,
+      published_at: post.status === 'published' ? stamp : null,
+      likes: post.likes,
+      shares: post.shares,
+      comments: post.comments,
+      reach: post.reach,
+      user_id: author ? Number(author.id) : null,
+    } as never).executeTakeFirst()
+
+    written++
+  }
+
+  return { lists: 1, subscribers: subscribed + unsubscribed + bounced, posts: written }
 }
