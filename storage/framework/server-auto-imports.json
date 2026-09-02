@@ -40,8 +40,6 @@
     "DeliveryStop": true,
     "Deployment": true,
     "DigitalDelivery": true,
-    "Driver": true,
-    "DriverPing": true,
     "EmailIdempotency": true,
     "EmailList": true,
     "EmailListSubscriber": true,

@@ -663,35 +663,35 @@ declare module '@stacksjs/database' {
     driver_pings: {
       // columns
       id: number
-      uuid: string
-      created_at: string
-      updated_at: string | null
       latitude: number
       longitude: number
-      heading: number
-      speed: number
-      accuracy: number
+      heading: number | null
+      speed: number | null
+      accuracy: number | null
       recorded_at: string
-      driver_id: number
-      delivery_route_id: number
+      driver_id: number | null
+      delivery_route_id: number | null
+      created_at: string
+      updated_at: string | null
+      uuid: string | null
     }
     drivers: {
       // columns
       id: number
-      uuid: string
-      created_at: string
-      updated_at: string | null
       name: string
       phone: string
       vehicle_number: string
       license: string
-      status: "active" | "on_delivery" | "on_break" | "offline"
-      latitude: number
-      longitude: number
-      heading: number
-      speed: number
-      last_ping_at: string
-      user_id: number
+      status: string | null
+      latitude: number | null
+      longitude: number | null
+      heading: number | null
+      speed: number | null
+      last_ping_at: string | null
+      user_id: number | null
+      created_at: string
+      updated_at: string | null
+      uuid: string | null
     }
     email_idempotency: {
       // columns
@@ -1660,6 +1660,19 @@ declare module '@stacksjs/database' {
       id: number
       tag_id: number
       taggable_id: number
+      taggable_type: string
+      created_at: string
+      updated_at: string | null
+    }
+    taggables: {
+      // columns
+      id: number
+      name: string
+      slug: string
+      description: string | null
+      order: number
+      is_active: number
+      taggable_id: number | null
       taggable_type: string
       created_at: string
       updated_at: string | null

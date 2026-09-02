@@ -19,7 +19,7 @@
     "url": "https://github.com/stacksjs/stacks/issues"
   },
   "scripts": {
-    "build:reset": "rm -rf node_modules && pantry install && ./buddy generate:types && ./buddy lint:fix && cd storage/framework && bun run build && cd ../../",
+    "build:reset": "rm -rf node_modules pantry.lock && bun install && ./buddy generate:types && ./buddy lint:fix",
     "buddy": "./buddy",
     "stacks": "./buddy",
     "setup": "./bootstrap",
@@ -53,12 +53,12 @@
     "release:major": "./buddy release --bump major",
     "changelog": "./buddy changelog",
     "generate": "./buddy generate",
-    "typecheck": "bun run typecheck:app && bun run typecheck:framework",
+    "typecheck": "bun x --bun tsc --noEmit -p tsconfig.json --pretty false",
     "typecheck:framework": "bun x --bun tsc --noEmit -p storage/framework/tsconfig.framework.json --pretty false && bun x --bun tsc --noEmit -p storage/framework/tsconfig.defaults.json --pretty false",
     "typecheck:app": "bun x --bun tsc --noEmit -p tsconfig.json --pretty false",
     "typecheck:views": "bun x --bun stx typecheck 'resources/**/*.stx' 'storage/framework/defaults/views/**/*.stx' 'storage/framework/defaults/resources/**/*.stx' 'storage/framework/core/error-handling/src/views/**/*.stx' 'storage/framework/defaults/stores/*.stx' 'storage/framework/libs/examples/**/*.stx'",
     "typecheck:clean": "bunx --bun rimraf storage/framework/.cache/typescript",
-    "types:check": "bun run typecheck",
+    "types:check": "bun x --bun tsc --noEmit -p tsconfig.json --pretty false",
     "types:fix": "./buddy types:fix",
     "bench:routing": "bun bench/routing/run.ts",
     "test": "./buddy test",
@@ -81,10 +81,10 @@
     "@stacksjs/stx": "^0.2.263",
     "bun-plugin-stx": "^0.2.263",
     "pickier": "^0.1.65",
-    "stacks": "^0.73.0",
+    "stacks": "^0.74.3",
+    "ts-images": "^0.2.14",
     "ts-maps": "^0.3.6",
-    "ts-qr-codes": "^0.1.8",
-    "ts-images": "^0.2.14"
+    "ts-qr-codes": "^0.1.8"
   },
   "workspaces": [
     "storage/framework",

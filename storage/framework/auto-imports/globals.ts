@@ -10,20 +10,23 @@ Object.assign(globalThis, autoImports)
 
 // TypeScript declarations
 declare global {
+  const basemapStyle: typeof autoImports.basemapStyle
+  const DARK: typeof autoImports.DARK
+  const LIGHT: typeof autoImports.LIGHT
+  const cartHandlers: typeof autoImports.cartHandlers
+  const codeSheet: typeof autoImports.codeSheet
   const increment: typeof autoImports.increment
   const decrement: typeof autoImports.decrement
   const reset: typeof autoImports.reset
   const count: typeof autoImports.count
-  const placeMap: typeof autoImports.placeMap
-  const placeHandlers: typeof autoImports.placeHandlers
+  const startTracking: typeof autoImports.startTracking
   const toggleDark: typeof autoImports.toggleDark
   const isDark: typeof autoImports.isDark
   const preferredDark: typeof autoImports.preferredDark
-  const basemapStyle: typeof autoImports.basemapStyle
-  const DARK: typeof autoImports.DARK
-  const LIGHT: typeof autoImports.LIGHT
   const basemap: typeof autoImports.basemap
   const keepSized: typeof autoImports.keepSized
+  const placeMap: typeof autoImports.placeMap
+  const placeHandlers: typeof autoImports.placeHandlers
   const csrfToken: typeof autoImports.csrfToken
   const visitorToken: typeof autoImports.visitorToken
   const authToken: typeof autoImports.authToken
@@ -35,9 +38,6 @@ declare global {
   const me: typeof autoImports.me
   const forgetMe: typeof autoImports.forgetMe
   const may: typeof autoImports.may
-  const codeSheet: typeof autoImports.codeSheet
-  const cartHandlers: typeof autoImports.cartHandlers
-  const startTracking: typeof autoImports.startTracking
 }
 
 export {}

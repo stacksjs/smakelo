@@ -1,6 +1,13 @@
 {
   "models": [
     {
+      "id": "address",
+      "name": "Address",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
       "id": "analytics-event",
       "name": "AnalyticsEvent",
       "icon": "tablecells.fill",
@@ -40,6 +47,20 @@
       }
     },
     {
+      "id": "automation",
+      "name": "Automation",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
+      "id": "automation-run",
+      "name": "AutomationRun",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
       "id": "bid",
       "name": "Bid",
       "icon": "i-hugeicons-hand-pointing-right-01",
@@ -71,6 +92,40 @@
       }
     },
     {
+      "id": "business",
+      "name": "Business",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "business-hour",
+      "name": "BusinessHour",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "business-photo",
+      "name": "BusinessPhoto",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "business-review",
+      "name": "BusinessReview",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
       "id": "campaign",
       "name": "Campaign",
       "icon": "megaphone.fill",
@@ -80,6 +135,13 @@
     {
       "id": "campaign-send",
       "name": "CampaignSend",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
+      "id": "campaign-variant",
+      "name": "CampaignVariant",
       "icon": "tablecells.fill",
       "hasDedicatedPage": false,
       "category": "data"
@@ -135,11 +197,35 @@
       }
     },
     {
+      "id": "claim",
+      "name": "Claim",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
       "id": "comment",
       "name": "Comment",
       "icon": "bubble.left.fill",
       "hasDedicatedPage": true,
       "category": "content"
+    },
+    {
+      "id": "communication-suppression",
+      "name": "CommunicationSuppression",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
+      "id": "consent-event",
+      "name": "ConsentEvent",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
     },
     {
       "id": "coupon",
@@ -150,6 +236,37 @@
       "dashboard": {
         "highlight": true
       }
+    },
+    {
+      "id": "courier",
+      "name": "Courier",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "courier-ping",
+      "name": "CourierPing",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "csa-plan",
+      "name": "CsaPlan",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "csa-subscription",
+      "name": "CsaSubscription",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
     },
     {
       "id": "customer",
@@ -166,7 +283,7 @@
       "name": "DeliveryRoute",
       "icon": "map.fill",
       "hasDedicatedPage": false,
-      "category": "commerce",
+      "category": "userland",
       "dashboard": {
         "highlight": true
       }
@@ -176,7 +293,7 @@
       "name": "DeliveryStop",
       "icon": "tablecells.fill",
       "hasDedicatedPage": false,
-      "category": "commerce",
+      "category": "userland",
       "dashboard": {
         "highlight": true
       }
@@ -200,23 +317,6 @@
       "dashboard": {
         "highlight": true
       }
-    },
-    {
-      "id": "driver",
-      "name": "Driver",
-      "icon": "car.fill",
-      "hasDedicatedPage": false,
-      "category": "commerce",
-      "dashboard": {
-        "highlight": true
-      }
-    },
-    {
-      "id": "driver-ping",
-      "name": "DriverPing",
-      "icon": "tablecells.fill",
-      "hasDedicatedPage": false,
-      "category": "commerce"
     },
     {
       "id": "email-idempotency",
@@ -263,6 +363,34 @@
       }
     },
     {
+      "id": "favorite",
+      "name": "Favorite",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "form",
+      "name": "Form",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
+      "id": "form-field",
+      "name": "FormField",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
+      "id": "form-submission",
+      "name": "FormSubmission",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
       "id": "gift-card",
       "name": "GiftCard",
       "icon": "giftcard.fill",
@@ -287,6 +415,16 @@
       "category": "data",
       "dashboard": {
         "enabled": false
+      }
+    },
+    {
+      "id": "ledger-entry",
+      "name": "LedgerEntry",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
       }
     },
     {
@@ -327,6 +465,13 @@
       }
     },
     {
+      "id": "magic-link-token",
+      "name": "MagicLinkToken",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
       "id": "mail-preference",
       "name": "MailPreference",
       "icon": "tablecells.fill",
@@ -342,6 +487,44 @@
       "dashboard": {
         "highlight": true
       }
+    },
+    {
+      "id": "market",
+      "name": "Market",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "menu",
+      "name": "Menu",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "content"
+    },
+    {
+      "id": "menu-item",
+      "name": "MenuItem",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "content"
+    },
+    {
+      "id": "modifier",
+      "name": "Modifier",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "modifier-group",
+      "name": "ModifierGroup",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
     },
     {
       "id": "notification",
@@ -362,7 +545,7 @@
       "name": "Order",
       "icon": "list.clipboard.fill",
       "hasDedicatedPage": true,
-      "category": "commerce",
+      "category": "userland",
       "dashboard": {
         "highlight": true
       }
@@ -385,10 +568,24 @@
       "category": "commerce"
     },
     {
+      "id": "order-item-modifier",
+      "name": "OrderItemModifier",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
       "id": "page",
       "name": "Page",
       "icon": "doc.fill",
       "hasDedicatedPage": true,
+      "category": "content"
+    },
+    {
+      "id": "page-revision",
+      "name": "PageRevision",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
       "category": "content"
     },
     {
@@ -455,7 +652,7 @@
       "name": "Product",
       "icon": "cube.box.fill",
       "hasDedicatedPage": true,
-      "category": "commerce",
+      "category": "userland",
       "dashboard": {
         "highlight": true
       }
@@ -498,6 +695,13 @@
       }
     },
     {
+      "id": "redirect",
+      "name": "Redirect",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "content"
+    },
+    {
       "id": "release",
       "name": "Release",
       "icon": "tablecells.fill",
@@ -516,6 +720,27 @@
       "dashboard": {
         "highlight": true
       }
+    },
+    {
+      "id": "review-photo",
+      "name": "ReviewPhoto",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "review-vote",
+      "name": "ReviewVote",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
+    },
+    {
+      "id": "sender-domain",
+      "name": "SenderDomain",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
     },
     {
       "id": "shipping-method",
@@ -546,6 +771,30 @@
       "dashboard": {
         "highlight": true
       }
+    },
+    {
+      "id": "site",
+      "name": "Site",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "site-domain",
+      "name": "SiteDomain",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
+      "id": "sms-opt-out",
+      "name": "SmsOptOut",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
     },
     {
       "id": "social-account",
@@ -581,6 +830,23 @@
       "icon": "repeat.circle.fill",
       "hasDedicatedPage": false,
       "category": "commerce"
+    },
+    {
+      "id": "tab",
+      "name": "Tab",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "userland"
     },
     {
       "id": "tag",
@@ -638,6 +904,13 @@
       "dashboard": {
         "highlight": true
       }
+    },
+    {
+      "id": "usage-event",
+      "name": "UsageEvent",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
     },
     {
       "id": "user",
