@@ -8,7 +8,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Commerce
 
-Comprehensive e-commerce module with 15 sub-modules and 20+ models.
+Comprehensive e-commerce module with 15 sub-modules and 36 models.
 
 ## Key Paths
 - Core package: `storage/framework/core/commerce/src/`
@@ -122,9 +122,9 @@ if (!result.ok) {
 // result.coupon reflects the post-redemption state.
 ```
 
-`redeem` bumps `usage_count` and enforces `max_uses`, `is_active` and the
+`redeem` bumps `usage_count` and enforces `usage_limit`, `is_active` and the
 start/end dates in the WHERE clause, so the database decides the race. A
-`max_uses` of `NULL` means unlimited. Do not fetch, check and then call
+`usage_limit` of `NULL` means unlimited. Do not fetch, check and then call
 `update()` to increment: that is the exact pattern this replaced.
 
 ### Spending or reloading a gift card

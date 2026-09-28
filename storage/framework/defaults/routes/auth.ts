@@ -53,7 +53,7 @@ route.post('/verify-registration', 'Actions/Auth/VerifyRegistrationAction').midd
 // Passkey AUTHENTICATION (logging in) is correctly unauthenticated —
 // the caller doesn't have a session yet, that's the point.
 route.get('/generate-authentication-options', 'Actions/Auth/GenerateAuthenticationAction').rateLimit(10, 'minute')
-route.get('/verify-authentication', 'Actions/Auth/VerifyAuthenticationAction').rateLimit(10, 'minute')
+route.post('/verify-authentication', 'Actions/Auth/VerifyAuthenticationAction').rateLimit(10, 'minute')
 
 // TOTP 2FA. Setup/enable/disable act on the caller's own authenticated
 // account (auth-gated, same identity rule as passkey enrollment above).
@@ -74,6 +74,8 @@ route.group({ prefix: '/auth' }, () => {
 })
 
 route.group({ middleware: 'auth' }, () => {
+  route.get('/referrals', 'Actions/Auth/ReferralSummaryAction').rateLimit(60, 'minute')
+  route.post('/referrals/code', 'Actions/Auth/CreateReferralCodeAction').rateLimit(10, 'minute')
   route.get('/me', 'Actions/Auth/AuthUserAction')
   route.post('/logout', 'Actions/Auth/LogoutAction')
   // Sign out everywhere: revoke every access/refresh token AND destroy
