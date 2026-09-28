@@ -5,7 +5,7 @@ import { dispatchOrder } from '../Actions/Delivery/dispatch'
 import { advanceOrder } from '../Actions/Merchant/board'
 import { placeOrder } from '../Actions/Order/place'
 import type { Role } from '../Permissions'
-import { createBqbRbacStore, createPermission, createRole, givePermissionToRole, register, setRbacStore, syncRoles } from '@stacksjs/auth'
+import { createBqbRbacStore, createPermission, createRole, findPermission, findRole, givePermissionToRole, register, setRbacStore, syncRoles } from '@stacksjs/auth'
 import { GUARD, PERMISSION_DESCRIPTIONS, PERMISSIONS, permissions, ROLE_DESCRIPTIONS, ROLES } from '../Permissions'
 import { DEMO_PASSWORD } from '../Actions/Account/surfaces'
 import { resolveRegion } from '../Actions/Business/regions'
@@ -427,11 +427,24 @@ const ACCOUNTS: DemoAccount[] = [
 async function seedAccounts(businessIds: Record<string, number>): Promise<{ accounts: number, teams: number }> {
   setRbacStore(createBqbRbacStore())
 
-  for (const role of ROLES)
-    await createRole(role, GUARD, ROLE_DESCRIPTIONS[role]).catch(() => undefined)
+  /*
+   * Look before inserting. `migrate:fresh` leaves the RBAC tables alone -
+   * they belong to the framework's auth set, not the model corpus - so on
+   * every deploy after the first these rows already exist. Inserting anyway
+   * and swallowing the throw kept the seed working, but the query builder
+   * logs a failed query as an ERROR before the catch ever sees it, which put
+   * twenty UNIQUE-constraint errors into every deploy log. A failure here is
+   * now a real one and surfaces.
+   */
+  for (const role of ROLES) {
+    if (!await findRole(role, GUARD))
+      await createRole(role, GUARD, ROLE_DESCRIPTIONS[role])
+  }
 
-  for (const permission of PERMISSIONS)
-    await createPermission(permission, GUARD, PERMISSION_DESCRIPTIONS[permission]).catch(() => undefined)
+  for (const permission of PERMISSIONS) {
+    if (!await findPermission(permission, GUARD))
+      await createPermission(permission, GUARD, PERMISSION_DESCRIPTIONS[permission])
+  }
 
   for (const role of ROLES)
     for (const permission of permissions.forRole(role))
