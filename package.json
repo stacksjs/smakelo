@@ -77,11 +77,11 @@
     "sync:map-css": "printf '%s\\n' \"$(sed -n '1,/^$/p' resources/assets/styles/ts-maps.css)\" > /tmp/hdr.css && cat /tmp/hdr.css node_modules/ts-maps/src/core-map/ts-maps.css > resources/assets/styles/ts-maps.css && rm /tmp/hdr.css"
   },
   "dependencies": {
-    "@stacksjs/components": "^0.2.323",
-    "@stacksjs/stx": "^0.2.323",
-    "bun-plugin-stx": "^0.2.323",
+    "@stacksjs/components": "^0.2.324",
+    "@stacksjs/stx": "^0.2.324",
+    "bun-plugin-stx": "^0.2.324",
     "pickier": "^0.1.65",
-    "stacks": "^0.75.16",
+    "stacks": "^0.75.17",
     "ts-images": "^0.2.22",
     "ts-maps": "^0.3.6",
     "ts-qr-codes": "^0.1.8"
