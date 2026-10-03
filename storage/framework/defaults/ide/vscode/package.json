@@ -36,7 +36,7 @@
     "logo.png"
   ],
   "engines": {
-    "vscode": "^1.109.5"
+    "vscode": "^1.140.0"
   },
   "scripts": {
     "package": "bunx --bun vsce package",
