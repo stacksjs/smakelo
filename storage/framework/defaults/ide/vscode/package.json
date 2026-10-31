@@ -36,7 +36,7 @@
     "logo.png"
   ],
   "engines": {
-    "vscode": "^1.109.5"
+    "vscode": "^1.144.0"
   },
   "scripts": {
     "package": "bunx --bun vsce package",
@@ -74,6 +74,6 @@
     "streetsidesoftware.code-spell-checker"
   ],
   "devDependencies": {
-    "@vscode/vsce": "^4.0.0"
+    "@vscode/vsce": "^4.1.0"
   }
 }
