@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Job',
@@ -70,5 +70,9 @@ export default defineModel({
       },
       factory: () => null,
     },
+  },
+
+  dashboard: {
+    columns: ['queue', 'attempts', 'availableAt', 'reservedAt', 'createdAt'],
   },
 } as const)

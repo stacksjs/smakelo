@@ -1,5 +1,5 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { db } from '@stacksjs/database/runtime'
 import { transaction } from '@stacksjs/orm'
 import { response } from '@stacksjs/router'
@@ -89,7 +89,7 @@ export default new Action({
           .updateTable('comments')
           .set({
             status,
-            is_approved: status === 'approved' ? 1 : 0,
+            is_approved: status === 'approved',
             updated_at: timestamp(),
           } as any)
           .where('id', '=', id)

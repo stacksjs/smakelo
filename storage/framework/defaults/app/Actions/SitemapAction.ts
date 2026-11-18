@@ -1,4 +1,4 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { resolveDefaultsResources } from '@stacksjs/actions/dev/defaults-resources'
 import { config, feature, overridesReady, resolveViewPatterns } from '@stacksjs/config'
 import { db } from '@stacksjs/database/runtime'
@@ -256,7 +256,9 @@ export default new Action({
     const siteUrl = (config as any).app?.url || 'http://localhost:3000'
     const all: SitemapEntry[] = [
       ...(await staticEntries()),
-      ...(await discoverProducts()),
+      // A table left behind by an uninstalled commerce bundle is not a
+      // catalogue: products are listed only while commerce is on.
+      ...(feature('commerce') ? await discoverProducts() : []),
     ]
 
     return response.xml(renderXml(siteUrl, all), 200, {

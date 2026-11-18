@@ -2,9 +2,9 @@ import type { ResponseStatus } from '@stacksjs/bun-router'
 import { statfs } from 'node:fs/promises'
 import { posix } from 'node:path'
 import type { JobName } from '@stacksjs/queue'
-import type { StorageAdapter, StorageManager, UploadedFileLike, Visibility } from '@stacksjs/storage'
+import type { FilenameStrategy, StorageAdapter, StorageManager, UploadedFileLike, Visibility } from '@stacksjs/storage'
 import { Storage } from '@stacksjs/storage'
-import type { StorageItemTask, StorageMetadataStore, StorageTaskKind, StorageTaskState } from './file-metadata'
+import type { StorageItemMetadata, StorageItemTask, StorageMetadataStore, StorageTaskKind, StorageTaskState } from './file-metadata'
 import {
   aggregateTaskState,
   dispatchTasks,
@@ -19,8 +19,11 @@ import {
   STORAGE_TASK_KINDS,
   sweepMetadata,
   tasksForContentType,
+  variantsPathFor,
 } from './file-metadata'
 import { databaseMetadataStore } from './file-metadata-store'
+import { isUnmigratedTable } from '../Models/model-migration'
+import { claimedContentType, hasPreview, previewPathFor, previewPlanFor, previewUrlFor } from './file-preview'
 
 const DEFAULT_DISK = 'public'
 const DEFAULT_MAX_ENTRIES = 1000
@@ -41,6 +44,20 @@ export interface DashboardFileNode {
   mime_type?: string
   url?: string
   thumbnail?: string
+  /**
+   * The URL of this file's generated preview image (stacksjs/stacks#308), when
+   * one was made and the disk can serve it. Absent for a file with no preview,
+   * and for every file on a private disk - which has no URL for the original
+   * either.
+   */
+  preview?: string
+  /**
+   * The first lines of a text file, as plain text, when its preview was made.
+   * Text gets a snippet rather than an image: drawing text needs a font, and a
+   * card can show twelve lines as text. Read on any disk, private included,
+   * because the server reads it rather than the browser.
+   */
+  previewText?: string
   /**
    * Whether somebody starred this, from `storage_items` rather than from the
    * disk (stacksjs/stacks#2577). It was the literal `false` for as long as
@@ -314,6 +331,44 @@ export function normalizeDashboardFileLimit(value: unknown): number {
   return normalized
 }
 
+/** The tables the advisory file metadata lives in (`app/Models/StorageItem.ts`). */
+const METADATA_TABLES = ['storage_items', 'storage_item_tasks'] as const
+
+export const METADATA_NOT_MIGRATED = 'Stars, tags and processing status are off until the storage_items tables exist. Run ./buddy migrate to create them.'
+
+/**
+ * The stars, tags and tasks recorded for a disk, for a listing.
+ *
+ * The disk is authoritative and these rows are advisory: a path with no row
+ * is a file with no stars, the normal case. So an app that has not migrated
+ * the metadata tables still gets its files, without stars, tags or tasks, and
+ * a warning that names the command. The listing used to fail outright with
+ * "Files could not be loaded" (stacksjs/stacks#3211).
+ *
+ * Only a missing table is treated that way, and the catalog decides it: any
+ * other failure is rethrown, so a database outage still fails the listing.
+ */
+export async function readListingMetadata(
+  store: StorageMetadataStore,
+  disk: string,
+  isMissing: (table: string) => Promise<boolean> = isUnmigratedTable,
+): Promise<{ records: Map<string, StorageItemMetadata>, tasks: Map<string, StorageItemTask[]>, migrated: boolean }> {
+  try {
+    return {
+      records: await metadataUnder(store, disk),
+      tasks: await store.tasksUnder(disk, ''),
+      migrated: true,
+    }
+  }
+  catch (error) {
+    for (const table of METADATA_TABLES) {
+      if (await isMissing(table))
+        return { records: new Map(), tasks: new Map(), migrated: false }
+    }
+    throw error
+  }
+}
+
 export async function getDashboardFileSnapshot(
   options: { disk?: string, maxEntries?: number } = {},
   manager: Manager = Storage,
@@ -338,8 +393,7 @@ export async function getDashboardFileSnapshot(
   // One query for the whole subtree, not one per file: a folder of a thousand
   // files would otherwise be a thousand round trips to answer a question about
   // the handful of them anybody starred (stacksjs/stacks#2577).
-  const records = await metadataUnder(store, selected.name)
-  const tasks = await store.tasksUnder(selected.name, '')
+  const { records, tasks, migrated: metadataMigrated } = await readListingMetadata(store, selected.name)
 
   const stated = await mapInBatches(
     entries,
@@ -372,6 +426,7 @@ export async function getDashboardFileSnapshot(
     items: [],
   }
   const folders = new Map<string, DashboardFileNode>([['', root]])
+  const previewed: DashboardFileNode[] = []
   const capacity = await diskCapacity(selected.name, selected.config)
   const stats: DashboardFileStats = {
     files: 0,
@@ -444,11 +499,36 @@ export async function getDashboardFileSnapshot(
       ...pick(entry.path),
       shared: selected.public,
     }
+    if (hasPreview(file.tasks))
+      previewed.push(file)
     parent.items!.push(file)
     stats.files++
     stats.contentBytes += entry.size
     stats.byType[categoryFor(entry)] += entry.size
   }
+
+  // Previews resolve after the walk, in the same batches as the stats: an image
+  // preview is a URL and costs nothing, but a text preview is a read, and a
+  // folder of markdown is a read per file (stacksjs/stacks#308).
+  await mapInBatches(previewed, STAT_CONCURRENCY, async (file) => {
+    const plan = previewPlanFor(claimedContentType(file.path, file.mime_type))
+    if (!plan || !('renderer' in plan))
+      return
+    if (plan.format === 'png') {
+      file.preview = await previewUrlFor(selected.adapter, file.path, {
+        public: selected.public,
+        servesProjectPublic: selected.name === 'public' && selected.config.driver === 'local',
+      })
+      return
+    }
+    try {
+      file.previewText = await selected.adapter.readToString(previewPathFor(file.path, 'txt'))
+    }
+    catch {
+      // A snippet that has gone missing is a file without a preview, not a
+      // listing that fails. Reprocessing makes it again.
+    }
+  })
 
   for (const folder of folders.values()) {
     folder.items!.sort((a, b) => {
@@ -467,13 +547,15 @@ export async function getDashboardFileSnapshot(
   // this takes the flag: a truncated walk has not shown that a path is absent,
   // only that it stopped before reaching it, and sweeping on that would delete
   // the metadata of every file past the limit (stacksjs/stacks#2577).
-  await sweepMetadata(
-    store,
-    selected.name,
-    '',
-    new Set(stated.map(entry => entry.path)),
-    { truncated },
-  )
+  if (metadataMigrated) {
+    await sweepMetadata(
+      store,
+      selected.name,
+      '',
+      new Set(stated.map(entry => entry.path)),
+      { truncated },
+    )
+  }
 
   return {
     disk: selected.name,
@@ -486,6 +568,7 @@ export async function getDashboardFileSnapshot(
     truncated,
     warnings: [
       ...(capacity.warning ? [capacity.warning] : []),
+      ...(metadataMigrated ? [] : [METADATA_NOT_MIGRATED]),
       ...stated.flatMap(entry => entry.warnings),
     ],
   }
@@ -521,12 +604,14 @@ export async function deleteDashboardFile(
   if (await selected.adapter.fileExists(path)) {
     await selected.adapter.deleteFile(path)
     await followDelete(store, selected.name, path)
+    await deleteVariants(selected.adapter, path)
     return { path, type: 'file' }
   }
   if (await selected.adapter.directoryExists(path)) {
     await selected.adapter.deleteDirectory(path)
     // The subtree, because deleting a folder deletes everything under it.
     await followDelete(store, selected.name, path)
+    await deleteVariants(selected.adapter, path)
     return { path, type: 'directory' }
   }
 
@@ -573,6 +658,7 @@ export async function renameDashboardFile(
     // After the move, so a failed move does not leave the metadata describing a
     // path with no file at it.
     await followRename(store, selected.name, from, to)
+    await moveVariants(selected.adapter, from, to)
     return { from, to, type: 'file', moved: 1 }
   }
 
@@ -603,6 +689,7 @@ export async function renameDashboardFile(
   // A folder rename moves every file beneath it, so this is a prefix update
   // rather than one row - the part #2577 flagged as the one that would bite.
   await followRename(store, selected.name, from, to)
+  await moveVariants(selected.adapter, from, to)
 
   return { from, to, type: 'directory', moved: files.length }
 }
@@ -824,6 +911,54 @@ export async function setDashboardFileTags(
   return { path, favorite: record.favorite, tags: record.tags }
 }
 
+/**
+ * Move a path's derivatives with it (stacksjs/stacks#308).
+ *
+ * The task rows already follow a rename, so without this a finished preview
+ * would report `done` at the new path while its file sat under the old one.
+ * The variants folder mirrors the original's path, so a folder rename is a
+ * prefix move here too.
+ *
+ * Best effort, after the rename has succeeded: the rename is what was asked
+ * for, and a derivative that failed to follow is regenerated by reprocessing
+ * rather than worth failing the request over.
+ */
+async function moveVariants(adapter: StorageAdapter, from: string, to: string): Promise<void> {
+  const source = variantsPathFor(from)
+  const target = variantsPathFor(to)
+
+  try {
+    if (!(await adapter.directoryExists(source)))
+      return
+
+    const files: string[] = []
+    for await (const entry of adapter.list(source, { deep: true })) {
+      const listed = normalizeListedPath(String(entry.path))
+      if (entry.type === 'file' && listed)
+        files.push(listed.startsWith(`${source}/`) ? listed : `${source}/${listed}`)
+    }
+
+    for (const file of files)
+      await adapter.moveFile(file, `${target}/${file.slice(source.length + 1)}`)
+
+    await adapter.deleteDirectory(source)
+  }
+  catch {
+    // See above: the rename succeeded, and that is the answer the caller gets.
+  }
+}
+
+/** Remove a path's derivatives once the path itself is gone. Best effort, like {@link moveVariants}. */
+async function deleteVariants(adapter: StorageAdapter, path: string): Promise<void> {
+  try {
+    if (await adapter.directoryExists(variantsPathFor(path)))
+      await adapter.deleteDirectory(variantsPathFor(path))
+  }
+  catch {
+    // An orphaned derivative is hidden from the listing and costs only space.
+  }
+}
+
 /** 404 unless the path is a file or a folder on the disk. */
 async function assertExists(adapter: StorageAdapter, path: string): Promise<void> {
   if (await adapter.fileExists(path) || await adapter.directoryExists(path))
@@ -853,6 +988,7 @@ const TASK_JOBS = {
   optimize: 'OptimizeStorageImageJob',
   transcode: 'TranscodeStorageVideoJob',
   tag: 'TagStorageMediaJob',
+  preview: 'GenerateStoragePreviewJob',
 } as const satisfies Record<StorageTaskKind, JobName>
 
 const queueDispatcher: TaskDispatcher = async (job, payload) => {
@@ -872,6 +1008,12 @@ const queueDispatcher: TaskDispatcher = async (job, payload) => {
  * nobody asked for. The dashboard knows them from the upload; a caller that
  * does not can dispatch the transcode later through
  * {@link reprocessDashboardFile}.
+ *
+ * A preview is decided separately, by `file-preview.ts`, and from the type the
+ * file CLAIMS - the reported type, or the extension when the disk reports
+ * nothing useful - because far more kinds have an answer there (#308). A kind
+ * with no renderer here is recorded `skipped` with its reason and never
+ * queued.
  */
 export async function dispatchDashboardFileTasks(
   input: { disk?: string, path: unknown, contentType?: string, videoProfile?: Record<string, unknown>, only?: readonly StorageTaskKind[] },
@@ -882,7 +1024,11 @@ export async function dispatchDashboardFileTasks(
   const selected = resolveDisk(manager, input.disk)
   const path = normalizeDashboardFilePath(input.path)
 
-  const applicable = tasksForContentType(input.contentType)
+  const preview = previewPlanFor(claimedContentType(path, input.contentType))
+  const applicable: StorageTaskKind[] = [
+    ...tasksForContentType(input.contentType),
+    ...(preview ? ['preview' as const] : []),
+  ]
   const wanted = input.only
     ? applicable.filter(kind => input.only!.includes(kind))
     : applicable
@@ -891,13 +1037,20 @@ export async function dispatchDashboardFileTasks(
   if (runnable.length === 0)
     return []
 
-  return await dispatchTasks(store, selected.name, path, runnable, async (kind) => {
-    await dispatch(TASK_JOBS[kind], {
-      disk: selected.name,
-      path,
-      ...(kind === 'transcode' ? { profile: input.videoProfile } : {}),
-    })
-  })
+  return await dispatchTasks(
+    store,
+    selected.name,
+    path,
+    runnable,
+    async (kind) => {
+      await dispatch(TASK_JOBS[kind], {
+        disk: selected.name,
+        path,
+        ...(kind === 'transcode' ? { profile: input.videoProfile } : {}),
+      })
+    },
+    kind => kind === 'preview' && preview && 'skip' in preview ? preview.skip : undefined,
+  )
 }
 
 /**
@@ -955,7 +1108,13 @@ export async function reprocessDashboardFile(
 }
 
 export async function uploadDashboardFiles(
-  input: { disk?: string, path?: string, files: UploadedFileLike[] },
+  /**
+   * `filename` is how each stored name is chosen. The Files page keeps the
+   * name a file arrived with, so a folder reads as it was uploaded, and
+   * refuses a duplicate. An upload that only ever needs an address (a model
+   * field's file) asks for a generated one, which cannot collide.
+   */
+  input: { disk?: string, path?: string, files: UploadedFileLike[], filename?: FilenameStrategy },
   manager: Manager = Storage,
   store: StorageMetadataStore = databaseMetadataStore,
   dispatch: TaskDispatcher = queueDispatcher,
@@ -969,7 +1128,7 @@ export async function uploadDashboardFiles(
       const result = await manager.put(file, {
         disk: selected.name,
         dir: directory,
-        filename: 'original',
+        filename: input.filename ?? 'original',
         overwrite: false,
       })
       uploaded.push({ path: result.path, url: result.url, size: result.size, tasks: [] })

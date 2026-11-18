@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { HttpError } from '@stacksjs/error-handling/http-error'
 import type { EnhancedRequest } from '@stacksjs/router'
-import { Middleware } from '@stacksjs/router/middleware'
+import { Middleware, parseBearerToken } from '@stacksjs/router/middleware'
 
 /**
  * CSRF Protection Middleware (default-on for unsafe methods)
@@ -61,6 +61,9 @@ import { Middleware } from '@stacksjs/router/middleware'
 export const CSRF_COOKIE_NAME = 'X-CSRF-Token'
 const CSRF_SECURE_TRANSPORT = Symbol.for('@stacksjs/router:csrf-secure-transport')
 const CSRF_HEADER_NAME = 'x-csrf-token'
+/** `FORM_REFUSAL` in @stacksjs/router, by its registered name: this module does not load the router. */
+const CSRF_FORM_REFUSAL = Symbol.for('stacks.formRefusal')
+const CSRF_FORM_MESSAGE = 'This form was open too long to be sent safely, so nothing was saved. Check it and send it again.'
 const CSRF_COOKIE_PREFIX = `${CSRF_COOKIE_NAME}=`
 const LEGACY_CSRF_COOKIE_PREFIX = 'csrf-token='
 const JOINED_CSRF_COOKIE_PREFIX = `, ${CSRF_COOKIE_PREFIX}`
@@ -168,8 +171,34 @@ export function responseMayUseCsrfToken(response: Response): boolean {
     || type.endsWith('+json')
 }
 
+/**
+ * Whether a response told shared caches they may keep it: its `Cache-Control`
+ * says `public` or gives an `s-maxage`, and says neither `private` nor
+ * `no-store`.
+ *
+ * Such a response is, by its own account, the same for everyone, so it must
+ * not carry a per-visitor cookie. A CDN refuses to store a response that sets
+ * one (Cloudflare answers `cf-cache-status: BYPASS`), so seeding here kept
+ * every shareable API read out of the edge; and a cache that stored it anyway
+ * would hand one visitor's token to everybody behind it.
+ */
+export function responseDeclaresShared(response: Response): boolean {
+  const value = (response.headers.get('cache-control') || '').toLowerCase()
+  if (!value || /\b(?:private|no-store)\b/.test(value))
+    return false
+  return /\bpublic\b/.test(value) || /\bs-maxage\s*=/.test(value)
+}
+
 export function seedCsrfCookieIfMissing(req: Request, response: Response, minted?: string, responseHasNoCookies = false): Response {
   if (!responseMayUseCsrfToken(response))
+    return response
+
+  // Nothing depends on a shareable response seeding the cookie: a page that
+  // carries forms is per-visitor and never says `public`, and a client about to
+  // submit without a cookie can ask for one from a response that is not shared.
+  // This holds for every layer that seeds - the API router, and the page server
+  // that proxies `/api` to it - because they all come through here.
+  if (responseDeclaresShared(response))
     return response
 
   // A token the router minted before rendering wins over "the header already
@@ -177,11 +206,11 @@ export function seedCsrfCookieIfMissing(req: Request, response: Response, minted
   // has already embedded it in every form it drew. Generating a second token
   // here would store one string in the browser while the page carries another,
   // which fails in a way indistinguishable from having no token at all.
-  if (!minted) {
-    const cookieHeader = req.headers.get('cookie') || ''
-    if (cookieHeader.includes(`${CSRF_COOKIE_NAME}=`) || cookieHeader.includes('csrf-token='))
-      return response
-  }
+  // By the cookie's exact name (`csrfCookieToken` parses the jar): a
+  // substring test counted NextAuth's `next-auth.csrf-token` as ours, so the
+  // real cookie was never set and every form post failed.
+  if (!minted && csrfCookieToken(req) !== '')
+    return response
 
   // A token already on its way to the browser counts as present, exactly like
   // one in the request. Something upstream can mint before the render - the
@@ -215,7 +244,7 @@ export function seedCsrfCookieIfMissing(req: Request, response: Response, minted
  * Last duplicate wins; the canonical name takes precedence over the legacy
  * name unless its final value is empty. Malformed pairs are skipped.
  */
-function csrfCookieToken(req: Request): string {
+export function csrfCookieToken(req: Request): string {
   const header = req.headers.get('cookie')
   if (!header) return ''
   // The cookie this framework emits has one exact, whitespace-free shape.
@@ -292,8 +321,9 @@ function safeEqual(a: string, b: string): boolean {
  * an ambient cookie credential, so cross-site forgery doesn't apply).
  */
 function hasBearerToken(req: Request): boolean {
-  const auth = req.headers.get('authorization')
-  return typeof auth === 'string' && /^bearer /i.test(auth)
+  // The same parser Auth uses, so a request is exempt here exactly when Auth
+  // will authenticate it by that token rather than by its cookie.
+  return parseBearerToken(req.headers.get('authorization')) !== null
 }
 
 /**
@@ -354,7 +384,13 @@ function assertValidCsrfRequest(request: Request | EnhancedRequest): void {
   // mismatch" — it's not in the IANA list but most SPAs already
   // know how to refresh on 419. We use 403 for the strict-correct
   // status code instead (419 is non-standard).
-  throw new HttpError(403, 'CSRF token mismatch')
+  const refusal = new HttpError(403, 'CSRF token mismatch')
+  // A browser form from this application's own page (a tab left open past
+  // the token's life, a second tab that replaced it) goes back to that page
+  // with this, and what was typed, instead of the 403 body. A script and a
+  // form from anywhere else get the 403 as before (stacksjs/stacks#3311).
+  Object.defineProperty(refusal, CSRF_FORM_REFUSAL, { value: { message: CSRF_FORM_MESSAGE, status: 403 } })
+  throw refusal
 }
 
 export async function validateCsrfRequest(request: Request | EnhancedRequest): Promise<void> {

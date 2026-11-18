@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * Kanban board (stacksjs/stacks#1846).
@@ -113,5 +113,12 @@ export default defineModel({
   // not the auto-derived `/models/board` viewer — the sidebar entry is
   // hand-added in `dashboard-utils.ts` / `sidebar.ts` and points at
   // the real page. Hiding the auto-row keeps it from double-listing.
-  dashboard: { enabled: false },
+  dashboard: {
+    columns: ['name', 'team', 'archived', 'createdAt'],
+    enabled: false,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      description: { input: 'longtext' },
+    },
+  },
 } as const)
