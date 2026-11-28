@@ -82,14 +82,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Setup Pantry
-        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: '0.11.75'
-          install: 'false'
+          bun-version-file: .bun-version
 
       - name: Install Dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Configure Git
         run: |

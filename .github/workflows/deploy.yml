@@ -97,13 +97,15 @@ jobs:
           # The exact commit CI approved, not whatever main points at now.
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
-      - name: Setup Bun
-        if: steps.check.outputs.configured == 'true'
-        uses: oven-sh/setup-bun@v2
-
       - name: Setup Pantry
         if: steps.check.outputs.configured == 'true'
         uses: home-lang/pantry/packages/action@main
+
+      - name: Setup Bun
+        if: steps.check.outputs.configured == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         if: steps.check.outputs.configured == 'true'
