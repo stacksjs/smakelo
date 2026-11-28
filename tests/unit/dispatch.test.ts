@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { dispatchNextReadyOrder, dispatchOrder } from '../../app/Actions/Delivery/dispatch'
+import { consoleFor, setShift } from '../../app/Actions/Courier/console'
+import { dispatchReadyDeliveries, dispatchOrder, expireDeliveryOffer, respondToDeliveryOffer } from '../../app/Actions/Delivery/dispatch'
+import { advanceOrder } from '../../app/Actions/Merchant/board'
 import { assertDatabaseCount, assertDatabaseHas, factory, refreshDatabase } from '../support/database'
 
 /**
@@ -104,35 +106,120 @@ describe('what can be dispatched', () => {
   })
 })
 
-describe('ready delivery queue', () => {
-  test('waits for a signed-in courier roster entry and assigns the oldest ready platform order', async () => {
-    seedDelivery()
+function linkedCourier(overrides: Record<string, unknown> = {}): number {
+  const [userId] = database.seed('users', [{
+    uuid: crypto.randomUUID(),
+    name: 'Platform courier',
+    email: `${crypto.randomUUID()}@example.invalid`,
+    password: 'unused',
+  }])
+  const [id] = database.seed('couriers', [factory.courier({ user_id: userId, ...overrides })])
+  return id!
+}
+
+describe('ready delivery offers', () => {
+  test('offers the oldest ready platform delivery and creates both stops only on acceptance', async () => {
+    seedDelivery({ status: 'PENDING' })
     const selfDelivery = seedDelivery({ status: 'SHIPPED' })
     database.connection().query('UPDATE businesses SET self_delivery = 1 WHERE id = ?').run(selfDelivery.businessId)
+    seedDelivery({ status: 'SHIPPED', order_type: 'PICKUP' })
     const first = seedDelivery({ status: 'SHIPPED' })
     const second = seedDelivery({ status: 'SHIPPED' })
     database.seed('couriers', [factory.courier()])
 
-    expect((await dispatchNextReadyOrder())?.ok).toBe(false)
+    await dispatchReadyDeliveries()
+    assertDatabaseCount('delivery_offers', 0)
+
+    const courierId = linkedCourier({ status: 'offline' })
+    expect(await setShift(courierId, true)).toEqual({ ok: true, status: 'active' })
+
+    const offer = (await consoleFor(courierId))!.offer!
+    expect(offer).toEqual({ id: expect.any(Number), businessName: 'A Shop', pickupAddress: '1 Example St', expiresAt: expect.any(Number) })
+    expect(offer.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000))
+    assertDatabaseHas('delivery_offers', { id: offer.id, order_id: first.orderId, courier_id: courierId, status: 'pending' })
+    assertDatabaseHas('jobs', { queue: 'delivery-offers', available_at: offer.expiresAt })
+    assertDatabaseCount('delivery_routes', 0)
     assertDatabaseCount('delivery_stops', 0)
 
-    const [userId] = database.seed('users', [{
-      uuid: crypto.randomUUID(),
-      name: 'Platform courier',
-      email: 'courier@example.invalid',
-      password: 'unused',
-    }])
-    const [courierId] = database.seed('couriers', [factory.courier({ user_id: userId })])
+    await dispatchReadyDeliveries()
+    assertDatabaseCount('delivery_offers', 1)
+    expect(await respondToDeliveryOffer(offer.id, courierId + 1000, true)).toBeNull()
 
-    expect((await dispatchNextReadyOrder())?.courierId).toBe(courierId)
+    const results = await Promise.all([
+      respondToDeliveryOffer(offer.id, courierId, true),
+      respondToDeliveryOffer(offer.id, courierId, true),
+    ])
+    expect(results.every(result => result?.ok)).toBe(true)
+    assertDatabaseHas('delivery_offers', { id: offer.id, status: 'accepted' })
     assertDatabaseHas('delivery_stops', { order_id: first.orderId, sequence: 1, type: 'pickup' })
     assertDatabaseHas('delivery_stops', { order_id: first.orderId, sequence: 2, type: 'dropoff' })
+    assertDatabaseCount('delivery_routes', 1)
     assertDatabaseCount('delivery_stops', 2)
+    expect((await consoleFor(courierId))?.offer).toBeNull()
 
     database.connection().query("UPDATE couriers SET status = 'active' WHERE id = ?").run(courierId)
+    await dispatchReadyDeliveries()
+    assertDatabaseHas('delivery_offers', { order_id: second.orderId, courier_id: courierId, status: 'pending' })
+  })
 
-    expect((await dispatchNextReadyOrder())?.courierId).toBe(courierId)
-    assertDatabaseHas('delivery_stops', { order_id: second.orderId, sequence: 1, type: 'pickup' })
+  test('decline and expiry pass the same order to the next closest courier', async () => {
+    const { orderId } = seedDelivery({ status: 'PROCESSING' })
+    const farthest = linkedCourier({ latitude: 34.1195, longitude: -118.4912 })
+    const nearest = linkedCourier({ latitude: 34.0200, longitude: -118.4912 })
+    const middle = linkedCourier({ latitude: 34.0645, longitude: -118.4912 })
+    linkedCourier({ status: 'offline', latitude: 34.0196, longitude: -118.4912 })
+
+    expect((await advanceOrder(orderId, 'SHIPPED')).ok).toBe(true)
+    const first = (await consoleFor(nearest))!.offer!
+    expect(first).not.toBeNull()
+    await expireDeliveryOffer(first.id)
+    assertDatabaseHas('delivery_offers', { id: first.id, status: 'pending' })
+
+    expect(await respondToDeliveryOffer(first.id, nearest, false)).toEqual({ ok: true })
+    assertDatabaseHas('delivery_offers', { id: first.id, status: 'declined' })
+    const second = (await consoleFor(middle))!.offer!
+    database.connection().query('UPDATE delivery_offers SET expires_at = 0 WHERE id = ?').run(second.id)
+
+    expect((await consoleFor(middle))?.offer).toBeNull()
+    await expireDeliveryOffer(second.id)
+    await expireDeliveryOffer(second.id)
+    expect((await respondToDeliveryOffer(second.id, middle, true))?.ok).toBe(false)
+
+    assertDatabaseHas('delivery_offers', { id: second.id, status: 'expired' })
+    assertDatabaseHas('delivery_offers', { order_id: orderId, courier_id: farthest, status: 'pending' })
+    assertDatabaseCount('delivery_offers', 3)
+    assertDatabaseCount('delivery_stops', 0)
+  })
+
+  test('going offline withdraws the offer and permits the next courier to accept it', async () => {
+    const { orderId } = seedDelivery({ status: 'SHIPPED' })
+    const first = linkedCourier({ latitude: null, longitude: null })
+    const second = linkedCourier({ latitude: null, longitude: null })
+    await dispatchReadyDeliveries()
+    const firstOffer = (await consoleFor(first))!.offer!
+
+    expect((await setShift(first, false)).status).toBe('offline')
+    assertDatabaseHas('delivery_offers', { id: firstOffer.id, status: 'withdrawn' })
+    expect((await respondToDeliveryOffer(firstOffer.id, first, true))?.ok).toBe(false)
+    assertDatabaseHas('delivery_offers', { order_id: orderId, courier_id: second, status: 'pending' })
+  })
+
+  test('does not leave an order ready or an offer pending when its expiry job cannot be written', async () => {
+    const { orderId } = seedDelivery({ status: 'PROCESSING' })
+    linkedCourier()
+    const db = database.connection()
+    db.exec(`CREATE TRIGGER reject_expiry_job BEFORE INSERT ON jobs
+      WHEN NEW.queue = 'delivery-offers'
+      BEGIN SELECT RAISE(ABORT, 'Cannot write expiry job'); END`)
+    try {
+      await expect(advanceOrder(orderId, 'SHIPPED')).rejects.toThrow('Cannot write expiry job')
+      assertDatabaseHas('orders', { id: orderId, status: 'PROCESSING' })
+      assertDatabaseCount('delivery_offers', 0)
+      assertDatabaseCount('jobs', 0)
+    }
+    finally {
+      db.exec('DROP TRIGGER reject_expiry_job')
+    }
   })
 })
 

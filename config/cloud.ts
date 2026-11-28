@@ -193,6 +193,7 @@ export const tsCloud: TsCloudConfig = {
       domain: APP_DOMAIN,
       start: 'bun node_modules/@stacksjs/buddy/dist/serve-entry.js',
       port: 3210,
+      queues: [{ queue: 'delivery-offers' }],
       preStart: [
         'bun install --frozen-lockfile',
         'mkdir -p /var/lib/smakelo',
@@ -227,6 +228,7 @@ export const tsCloud: TsCloudConfig = {
         APP_URL: APP_DOMAIN,
         APP_KEY: env.APP_KEY || '',
         PORT_API: '3218',
+        QUEUE_DRIVER: 'database',
         API_URL: 'http://127.0.0.1:3218',
         // Only the framework's auth routes (login, register, logout, refresh).
         // Naming a bundle narrows the surface: without it an app also mounts

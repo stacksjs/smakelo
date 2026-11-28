@@ -10,6 +10,7 @@ export { increment, decrement, reset, count } from '../../../resources/functions
 export { startTracking } from '../../../resources/functions/courier-tracking'
 export type { TrackingHandle } from '../../../resources/functions/courier-tracking'
 export { toggleDark, isDark, preferredDark } from '../../../resources/functions/dark'
+export { say } from '../../../resources/functions/i18n'
 export { basemap, keepSized } from '../../../resources/functions/map'
 export { placeMap, placeHandlers } from '../../../resources/functions/place-page'
 export type { PlaceSignals } from '../../../resources/functions/place-page'

@@ -1,5 +1,7 @@
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database/runtime'
+import type { CourierOffer } from '../Delivery/dispatch'
 import { distanceInMeters } from '../Business/geo'
+import { offerForCourier, offerReadyDeliveries, withdrawCourierOffer } from '../Delivery/dispatch'
 
 /**
  * What a courier sees and does.
@@ -38,6 +40,7 @@ export interface CourierConsole {
     latitude: number | null
     longitude: number | null
   }
+  offer: CourierOffer | null
   /** The stop being served, or null when nothing is assigned. */
   current: CourierRun | null
   /** Everything else on the same run, in order. */
@@ -136,6 +139,7 @@ export async function consoleFor(courierId: number): Promise<CourierConsole | nu
       latitude: courier.latitude == null ? null : Number(courier.latitude),
       longitude: courier.longitude == null ? null : Number(courier.longitude),
     },
+    offer: runs.length ? null : await offerForCourier(courierId),
     current: runs[0] ?? null,
     remaining: runs.slice(1),
     earnings: {
@@ -155,28 +159,33 @@ export async function consoleFor(courierId: number): Promise<CourierConsole | nu
  * happen leaves a customer watching a courier who is no longer coming.
  */
 export async function setShift(courierId: number, online: boolean): Promise<{ ok: boolean, status?: string, reason?: string }> {
-  const courier = await db.selectFrom('couriers')
-    .where('id', '=', courierId)
-    .select(['id', 'status'])
-    .executeTakeFirst() as { id: number, status: string } | undefined
+  return await db.transaction(async () => {
+    const courier = await db.selectFrom('couriers')
+      .where('id', '=', courierId)
+      .select(['id', 'status'])
+      .executeTakeFirst() as { id: number, status: string } | undefined
 
-  if (!courier)
-    return { ok: false, reason: 'No such courier.' }
+    if (!courier)
+      return { ok: false, reason: 'No such courier.' }
 
-  if (courier.status === 'on_delivery') {
-    return online
-      ? { ok: true, status: courier.status }
-      : { ok: false, reason: 'Finish the delivery you are carrying first.' }
-  }
+    if (courier.status === 'on_delivery') {
+      return online
+        ? { ok: true, status: courier.status }
+        : { ok: false, reason: 'Finish the delivery you are carrying first.' }
+    }
 
-  const status = online ? 'active' : 'offline'
+    const status = online ? 'active' : 'offline'
 
-  await db.updateTable('couriers')
-    .set({ status } as never)
-    .where('id', '=', courierId)
-    .execute()
+    await db.updateTable('couriers')
+      .set({ status } as never)
+      .where('id', '=', courierId)
+      .execute()
 
-  return { ok: true, status }
+    const releasedOrderId = online ? undefined : await withdrawCourierOffer(courierId)
+    await offerReadyDeliveries(releasedOrderId)
+
+    return { ok: true, status }
+  }, sqliteWriteOptions())
 }
 
 /** Every courier, for the demo's courier picker. */

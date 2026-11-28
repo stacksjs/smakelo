@@ -1,4 +1,5 @@
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database/runtime'
+import { offerReadyDeliveries } from '../Delivery/dispatch'
 
 /**
  * What a kitchen and a merchant need to see.
@@ -194,6 +195,9 @@ export async function advanceOrder(orderId: number, to: string): Promise<{ ok: b
       .where('status', '=', order.status)
       .execute()
 
+    if (to === 'SHIPPED' && order.order_type === 'DELIVERY')
+      await offerReadyDeliveries()
+
     return { ok: true, status: to }
-  })
+  }, sqliteWriteOptions())
 }

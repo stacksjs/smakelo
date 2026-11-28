@@ -362,6 +362,13 @@ courier:
   on_my_way: Ik ben onderweg
   picked_it_up: Opgehaald
   handed_it_over: Overgedragen
+  offer_title: Nieuw bezorgaanbod
+  offer_pickup: Ophalen
+  offer_time_left: Resterende tijd
+  offer_decline: Weigeren
+  offer_accept: Accepteren
+  offer_expired: Dit bezorgaanbod is verlopen.
+  offer_retry: Je antwoord kon niet worden verzonden. Probeer het opnieuw.
   nothing_assigned: Niets toegewezen. Wachten op een opdracht.
   you_are_offline: Je bent offline.
   then: Daarna

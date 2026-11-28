@@ -363,6 +363,13 @@ courier:
   on_my_way: On my way
   picked_it_up: Picked it up
   handed_it_over: Handed it over
+  offer_title: New delivery offer
+  offer_pickup: Pickup
+  offer_time_left: Time left
+  offer_decline: Decline
+  offer_accept: Accept
+  offer_expired: This delivery offer has ended.
+  offer_retry: Could not send your response. Try again.
   nothing_assigned: Nothing assigned. Waiting for a job.
   you_are_offline: You are offline.
   then: Then

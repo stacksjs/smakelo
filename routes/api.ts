@@ -8,7 +8,7 @@ import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
-import { dispatchNextReadyOrder } from '../app/Actions/Delivery/dispatch'
+import { dispatchReadyDeliveries, respondToDeliveryOffer } from '../app/Actions/Delivery/dispatch'
 import { accountState } from '../app/Actions/Account/session'
 import { linkVisitorToUser } from '../app/Actions/Visitor/identity'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
@@ -310,9 +310,6 @@ route.post('/merchant/orders/{id}/status', async (request: any) => {
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
 
-  if (result.status === 'SHIPPED')
-    await dispatchNextReadyOrder()
-
   return response.json({ data: { orderId, status: result.status } })
 })
 
@@ -347,7 +344,7 @@ route.get('/courier/{id}/console', async (request: any) => {
   if (!data)
     return response.json({ message: 'No such courier.' }, 404)
 
-  return response.json({ data })
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 /** `POST /api/courier/{id}/shift` */
@@ -364,10 +361,30 @@ route.post('/courier/{id}/shift', async (request: any) => {
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
 
-  const assigned = result.status === 'active' ? await dispatchNextReadyOrder() : null
-  const status = assigned?.courierId === id ? 'on_delivery' : result.status
+  return response.json({ data: { status: result.status } })
+})
 
-  return response.json({ data: { status } })
+/** `POST /api/delivery-offers/{id}/respond` */
+route.post('/delivery-offers/{id}/respond', async (request: any) => {
+  const offerId = Number(request?.getParam?.('id') ?? request?.params?.id ?? 0)
+  const viewer = await viewerOf(request)
+  const courier = await courierFor(viewer)
+
+  if (!courier)
+    return refuse(viewer)
+
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+  if (typeof body?.accept !== 'boolean')
+    return response.json({ message: 'Choose whether to accept or decline this offer.' }, 422)
+
+  const result = await respondToDeliveryOffer(offerId, courier.id, body.accept)
+  if (!result)
+    return response.json({ message: 'Delivery offer not found.' }, 404)
+
+  if (!result.ok)
+    return response.json({ message: result.reason }, 409)
+
+  return response.json({ data: { accepted: body.accept } })
 })
 
 /**
@@ -427,7 +444,7 @@ route.post('/courier/stops/{id}/{action}', async (request: any) => {
       return response.json({ message: 'No such stop.' }, 404)
 
     if (current.type === 'dropoff')
-      await dispatchNextReadyOrder()
+      await dispatchReadyDeliveries()
 
     return response.json({ data: stop })
   }

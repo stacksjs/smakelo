@@ -1,18 +1,23 @@
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database/runtime'
+import { storeJob } from '@stacksjs/queue/utils'
 import { distanceInMeters } from '../Business/geo'
 
-/**
- * Getting an order onto a courier.
- *
- * A delivery is two stops, not one: collect from the merchant, then hand over
- * to the customer. Both are created together at dispatch, in that order, so the
- * run reads correctly from the moment it exists and the order's status follows
- * the pickup rather than jumping straight to out-for-delivery.
- *
- * The offer goes to the nearest courier who is free. Nearest is the right
- * heuristic for food, which does not improve while it waits, and it is the one
- * a courier can also understand when they wonder why they got the job.
- */
+const OFFER_DURATION_SECONDS = 60
+
+interface DeliveryOfferRow {
+  id: number
+  order_id: number
+  courier_id: number
+  status: string
+  expires_at: number
+}
+
+export interface CourierOffer {
+  id: number
+  businessName: string
+  pickupAddress: string
+  expiresAt: number
+}
 
 export interface DispatchResult {
   ok: boolean
@@ -22,69 +27,235 @@ export interface DispatchResult {
   courierName?: string
 }
 
+/** Assign historical runs for demo seeding and simulation. */
 export async function dispatchOrder(orderId: number): Promise<DispatchResult> {
-  return await db.transaction(() => assignOrder(orderId))
-}
-
-/** Assign the oldest platform delivery when a kitchen or courier is ready. */
-export async function dispatchNextReadyOrder(): Promise<DispatchResult | null> {
   return await db.transaction(async () => {
-    const [order] = await db.unsafe(`
-      SELECT orders.id
-      FROM orders
-      JOIN businesses ON businesses.id = orders.business_id
-      WHERE orders.order_type = 'DELIVERY'
-        AND orders.status = 'SHIPPED'
-        AND businesses.self_delivery = 0
-        AND NOT EXISTS (
-          SELECT 1 FROM delivery_stops WHERE delivery_stops.order_id = orders.id
-        )
-      ORDER BY orders.id
-      LIMIT 1
-    `).execute() as Array<{ id: number }>
+    const order = await db.selectFrom('orders').where('id', '=', orderId).selectAll().executeTakeFirst()
+    if (!order)
+      return { ok: false, reason: 'No such order.' }
 
-    return order ? await assignOrder(Number(order.id), true) : null
-  })
+    if (order.order_type !== 'DELIVERY')
+      return { ok: false, reason: 'That order is not a delivery.' }
+
+    const existing = await db.selectFrom('delivery_stops')
+      .where('order_id', '=', orderId)
+      .select('id')
+      .executeTakeFirst()
+
+    if (existing)
+      return { ok: false, reason: 'That order is already on a run.' }
+
+    const business = await db.selectFrom('businesses')
+      .where('id', '=', Number(order.business_id))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!business)
+      return { ok: false, reason: 'That order has no business.' }
+
+    const couriers = await db.selectFrom('couriers').where('status', '=', 'active').orderBy('id').selectAll().execute()
+    const courier = nearestCourier(business, couriers)
+    return courier
+      ? await createRoute(order, business, courier)
+      : { ok: false, reason: 'No courier is free right now.' }
+  }, sqliteWriteOptions())
 }
 
-async function assignOrder(orderId: number, requireAccount = false): Promise<DispatchResult> {
-  const order = await db.selectFrom('orders')
-    .where('id', '=', orderId)
+function unixSeconds(): number {
+  return Math.floor(Date.now() / 1000)
+}
+
+/** Run inside the transaction that made an order or courier available. */
+export async function offerReadyDeliveries(firstOrderId?: number): Promise<void> {
+  const orders = await db.unsafe(`
+    SELECT orders.id, businesses.latitude, businesses.longitude
+    FROM orders
+    JOIN businesses ON businesses.id = orders.business_id
+    WHERE orders.order_type = 'DELIVERY'
+      AND orders.status = 'SHIPPED'
+      AND businesses.self_delivery = 0
+      AND NOT EXISTS (
+        SELECT 1 FROM delivery_stops WHERE delivery_stops.order_id = orders.id
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM delivery_offers
+        WHERE delivery_offers.order_id = orders.id AND delivery_offers.status = 'pending'
+      )
+    ORDER BY CASE WHEN orders.id = ? THEN 0 ELSE 1 END, orders.id
+  `, [firstOrderId ?? null]).execute() as Array<{ id: number, latitude: number | null, longitude: number | null }>
+
+  for (const order of orders) {
+    const couriers = await db.unsafe(`
+      SELECT couriers.id, couriers.latitude, couriers.longitude
+      FROM couriers
+      WHERE couriers.status = 'active'
+        AND couriers.user_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM delivery_offers
+          WHERE delivery_offers.courier_id = couriers.id
+            AND (delivery_offers.order_id = ? OR delivery_offers.status = 'pending')
+        )
+      ORDER BY couriers.id
+    `, [order.id]).execute() as Array<{ id: number, latitude: number | null, longitude: number | null }>
+
+    const courier = nearestCourier(order, couriers)
+    if (!courier)
+      continue
+
+    const expiresAt = unixSeconds() + OFFER_DURATION_SECONDS
+    const offer = await db.insertInto('delivery_offers').values({
+      uuid: crypto.randomUUID(),
+      order_id: order.id,
+      courier_id: courier.id,
+      status: 'pending',
+      expires_at: expiresAt,
+    }).returning('id').executeTakeFirstOrThrow()
+
+    await storeJob('ExpireDeliveryOffer', {
+      queue: 'delivery-offers',
+      payload: { offerId: offer.id },
+      delay: expiresAt - unixSeconds(),
+      maxTries: 5,
+      backoff: [2, 5, 10, 30],
+    })
+  }
+}
+
+export async function dispatchReadyDeliveries(): Promise<void> {
+  await db.transaction(() => offerReadyDeliveries(), sqliteWriteOptions())
+}
+
+export async function offerForCourier(courierId: number): Promise<CourierOffer | null> {
+  const [offer] = await db.unsafe(`
+    SELECT delivery_offers.id, businesses.name, businesses.address, delivery_offers.expires_at
+    FROM delivery_offers
+    JOIN orders ON orders.id = delivery_offers.order_id
+    JOIN businesses ON businesses.id = orders.business_id
+    JOIN couriers ON couriers.id = delivery_offers.courier_id
+    WHERE delivery_offers.courier_id = ?
+      AND delivery_offers.status = 'pending'
+      AND delivery_offers.expires_at > ?
+      AND couriers.status = 'active'
+      AND orders.status = 'SHIPPED'
+      AND businesses.self_delivery = 0
+  `, [courierId, unixSeconds()]).execute() as Array<{ id: number, name: string, address: string, expires_at: number }>
+
+  return offer
+    ? { id: offer.id, businessName: offer.name, pickupAddress: offer.address, expiresAt: offer.expires_at }
+    : null
+}
+
+async function closeOffer(offer: DeliveryOfferRow, status: 'accepted' | 'declined' | 'expired' | 'withdrawn'): Promise<void> {
+  await db.updateTable('delivery_offers')
+    .set({ status, updated_at: new Date().toISOString() })
+    .where('id', '=', offer.id)
+    .execute()
+}
+
+/** Run inside the shift transaction, after the courier has gone offline. */
+export async function withdrawCourierOffer(courierId: number): Promise<number | undefined> {
+  const offer = await db.selectFrom('delivery_offers')
+    .where('courier_id', '=', courierId)
+    .where('status', '=', 'pending')
     .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
+    .executeTakeFirst() as DeliveryOfferRow | undefined
 
-  if (!order)
-    return { ok: false, reason: 'No such order.' }
+  if (offer)
+    await closeOffer(offer, offer.expires_at <= unixSeconds() ? 'expired' : 'withdrawn')
 
-  if (String(order.order_type) !== 'DELIVERY')
-    return { ok: false, reason: 'That order is not a delivery.' }
+  return offer?.order_id
+}
 
-  const existing = await db.selectFrom('delivery_stops')
-    .where('order_id', '=', orderId)
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+export async function expireDeliveryOffer(offerId: number): Promise<void> {
+  await db.transaction(async () => {
+    const offer = await db.selectFrom('delivery_offers')
+      .where('id', '=', offerId)
+      .where('status', '=', 'pending')
+      .where('expires_at', '<=', unixSeconds())
+      .selectAll()
+      .executeTakeFirst() as DeliveryOfferRow | undefined
 
-  // Dispatching twice would put one order on two runs and pay two couriers.
-  if (existing)
-    return { ok: false, reason: 'That order is already on a run.' }
+    if (offer) {
+      await closeOffer(offer, 'expired')
+      await offerReadyDeliveries(offer.order_id)
+    }
+  }, sqliteWriteOptions())
+}
 
-  const business = await db.selectFrom('businesses')
-    .where('id', '=', Number(order.business_id))
-    .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
+export async function respondToDeliveryOffer(offerId: number, courierId: number, accept: boolean): Promise<DispatchResult | null> {
+  return await db.transaction(async () => {
+    const offer = await db.selectFrom('delivery_offers')
+      .where('id', '=', offerId)
+      .where('courier_id', '=', courierId)
+      .selectAll()
+      .executeTakeFirst() as DeliveryOfferRow | undefined
 
-  if (!business)
-    return { ok: false, reason: 'That order has no business.' }
+    if (!offer)
+      return null
 
-  const courier = await nearestAvailableCourier(
-    Number(business.latitude),
-    Number(business.longitude),
-    requireAccount,
-  )
+    if (offer.status === 'accepted' && accept)
+      return { ok: true }
 
-  if (!courier)
-    return { ok: false, reason: 'No courier is free right now.' }
+    if (offer.status === 'declined' && !accept)
+      return { ok: true }
 
+    const unavailable = { ok: false, reason: 'This delivery offer is no longer available.' }
+
+    if (offer.status !== 'pending')
+      return unavailable
+
+    if (offer.expires_at <= unixSeconds()) {
+      await closeOffer(offer, 'expired')
+      await offerReadyDeliveries(offer.order_id)
+      return unavailable
+    }
+
+    if (!accept) {
+      await closeOffer(offer, 'declined')
+      await offerReadyDeliveries(offer.order_id)
+      return { ok: true }
+    }
+
+    const order = await db.selectFrom('orders')
+      .where('id', '=', offer.order_id)
+      .where('order_type', '=', 'DELIVERY')
+      .where('status', '=', 'SHIPPED')
+      .selectAll()
+      .executeTakeFirst()
+    const business = order && await db.selectFrom('businesses')
+      .where('id', '=', Number(order.business_id))
+      .where('self_delivery', '=', 0)
+      .selectAll()
+      .executeTakeFirst()
+    const courier = await db.selectFrom('couriers')
+      .where('id', '=', courierId)
+      .where('status', '=', 'active')
+      .selectAll()
+      .executeTakeFirst()
+    const existingStop = await db.selectFrom('delivery_stops')
+      .where('order_id', '=', offer.order_id)
+      .select('id')
+      .executeTakeFirst()
+
+    if (!order || !business || !courier || existingStop) {
+      await closeOffer(offer, 'withdrawn')
+      await offerReadyDeliveries(offer.order_id)
+      return unavailable
+    }
+
+    const result = await createRoute(order, business, courier)
+    await closeOffer(offer, 'accepted')
+    await offerReadyDeliveries()
+    return result
+  }, sqliteWriteOptions())
+}
+
+async function createRoute(
+  order: Record<string, unknown>,
+  business: Record<string, unknown>,
+  courier: Record<string, unknown>,
+): Promise<DispatchResult> {
+  const orderId = Number(order.id)
   const routeUuid = crypto.randomUUID()
 
   await db.insertInto('delivery_routes').values({
@@ -147,36 +318,22 @@ async function assignOrder(orderId: number, requireAccount = false): Promise<Dis
   return { ok: true, routeId, courierId: Number(courier.id), courierName: String(courier.name) }
 }
 
-/**
- * The closest courier who is not already carrying something.
- *
- * Distance is computed in code rather than SQL for the same reason the business
- * search does it: SQLite has no trigonometry to rely on, and the candidate set
- * here is a handful of rows.
- */
-async function nearestAvailableCourier(latitude: number, longitude: number, requireAccount: boolean): Promise<Record<string, unknown> | null> {
-  const query = db.selectFrom('couriers').where('status', '=', 'active')
-  const couriers = await (requireAccount ? query.where('user_id', 'is not', null) : query)
-    .orderBy('id')
-    .selectAll()
-    .execute() as Array<Record<string, unknown>>
+function nearestCourier<T extends { latitude?: unknown, longitude?: unknown }>(
+  pickup: { latitude?: unknown, longitude?: unknown },
+  couriers: T[],
+): T | undefined {
+  if (pickup.latitude == null || pickup.longitude == null)
+    return couriers[0]
 
-  const positioned = couriers.filter(courier => courier.latitude != null && courier.longitude != null)
+  const origin = { latitude: Number(pickup.latitude), longitude: Number(pickup.longitude) }
 
-  // A courier who has never pinged has no position, and guessing one would send
-  // the job to whoever happened to be first in the table.
-  if (positioned.length === 0)
-    return couriers[0] ?? null
-
-  return positioned
+  return couriers
+    .filter(courier => courier.latitude != null && courier.longitude != null)
     .map(courier => ({
       courier,
-      distance: distanceInMeters(
-        { latitude, longitude },
-        { latitude: Number(courier.latitude), longitude: Number(courier.longitude) },
-      ),
+      distance: distanceInMeters(origin, { latitude: Number(courier.latitude), longitude: Number(courier.longitude) }),
     }))
-    .sort((a, b) => a.distance - b.distance)[0]?.courier ?? null
+    .sort((a, b) => a.distance - b.distance)[0]?.courier ?? couriers[0]
 }
 
 async function createStop(input: {

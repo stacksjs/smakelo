@@ -44,7 +44,11 @@ Requires Bun >= 1.3.0 and SQLite >= 3.47.2.
 
 Choose an invented account on the Account page to try the kitchen or courier
 flows. Use `./buddy dev --dashboard` for the Stacks dashboard and its Marketplace
-section.
+section. For delivery offer expiry, run the queue worker in a second terminal.
+
+```sh
+QUEUE_DRIVER=database ./buddy queue:work --queue delivery-offers
+```
 
 To exercise card checkout, configure `STRIPE_SECRET_KEY` and
 `STRIPE_PUBLISHABLE_KEY` from the same Stripe sandbox. For the hosted demo, set

@@ -362,6 +362,13 @@ courier:
   on_my_way: Ich bin unterwegs
   picked_it_up: Abgeholt
   handed_it_over: Übergeben
+  offer_title: Neuer Lieferauftrag
+  offer_pickup: Abholung
+  offer_time_left: Verbleibende Zeit
+  offer_decline: Ablehnen
+  offer_accept: Annehmen
+  offer_expired: Dieses Lieferangebot ist beendet.
+  offer_retry: Deine Antwort konnte nicht gesendet werden. Versuche es erneut.
   nothing_assigned: Nichts zugewiesen. Warte auf einen Auftrag.
   you_are_offline: Du bist offline.
   then: Danach

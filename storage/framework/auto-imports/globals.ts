@@ -23,6 +23,7 @@ declare global {
   const toggleDark: typeof autoImports.toggleDark
   const isDark: typeof autoImports.isDark
   const preferredDark: typeof autoImports.preferredDark
+  const say: typeof autoImports.say
   const basemap: typeof autoImports.basemap
   const keepSized: typeof autoImports.keepSized
   const placeMap: typeof autoImports.placeMap
