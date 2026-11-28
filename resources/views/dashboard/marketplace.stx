@@ -16,6 +16,7 @@ defineClientPayload({ operationLabels })
 
 @section('content')
 @title('Marketplace operations')
+@meta('robots', 'noindex, nofollow, noarchive, noimageindex')
 <section class="mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-5xl w-full" aria-labelledby="marketplace-title">
   <h1 id="marketplace-title" class="font-semibold text-2xl text-gray-900 tracking-tight dark:text-white">{{ t('marketplace.operations') }}</h1>
 
