@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
 import { route } from '@stacksjs/router'
-import { factory, refreshDatabase } from '../support/database'
+import { assertDatabaseHas, factory, refreshDatabase } from '../support/database'
 
 /**
  * The HTTP layer.
@@ -467,6 +467,43 @@ describe('what a signed-in stranger still may not do', () => {
 
     expect((await get('/admin/guards', { authorization: `Bearer ${token}` })).status).toBe(403)
     expect((await get('/admin/listings', { authorization: `Bearer ${token}` })).status).toBe(403)
+  })
+
+  test('guests and merchants cannot decide a listing claim', async () => {
+    seedShop({ is_partner: 0 })
+    const { body } = await post('/businesses/a-shop/claim', {
+      name: 'A Claimant',
+      email: 'claimant@example.invalid',
+    })
+    const path = `/claims/${body.data.claimId}/approved`
+    const token = await signIn(['merchant'])
+
+    expect((await post(path, {})).status).toBe(401)
+    expect((await post(path, {}, { authorization: `Bearer ${token}` })).status).toBe(403)
+  })
+
+  test('an admin can decide a pending listing claim once', async () => {
+    const { businessId } = seedShop({ is_partner: 0 })
+    const approve = await post('/businesses/a-shop/claim', {
+      name: 'A Claimant',
+      email: 'claimant@example.invalid',
+    })
+    const [otherId] = database.seed('businesses', [factory.business({ slug: 'other-listing', is_partner: 0 })])
+    const reject = await post('/businesses/other-listing/claim', {
+      name: 'Another Claimant',
+      email: 'another@example.invalid',
+    })
+    const approvePath = `/claims/${approve.body.data.claimId}`
+    const rejectPath = `/claims/${reject.body.data.claimId}`
+    const headers = { authorization: `Bearer ${await signIn(['admin'])}` }
+
+    expect((await post(`${approvePath}/approved`, {}, headers)).status).toBe(200)
+    expect((await post(`${rejectPath}/rejected`, {}, headers)).status).toBe(200)
+    expect((await post(`${approvePath}/rejected`, {}, headers)).status).toBe(422)
+    assertDatabaseHas('businesses', { id: businessId, is_claimed: 1 })
+    assertDatabaseHas('businesses', { id: otherId, is_claimed: 0 })
+    assertDatabaseHas('claims', { id: approve.body.data.claimId, status: 'approved' })
+    assertDatabaseHas('claims', { id: reject.body.data.claimId, status: 'rejected' })
   })
 
   test('a made-up token is nobody', async () => {

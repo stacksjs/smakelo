@@ -1,4 +1,4 @@
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
 
 /**
  * "This is my business."
@@ -131,28 +131,30 @@ export async function decideClaim(claimId: number, decision: 'approved' | 'rejec
   if (!['approved', 'rejected'].includes(decision))
     return { ok: false, reason: 'A claim is approved or rejected.' }
 
-  const claim = await db.selectFrom('claims')
-    .where('id', '=', Number(claimId))
-    .select(['id', 'status', 'business_id'])
-    .executeTakeFirst() as { id: number, status: string, business_id: number } | undefined
+  return await db.transaction(async () => {
+    const claim = await db.selectFrom('claims')
+      .where('id', '=', Number(claimId))
+      .select(['id', 'status', 'business_id'])
+      .executeTakeFirst() as { id: number, status: string, business_id: number } | undefined
 
-  if (!claim)
-    return { ok: false, reason: 'No such claim.' }
+    if (!claim)
+      return { ok: false, reason: 'No such claim.' }
 
-  if (claim.status !== 'pending')
-    return { ok: false, reason: `That claim was already ${claim.status}.` }
+    if (claim.status !== 'pending')
+      return { ok: false, reason: `That claim was already ${claim.status}.` }
 
-  await db.updateTable('claims')
-    .set({ status: decision, decided_at: new Date().toISOString() } as never)
-    .where('id', '=', Number(claimId))
-    .execute()
-
-  if (decision === 'approved') {
-    await db.updateTable('businesses')
-      .set({ is_claimed: 1 } as never)
-      .where('id', '=', Number(claim.business_id))
+    await db.updateTable('claims')
+      .set({ status: decision, decided_at: new Date().toISOString() } as never)
+      .where('id', '=', Number(claimId))
       .execute()
-  }
 
-  return { ok: true }
+    if (decision === 'approved') {
+      await db.updateTable('businesses')
+        .set({ is_claimed: 1 } as never)
+        .where('id', '=', Number(claim.business_id))
+        .execute()
+    }
+
+    return { ok: true }
+  }, sqliteWriteOptions())
 }
