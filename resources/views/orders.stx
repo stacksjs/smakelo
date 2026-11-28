@@ -1,12 +1,4 @@
 <script server>
-/*
- * Your orders.
- *
- * There are no accounts, so this is the list of orders placed from this
- * browser. A guest normally has only the tracking link, which lives in
- * whichever tab they closed; recording who placed the order means the list can
- * simply be shown.
- */
 import { currentLocale, t } from '../../app/Actions/Locale/translate'
 
 const pageTitle = t('meta.orders_title')
@@ -72,7 +64,7 @@ const canonicalPath = '/orders'
     </main>
 
     <script client>
-      import { money, visitorToken } from '../functions/session'
+      import { apiGet, money } from '../functions/session'
 
       const orders = state([])
       const loading = state(true)
@@ -90,7 +82,7 @@ const canonicalPath = '/orders'
       }
 
       async function load() {
-        const response = await fetch('/api/orders/mine', { headers: { 'x-visitor': visitorToken() } })
+        const response = await apiGet('/api/orders/mine')
         const { data } = await response.json()
 
         orders.set(data)

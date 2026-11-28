@@ -2,7 +2,7 @@ import { response, route } from '@stacksjs/router'
 import { toSvg } from 'ts-qr-codes'
 import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
 import { menuFor } from '../app/Actions/Order/menu'
-import { createOrder, ordersForVisitor, quoteOrder, trackOrder } from '../app/Actions/Order/api'
+import { createOrder, ordersForBuyer, quoteOrder, trackOrder } from '../app/Actions/Order/api'
 import { closeTab, sessionForToken, tableCodesFor } from '../app/Actions/Dine/tables'
 import { advanceOrder, boardFor } from '../app/Actions/Merchant/board'
 import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Actions/Merchant/manage'
@@ -97,10 +97,8 @@ route.get('/businesses/{slug}/menu', async (request: any) => {
 route.post('/orders', async (request: any) => {
   const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
 
-  // The visitor comes off the header, never out of the body: this is what ties
-  // an order to the browser that placed it, and the body is the client's to
-  // write whatever it likes into.
-  const result = await createOrder({ ...body, visitorToken: visitorOf(request) })
+  // Resolve the buyer from the signed-in session or the guest browser token.
+  const result = await createOrder({ ...body, visitorToken: visitorOf(request) }, await signedInUserId(request))
 
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
@@ -228,9 +226,11 @@ route.post('/tabs/{id}/close', async (request: any) => {
  * never is.
  */
 async function viewerOf(request: any): Promise<Viewer | null> {
-  const header = String(request?.headers?.get?.('authorization') ?? '')
+  return await viewerFor(await signedInUserId(request))
+}
 
-  return await viewerFor(await userIdFromBearer(header))
+function signedInUserId(request: Pick<Request, 'headers'>): Promise<number | null> {
+  return userIdFromBearer(request.headers.get('authorization') ?? '')
 }
 
 /** Whether the courier in the path is the courier this user is. */
@@ -521,9 +521,10 @@ route.get('/businesses/{slug}/reviews', async (request: any) => {
     return response.json({ message: 'That business is not listed.' }, 404)
 
   const businessId = Number(place.business.id)
+  const userId = await signedInUserId(request)
 
   const [list, stats] = await Promise.all([
-    reviewsFor(businessId, visitorOf(request)),
+    reviewsFor(businessId, visitorOf(request), userId),
     statsFor(businessId),
   ])
 
@@ -531,7 +532,7 @@ route.get('/businesses/{slug}/reviews', async (request: any) => {
   // assumes, so the composer is never rendered where it would be refused.
   const canReview = Number(place.business.is_partner) === 1
 
-  return response.json({ data: { reviews: list, stats, canReview } })
+  return Response.json({ data: { reviews: list, stats, canReview } }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 /** `POST /api/businesses/{slug}/reviews` */
@@ -541,6 +542,7 @@ route.post('/businesses/{slug}/reviews', async (request: any) => {
   const result = await submitReview({
     businessSlug: String(request?.getParam?.('slug') ?? ''),
     visitorToken: visitorOf(request),
+    userId: await signedInUserId(request),
     authorName: String(body?.authorName ?? 'Guest'),
     rating: Number(body?.rating ?? 0),
     title: String(body?.title ?? ''),
@@ -557,7 +559,7 @@ route.post('/businesses/{slug}/reviews', async (request: any) => {
 
 /** `POST /api/reviews/{id}/helpful` */
 route.post('/reviews/{id}/helpful', async (request: any) => {
-  const result = await voteOnReview(Number(request?.getParam?.('id') ?? 0), visitorOf(request))
+  const result = await voteOnReview(Number(request?.getParam?.('id') ?? 0), visitorOf(request), true, await signedInUserId(request))
 
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
@@ -659,9 +661,11 @@ route.post('/claims/{id}/{decision}', async (request: any) => {
   return response.json({ data: { ok: true } })
 })
 
-/** `GET /api/orders/mine` - what this browser has ordered. */
+/** `GET /api/orders/mine` - the buyer’s history. */
 route.get('/orders/mine', async (request: any) => {
-  return response.json({ data: await ordersForVisitor(visitorOf(request)) })
+  const data = await ordersForBuyer(visitorOf(request), await signedInUserId(request))
+
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 /**
@@ -1084,7 +1088,7 @@ async function userIdFromBearer(header: string): Promise<number | null> {
   const { findToken } = await import('@stacksjs/auth')
   const token = await findToken(plain).catch(() => null)
 
-  if (!token || token.revoked)
+  if (!token || token.revoked || (token.subjectType && token.subjectType !== 'users'))
     return null
 
   if (token.expiresAt && new Date(token.expiresAt).getTime() < Date.now())

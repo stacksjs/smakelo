@@ -1,22 +1,9 @@
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
 
 /**
- * Who is doing this, in an app with no accounts.
- *
- * Smakelo has no sign-in: inventing one for a demo nobody can register for
- * would be theatre. But a review, a saved place and a helpful vote all need an
- * owner, or the button either lies about its state or lets one person press it
- * forever. So a browser mints a random token, keeps it, and sends it back; the
- * first time it does something that needs an owner, a customer row is created
- * for it.
- *
- * The token is supplied by the client and is therefore trivially forgeable.
- * That is a real limitation, stated rather than hidden: it identifies a
- * browser, not a person, and it is exactly as trustworthy as the demo needs.
- * A deployment with accounts resolves the customer from the session and none
- * of the rest of this changes.
+ * Guest activity follows the random browser token. An authenticated user owns
+ * their account customer and any guest customer records linked at sign-in.
  */
-
 /** Long enough not to collide, short enough to store in a cookie. */
 const TOKEN_PATTERN = /^[a-z0-9]{16,64}$/i
 
@@ -35,34 +22,56 @@ export async function customerForVisitor(token: unknown, name = 'Guest'): Promis
   if (!isVisitorToken(token))
     return null
 
-  const email = `visitor-${token.toLowerCase()}@demo.smakelo.invalid`
+  return await findOrCreateCustomer(`visitor-${token.toLowerCase()}@demo.smakelo.invalid`, name)
+}
 
-  const existing = await db.selectFrom('customers')
-    .where('email', '=', email)
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+/** The customer used for new orders by an authenticated account. */
+export async function customerForAccount(userId: number): Promise<number | null> {
+  const user = await db.selectFrom('users')
+    .where('id', '=', userId)
+    .select(['name'])
+    .executeTakeFirst() as { name: string } | undefined
 
-  if (existing)
-    return Number(existing.id)
+  return user
+    ? await findOrCreateCustomer(`account-${userId}@demo.smakelo.invalid`, user.name, userId)
+    : null
+}
 
-  await db.insertInto('customers').values({
-    uuid: crypto.randomUUID(),
-    name: cleanName(name),
-    // `.invalid` is reserved by RFC 2606 and can never resolve, so nothing here
-    // can accidentally send mail to a real address.
-    email,
-    phone: '',
-    status: 'Active',
-    avatar: '',
-    total_spent: 0,
-  } as never).executeTakeFirst()
+export async function customerIdsForBuyer(visitorToken: unknown, userId?: number | null): Promise<number[]> {
+  if (userId) {
+    const rows = await db.selectFrom('customers')
+      .where('user_id', '=', userId)
+      .select(['id'])
+      .execute() as Array<{ id: number }>
 
-  const created = await db.selectFrom('customers')
-    .where('email', '=', email)
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+    return rows.map(row => Number(row.id))
+  }
 
-  return created ? Number(created.id) : null
+  const guest = await existingCustomerFor(visitorToken)
+  return guest === null ? [] : [guest]
+}
+
+async function findOrCreateCustomer(email: string, name: string, userId?: number): Promise<number | null> {
+  return await db.transaction(async () => {
+    const existing = await db.selectFrom('customers').where('email', '=', email).select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
+
+    if (existing)
+      return Number(existing.id)
+
+    const created = await db.insertInto('customers').values({
+      uuid: crypto.randomUUID(),
+      name: cleanName(name),
+      email,
+      user_id: userId ?? null,
+      phone: '',
+      status: 'Active',
+      avatar: '',
+      total_spent: 0,
+    } as never).returning(['id']).executeTakeFirst() as { id: number } | undefined
+
+    return created ? Number(created.id) : null
+  }, sqliteWriteOptions())
 }
 
 /** The row, if this browser has one, without creating it. */

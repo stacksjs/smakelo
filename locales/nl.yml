@@ -188,7 +188,7 @@ meta:
   saved_title: Bewaard - Smakelo
   saved_description: Plekken die je hebt bewaard.
   orders_title: Je bestellingen - Smakelo
-  orders_description: Alles wat je vanuit deze browser hebt besteld.
+  orders_description: Bekijk eerdere bestellingen en volg je lopende bestellingen.
   claims_title: Claims - Smakelo
   claims_description: Mensen die naar hun eigen vermelding vragen.
   partner_title: Voor zaken - Smakelo
@@ -291,7 +291,7 @@ saved:
 
 orders:
   title: Je bestellingen
-  lede: Geplaatst vanuit deze browser. Er zijn hier geen accounts, dus een andere browser is een andere lijst.
+  lede: Log in om je bestellingen op elk apparaat te zien. Gastbestellingen worden in deze browser bewaard.
   empty_cta: Een zaak zoeken om te bestellen
   track: Volgen
   ordered_nothing: Je hebt nog niets besteld.

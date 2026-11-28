@@ -1,5 +1,5 @@
 import { basemap, keepSized } from './map'
-import { money, send, visitorToken } from './session'
+import { apiGet, money, send, visitorToken } from './session'
 
 /**
  * What a place page does once it is on screen.
@@ -58,7 +58,7 @@ export function placeHandlers(page: PlaceSignals) {
   }
 
   async function loadReviews(): Promise<void> {
-    const response = await fetch(`/api/businesses/${slug}/reviews`, { headers: { 'x-visitor': visitorToken() } })
+    const response = await apiGet(`/api/businesses/${slug}/reviews`)
 
     if (!response.ok) {
       page.loadingReviews.set(false)

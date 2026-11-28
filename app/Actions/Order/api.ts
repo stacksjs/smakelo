@@ -2,7 +2,7 @@ import type { PlaceOrderInput } from './place'
 import { db } from '@stacksjs/database'
 import { placeOrder, previewOrder } from './place'
 import { visualFor } from '../Business/identity'
-import { existingCustomerFor } from '../Visitor/identity'
+import { customerIdsForBuyer } from '../Visitor/identity'
 
 /**
  * The order endpoints' thin layer: read an untrusted body, hand something
@@ -62,13 +62,13 @@ function readInput(body: any): PlaceOrderInput | { reason: string } {
   }
 }
 
-export async function createOrder(body: any) {
+export async function createOrder(body: any, userId: number | null = null) {
   const input = readInput(body)
 
   if ('reason' in input)
     return { ok: false as const, reason: input.reason }
 
-  return await placeOrder(input)
+  return await placeOrder({ ...input, userId })
 }
 
 /**
@@ -176,22 +176,15 @@ export async function trackOrder(token: string) {
   }
 }
 
-/**
- * Orders this browser placed.
- *
- * The tracking token in a confirmation email is the only handle a guest
- * normally has on an order, and it is a bad one: it lives in whichever tab
- * they closed. Recording who placed the order means the list can just be
- * shown, which is the whole of "account" that this demo needs.
- */
-export async function ordersForVisitor(visitorToken: unknown): Promise<Array<Record<string, unknown>>> {
-  const customerId = await existingCustomerFor(visitorToken)
+/** Orders placed as a guest on this browser or linked to the signed-in buyer. */
+export async function ordersForBuyer(visitorToken: unknown, userId: number | null): Promise<Array<Record<string, unknown>>> {
+  const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
+  if (customerIds.length === 0)
     return []
 
   const rows = await db.selectFrom('orders')
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
     .orderBy('id', 'desc')
     .selectAll()
     .execute() as Array<Record<string, unknown>>

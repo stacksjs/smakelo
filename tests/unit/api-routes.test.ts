@@ -154,15 +154,15 @@ describe('finding places', () => {
   })
 })
 
+function shopWithADish(shop: Record<string, unknown> = {}, product: Record<string, unknown> = {}): { businessId: number, productId: number } {
+  const { businessId } = seedShop(shop)
+  const [categoryId] = database.seed('categories', [{ name: 'Mains', slug: 'mains', display_order: 1, is_active: 1 }])
+  const [productId] = database.seed('products', [factory.product({ name: 'A Dish', price: 1000, business_id: businessId, category_id: categoryId, ...product })])
+
+  return { businessId, productId }
+}
+
 describe('placing an order over HTTP', () => {
-  function shopWithADish(shop: Record<string, unknown> = {}, product: Record<string, unknown> = {}): { businessId: number, productId: number } {
-    const { businessId } = seedShop(shop)
-    const [categoryId] = database.seed('categories', [{ name: 'Mains', slug: 'mains', display_order: 1, is_active: 1 }])
-    const [productId] = database.seed('products', [factory.product({ name: 'A Dish', price: 1000, business_id: businessId, category_id: categoryId, ...product })])
-
-    return { businessId, productId }
-  }
-
   test('a quote prices it without writing anything', async () => {
     // The difference between quoting and ordering is the whole point of
     // having two endpoints: a quote that placed an order would charge people
@@ -504,6 +504,50 @@ describe('what a signed-in stranger still may not do', () => {
     assertDatabaseHas('businesses', { id: otherId, is_claimed: 0 })
     assertDatabaseHas('claims', { id: approve.body.data.claimId, status: 'approved' })
     assertDatabaseHas('claims', { id: reject.body.data.claimId, status: 'rejected' })
+  })
+
+  test('buyer history includes signed-in and linked guest orders across devices', async () => {
+    const { productId } = shopWithADish()
+    const order = { businessSlug: 'a-shop', fulfilment: 'pickup', lines: [{ productId, quantity: 1 }] }
+    const guest = { 'x-visitor': 'guestfromfirstbrowser1234' }
+    const otherDevice = { 'x-visitor': 'guestfromotherbrowser1234' }
+    const guestOrder = await post('/orders', order, guest)
+    const buyer = { authorization: `Bearer ${await signIn()}` }
+    const stranger = { authorization: `Bearer ${await signIn()}` }
+
+    expect(guestOrder.status).toBe(201)
+    expect((await get('/orders/mine', guest)).body.data.map((entry: { id: number }) => entry.id)).toEqual([guestOrder.body.data.orderId])
+    expect((await post('/account/link', {}, { ...guest, ...buyer })).body.data.linked).toBe(true)
+    expect((await post('/account/link', {}, { ...guest, ...stranger })).body.data.linked).toBe(false)
+
+    const accountOrder = await post('/orders', order, { ...otherDevice, ...buyer })
+    expect(accountOrder.status).toBe(201)
+    expect((await get('/orders/mine', buyer)).body.data.map((entry: { id: number }) => entry.id))
+      .toEqual([accountOrder.body.data.orderId, guestOrder.body.data.orderId])
+    expect((await get('/orders/mine', { ...guest, ...stranger })).body.data).toEqual([])
+    expect((await get('/orders/mine', otherDevice)).body.data).toEqual([])
+  })
+
+  test('a completed account order verifies a review on another device', async () => {
+    const { productId } = shopWithADish()
+    const buyer = { authorization: `Bearer ${await signIn()}` }
+    const order = await post('/orders', {
+      businessSlug: 'a-shop',
+      fulfilment: 'pickup',
+      lines: [{ productId, quantity: 1 }],
+    }, buyer)
+
+    expect(order.status).toBe(201)
+    database.connection().query("UPDATE orders SET status = 'DELIVERED' WHERE id = ?").run(order.body.data.orderId)
+
+    const path = '/businesses/a-shop/reviews'
+    const review = { rating: 5, authorName: 'A User', body: 'My pickup order was ready and the food was fresh.' }
+    const posted = await post(path, review, { 'x-visitor': 'guestfromotherbrowser1234', ...buyer })
+
+    expect(posted.body.data).toMatchObject({ verified: true })
+    expect((await get(path, buyer)).body.data.reviews[0]).toMatchObject({ verified: true, mine: true })
+    expect((await get(path)).body.data.reviews[0]).toMatchObject({ verified: true, mine: false })
+    expect((await post(path, review, buyer)).status).toBe(422)
   })
 
   test('a made-up token is nobody', async () => {

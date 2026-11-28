@@ -1,5 +1,5 @@
 import { db } from '@stacksjs/database'
-import { existingCustomerFor } from '../Visitor/identity'
+import { customerIdsForBuyer, existingCustomerFor } from '../Visitor/identity'
 
 /**
  * Who is signed in, and what they could sign in with.
@@ -69,7 +69,7 @@ export async function accountState(userId: number | null, visitorToken: unknown)
   return {
     user,
     providers: await socialButtons(),
-    carries: await visitorActivity(visitorToken),
+    carries: await visitorActivity(visitorToken, user?.id),
   }
 }
 
@@ -92,59 +92,44 @@ async function userById(id: number): Promise<{ id: number, name: string, email: 
  * number attached rather than an instruction. Somebody with nothing saved is
  * told plainly that there is nothing to keep yet.
  */
-async function visitorActivity(visitorToken: unknown): Promise<{ saved: number, orders: number, reviews: number, shares: number }> {
+async function visitorActivity(visitorToken: unknown, userId?: number): Promise<{ saved: number, orders: number, reviews: number, shares: number }> {
   const customerId = await existingCustomerFor(visitorToken)
+  const buyerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
-    return { saved: 0, orders: 0, reviews: 0, shares: 0 }
+  const count = async (table: string, ids: number[]): Promise<number> => {
+    if (ids.length === 0)
+      return 0
 
-  const count = async (table: string): Promise<number> => {
     const rows = await db.selectFrom(table as never)
-      .where('customer_id', '=', customerId)
+      .where('customer_id', 'in', ids)
       .select(['id'])
       .execute() as Array<{ id: number }>
 
     return rows.length
   }
+  const browserIds = customerId === null ? [] : [customerId]
 
   return {
-    saved: await count('favorites'),
-    orders: await count('orders'),
-    reviews: await count('business_reviews'),
-    shares: await count('csa_subscriptions'),
+    saved: await count('favorites', browserIds),
+    orders: await count('orders', buyerIds),
+    reviews: await count('business_reviews', buyerIds),
+    shares: await count('csa_subscriptions', browserIds),
   }
 }
 
-/**
- * Bind this browser's history to an account.
- *
- * Signing in on a device that has already been used is the normal case, not
- * the exception: somebody orders as a guest, likes it, and makes an account.
- * Their saved places and orders should still be there afterwards, so the
- * visitor's customer row is linked to the user rather than a second empty one
- * being created beside it.
- */
+/** Attach unclaimed guest history without reassigning another account's data. */
 export async function linkVisitorToUser(userId: number, visitorToken: unknown): Promise<{ ok: boolean, linked: boolean }> {
   const customerId = await existingCustomerFor(visitorToken)
 
   if (!customerId)
     return { ok: true, linked: false }
 
-  const already = await db.selectFrom('customers')
-    .where('user_id', '=', Number(userId))
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
-
-  // A user already tied to a different customer row keeps it. Merging two
-  // histories is a decision with no obviously right answer, and quietly
-  // picking one would lose the other.
-  if (already && Number(already.id) !== customerId)
-    return { ok: true, linked: false }
-
-  await db.updateTable('customers')
-    .set({ user_id: Number(userId) } as never)
+  const updated = await db.updateTable('customers')
+    .set({ user_id: userId } as never)
     .where('id', '=', customerId)
-    .execute()
+    .where('user_id', 'is', null)
+    .returning(['id'])
+    .executeTakeFirst()
 
-  return { ok: true, linked: true }
+  return { ok: true, linked: Boolean(updated) }
 }

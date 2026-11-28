@@ -188,7 +188,7 @@ meta:
   saved_title: Gemerkt - Smakelo
   saved_description: Orte, die du dir gemerkt hast.
   orders_title: Deine Bestellungen - Smakelo
-  orders_description: Alles, was du aus diesem Browser bestellt hast.
+  orders_description: Sieh frühere Bestellungen und verfolge laufende Bestellungen.
   claims_title: Ansprüche - Smakelo
   claims_description: Menschen, die nach ihrem eigenen Eintrag fragen.
   partner_title: Für Betriebe - Smakelo
@@ -291,7 +291,7 @@ saved:
 
 orders:
   title: Deine Bestellungen
-  lede: Aus diesem Browser aufgegeben. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste.
+  lede: Melde dich an, um deine Bestellungen auf jedem Gerät zu sehen. Gastbestellungen werden in diesem Browser gespeichert.
   empty_cta: Einen Ort zum Bestellen finden
   track: Verfolgen
   ordered_nothing: Du hast noch nichts bestellt.

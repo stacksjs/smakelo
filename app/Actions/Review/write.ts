@@ -1,5 +1,5 @@
 import { db } from '@stacksjs/database'
-import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
+import { customerForAccount, customerForVisitor, customerIdsForBuyer } from '../Visitor/identity'
 
 /**
  * Writing, rating and answering reviews.
@@ -15,6 +15,7 @@ import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
 export interface ReviewInput {
   businessSlug: string
   visitorToken: unknown
+  userId?: number | null
   authorName: string
   rating: number
   title: string
@@ -59,26 +60,24 @@ export async function submitReview(input: ReviewInput): Promise<ReviewResult> {
   if (body.length < 20)
     return { ok: false, reason: 'Say a little more than that: twenty characters at least.' }
 
-  const customerId = await customerForVisitor(input.visitorToken, input.authorName)
+  const customerId = input.userId
+    ? await customerForAccount(input.userId)
+    : await customerForVisitor(input.visitorToken, input.authorName)
 
   if (!customerId)
     return { ok: false, reason: 'Could not identify this browser. Enable cookies and try again.' }
 
+  const customerIds = input.userId ? await customerIdsForBuyer(input.visitorToken, input.userId) : [customerId]
   const already = await db.selectFrom('business_reviews')
     .where('business_id', '=', Number(business.id))
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
     .select(['id'])
     .executeTakeFirst() as { id: number } | undefined
 
   if (already)
     return { ok: false, reason: 'You have already reviewed this place.' }
 
-  /*
-   * The verified badge means something specific: this browser actually ordered
-   * from this business through Smakelo. It is looked up rather than claimed,
-   * because a badge the writer can assert is decoration.
-   */
-  const order = await verifiedOrderFor(customerId, Number(business.id))
+  const order = await verifiedOrderFor(customerIds, Number(business.id))
 
   await db.insertInto('business_reviews').values({
     uuid: crypto.randomUUID(),
@@ -114,7 +113,7 @@ export async function submitReview(input: ReviewInput): Promise<ReviewResult> {
  * Pressing it twice removes the vote rather than adding a second one, which is
  * what the button's own state implies it does.
  */
-export async function voteOnReview(reviewId: number, visitorToken: unknown, helpful = true): Promise<{ ok: boolean, voted?: boolean, helpfulCount?: number, reason?: string }> {
+export async function voteOnReview(reviewId: number, visitorToken: unknown, helpful = true, userId?: number | null): Promise<{ ok: boolean, voted?: boolean, helpfulCount?: number, reason?: string }> {
   const review = await db.selectFrom('business_reviews')
     .where('id', '=', Number(reviewId))
     .select(['id', 'business_id', 'customer_id'])
@@ -123,22 +122,27 @@ export async function voteOnReview(reviewId: number, visitorToken: unknown, help
   if (!review)
     return { ok: false, reason: 'No such review.' }
 
-  const customerId = await customerForVisitor(visitorToken)
+  const customerId = userId ? await customerForAccount(userId) : await customerForVisitor(visitorToken)
 
   if (!customerId)
     return { ok: false, reason: 'Could not identify this browser.' }
 
-  if (Number(review.customer_id) === customerId)
+  const customerIds = userId ? await customerIdsForBuyer(visitorToken, userId) : [customerId]
+
+  if (customerIds.includes(Number(review.customer_id)))
     return { ok: false, reason: 'You cannot vote on your own review.' }
 
-  const existing = await db.selectFrom('review_votes')
+  const vote = await db.selectFrom('review_votes')
     .where('business_review_id', '=', Number(reviewId))
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
     .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+    .executeTakeFirst()
 
-  if (existing) {
-    await db.deleteFrom('review_votes').where('id', '=', Number(existing.id)).execute()
+  if (vote) {
+    await db.deleteFrom('review_votes')
+      .where('business_review_id', '=', Number(reviewId))
+      .where('customer_id', 'in', customerIds)
+      .execute()
   }
   else {
     await db.insertInto('review_votes').values({
@@ -158,7 +162,7 @@ export async function voteOnReview(reviewId: number, visitorToken: unknown, help
     .where('id', '=', Number(reviewId))
     .execute()
 
-  return { ok: true, voted: !existing, helpfulCount }
+  return { ok: true, voted: !vote, helpfulCount }
 }
 
 /**
@@ -231,7 +235,7 @@ export async function statsFor(businessId: number): Promise<ReviewStats> {
 }
 
 /** Reviews for a business, newest first, with this visitor's own votes marked. */
-export async function reviewsFor(businessId: number, visitorToken?: unknown): Promise<Array<Record<string, unknown>>> {
+export async function reviewsFor(businessId: number, visitorToken?: unknown, userId?: number | null): Promise<Array<Record<string, unknown>>> {
   const rows = await db.selectFrom('business_reviews')
     .where('business_id', '=', Number(businessId))
     .where('is_published', '=', 1)
@@ -239,11 +243,11 @@ export async function reviewsFor(businessId: number, visitorToken?: unknown): Pr
     .selectAll()
     .execute() as Array<Record<string, unknown>>
 
-  const customerId = await existingCustomerFor(visitorToken)
+  const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  const mine = customerId
+  const mine = customerIds.length > 0
     ? new Set((await db.selectFrom('review_votes')
-        .where('customer_id', '=', customerId)
+        .where('customer_id', 'in', customerIds)
         .select(['business_review_id'])
         .execute() as Array<{ business_review_id: number }>).map(row => Number(row.business_review_id)))
     : new Set<number>()
@@ -269,7 +273,7 @@ export async function reviewsFor(businessId: number, visitorToken?: unknown): Pr
       visitedAt: row.visited_at ?? null,
       createdAt: row.created_at ?? null,
       votedByMe: mine.has(Number(row.id)),
-      mine: customerId != null && Number(row.customer_id) === customerId,
+      mine: customerIds.includes(Number(row.customer_id)),
     })
   }
 
@@ -287,9 +291,9 @@ async function countVotes(reviewId: number): Promise<number> {
 }
 
 /** An order this customer placed at this business that actually happened. */
-async function verifiedOrderFor(customerId: number, businessId: number): Promise<number | null> {
+async function verifiedOrderFor(customerIds: number[], businessId: number): Promise<number | null> {
   const row = await db.selectFrom('orders')
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
     .where('business_id', '=', businessId)
     .where('status', 'in', ['SHIPPED', 'DELIVERED', 'COMPLETED'])
     .orderBy('id', 'desc')

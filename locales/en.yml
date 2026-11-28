@@ -189,7 +189,7 @@ meta:
   saved_title: Saved - Smakelo
   saved_description: Places you kept.
   orders_title: Your orders - Smakelo
-  orders_description: Everything you have ordered from this browser.
+  orders_description: See past orders and track orders in progress.
   claims_title: Claims - Smakelo
   claims_description: People asking about their own listing.
   partner_title: For businesses - Smakelo
@@ -292,7 +292,7 @@ saved:
 
 orders:
   title: Your orders
-  lede: Placed from this browser. There are no accounts here, so a different browser is a different list.
+  lede: Sign in to see orders from your account on any device. Guest orders are saved in this browser.
   empty_cta: Find somewhere to order from
   track: Track
   ordered_nothing: You have not ordered anything yet.

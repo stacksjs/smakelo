@@ -1,6 +1,6 @@
 import type { PricedLine } from './pricing'
-import { db } from '@stacksjs/database'
-import { customerForVisitor } from '../Visitor/identity'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
+import { customerForAccount, customerForVisitor } from '../Visitor/identity'
 import { distanceInMeters } from '../Business/geo'
 import { tableTabForCode } from '../Dine/tables'
 import { priceOrder } from './pricing'
@@ -36,12 +36,9 @@ export interface PlaceOrderInput {
   deliveryLatitude?: number
   deliveryLongitude?: number
   tipCents?: number
-  /**
-   * The browser placing the order, so it can find the order again later. There
-   * are no accounts here; see `Visitor/identity.ts` for what this token is and
-   * is not.
-   */
   visitorToken?: unknown
+  /** Provided by the API after verifying the buyer's bearer token. */
+  userId?: number | null
   scheduledFor?: string | null
   tableCode?: string
   tabId?: number | null
@@ -87,14 +84,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
     const trackingToken = crypto.randomUUID().replace(/-/g, '').slice(0, 24)
     const uuid = crypto.randomUUID()
 
-    /*
-     * Link the order to whoever placed it, when we can tell. This is what makes
-     * an order history possible without accounts, and it is what the verified
-     * badge on a review is checked against later.
-     */
-    const customerId = input.visitorToken
-      ? await customerForVisitor(input.visitorToken, input.customerName ?? 'Guest')
-      : null
+    const customerId = input.userId
+      ? await customerForAccount(input.userId)
+      : await customerForVisitor(input.visitorToken, input.customerName ?? 'Guest')
 
     await db.insertInto('orders').values({
       uuid,
@@ -128,7 +120,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
     await writeLedger(orderId, Number(business.id), pricing, currency)
 
     return { ok: true, orderId, trackingToken, pricing }
-  })
+  }, sqliteWriteOptions())
 }
 
 /** One validation and pricing path for the checkout preview and the saved order. */
