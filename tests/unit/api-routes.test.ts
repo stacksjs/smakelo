@@ -155,12 +155,12 @@ describe('finding places', () => {
 })
 
 describe('placing an order over HTTP', () => {
-  function shopWithADish(shop: Record<string, unknown> = {}, product: Record<string, unknown> = {}): { productId: number } {
+  function shopWithADish(shop: Record<string, unknown> = {}, product: Record<string, unknown> = {}): { businessId: number, productId: number } {
     const { businessId } = seedShop(shop)
     const [categoryId] = database.seed('categories', [{ name: 'Mains', slug: 'mains', display_order: 1, is_active: 1 }])
     const [productId] = database.seed('products', [factory.product({ name: 'A Dish', price: 1000, business_id: businessId, category_id: categoryId, ...product })])
 
-    return { productId }
+    return { businessId, productId }
   }
 
   test('a quote prices it without writing anything', async () => {
@@ -249,6 +249,46 @@ describe('placing an order over HTTP', () => {
     expect(placed.body.message).toBe(quote.body.message)
   })
 
+  test('a scanned table takes a round and splits its bill using its own code', async () => {
+    const { businessId, productId } = shopWithADish({ offers_dine_in: 1 })
+    const code = crypto.randomUUID().replaceAll('-', '')
+    const otherCode = crypto.randomUUID().replaceAll('-', '')
+    const [tableId] = database.seed('tables', [
+      { uuid: crypto.randomUUID(), business_id: businessId, label: '7', seats: 3, qr_token: code, is_active: 1 },
+      { uuid: crypto.randomUUID(), business_id: businessId, label: '8', seats: 2, qr_token: otherCode, is_active: 1 },
+    ])
+
+    const scan = await get(`/table-sessions/${code}`)
+    expect(scan.status).toBe(200)
+    const tabId = scan.body.data.tab.id
+    const order = {
+      businessSlug: 'a-shop',
+      fulfilment: 'dine_in',
+      lines: [{ productId, quantity: 1 }],
+      tabId,
+    }
+
+    expect((await post('/orders/quote', { ...order, tableCode: otherCode })).status).toBe(422)
+    expect((await post('/orders/quote', { ...order, tableCode: code })).status).toBe(200)
+    const placed = await post('/orders', { ...order, tableCode: code })
+    expect(placed.status).toBe(201)
+
+    const round = (await get(`/table-sessions/${code}`)).body.data.rounds[0]
+    expect(round.orderId).toBe(placed.body.data.orderId)
+    expect(round.items[0].name).toBe('A Dish')
+
+    const close = `/tabs/${tabId}/close`
+    expect((await post(close, { tableCode: otherCode, splitMode: 'even' })).status).toBe(422)
+    const bill = await post(close, { tableCode: code, splitMode: 'even' })
+    expect(bill.status).toBe(200)
+    expect(bill.body.data.shares).toHaveLength(3)
+    expect(bill.body.data.shares.reduce((total: number, cents: number) => total + cents, 0)).toBe(round.totalCents)
+    expect((await post('/orders', { ...order, tableCode: code })).status).toBe(422)
+
+    const saved = database.connection().query('SELECT table_id, tab_id FROM orders WHERE id = ?').get(round.orderId)
+    expect(saved).toEqual({ table_id: tableId, tab_id: tabId })
+  })
+
   test('an order is created and comes back with a way to follow it', async () => {
     const { productId } = shopWithADish()
 
@@ -296,6 +336,23 @@ describe('placing an order over HTTP', () => {
     expect(body.data.status).toBe('PENDING')
     expect(body.data.totalCents).toBe(placed.body.data.pricing.totalCents)
     expect(body.data.business.slug).toBe('a-shop')
+  })
+
+  test('the receipt provides a review QR only after handover', async () => {
+    const { productId } = shopWithADish()
+    const order = await post('/orders', { businessSlug: 'a-shop', fulfilment: 'pickup', lines: [{ productId, quantity: 1 }] })
+    const { orderId, trackingToken } = order.body.data
+    const tracking = `/orders/track/${trackingToken}`
+
+    expect((await get(`${tracking}/review-code`)).status).toBe(404)
+    database.connection().query("UPDATE orders SET status = 'DELIVERED' WHERE id = ?").run(orderId)
+
+    expect((await get(tracking)).body.data.reviewPath).toBe('/places/a-shop#reviews')
+
+    const qr = await route.handleRequest(new Request(`http://localhost${tracking}/review-code`))
+    expect(qr.status).toBe(200)
+    expect(qr.headers.get('content-type')).toContain('image/svg+xml')
+    expect(await qr.text()).toContain('<svg')
   })
 })
 

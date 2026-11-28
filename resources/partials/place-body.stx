@@ -387,9 +387,9 @@ import { t } from '../../app/Actions/Locale/translate'
             </p>
           </section>
 
-          <section class="mt-16">
+          <section id="reviews" class="mt-16 scroll-mt-6" aria-labelledby="reviews-heading">
             <div class="flex flex-wrap gap-4 justify-between items-baseline">
-              <h2 class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('business.reviews') }}</h2>
+              <h2 id="reviews-heading" class="text-[28px] font-semibold tracking-[-0.03em]">{{ t('business.reviews') }}</h2>
               <p :if="stats() && stats().count > 0" class="text-[14px]" style="color: var(--ink-soft)">
                 {{ ratingSummary(stats()) }}
               </p>
@@ -560,7 +560,6 @@ import { t } from '../../app/Actions/Locale/translate'
           </div>
         </aside>
       </div>
-    </main>
 
     {{-- One dish, opened to be configured.
 
@@ -694,6 +693,13 @@ import { t } from '../../app/Actions/Locale/translate'
         </div>
 
         <a
+          :if="placed().tabUrl"
+          :href="placed().tabUrl"
+          class="inline-flex items-center mt-6 px-5 py-3 font-medium text-[14px] rounded-full"
+          style="background: var(--ink); color: var(--paper)"
+        >{{ t('table.back_to_tab') }}</a>
+        <a
+          :if="!placed().tabUrl"
           :href="'/track?code=' + placed().trackingToken"
           class="inline-flex gap-3 items-center px-5 py-3 mt-6 text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] group"
           style="background: var(--ink); color: var(--paper)"
@@ -902,5 +908,7 @@ import { t } from '../../app/Actions/Locale/translate'
       <span>{{ t('cart.your_order') }}</span>
       <span :if="quote()" class="tabular-nums" style="opacity: .75">{{ price(quote().totalCents) }}</span>
     </button>
+
+    </main>
 
     @include('footer')

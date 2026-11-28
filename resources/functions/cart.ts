@@ -64,6 +64,10 @@ export interface CartSignals {
 
 export function cartHandlers(page: CartSignals) {
   const { slug } = page
+  const search = new URLSearchParams(globalThis.location?.search)
+  const tableCode = search.get('table') ?? ''
+  const tabId = Number(search.get('tab'))
+  const tableOrder = Boolean(tableCode) && Number.isSafeInteger(tabId) && tabId > 0
 
   /*
    * The words this module writes, in the language the server served.
@@ -161,9 +165,8 @@ export function cartHandlers(page: CartSignals) {
      * Defaulting to pickup at a delivery-only kitchen would show an address
      * field to nobody and hide it from everybody who needs it.
      */
-    setCheckout('fulfilment', data.business.offersPickup
-      ? 'pickup'
-      : data.business.offersDelivery ? 'delivery' : 'dine_in')
+    const fulfilment = data.business.offersPickup ? 'pickup' : 'delivery'
+    setCheckout('fulfilment', tableOrder ? 'dine_in' : fulfilment)
   }
 
   async function loadAddresses(): Promise<void> {
@@ -199,7 +202,7 @@ export function cartHandlers(page: CartSignals) {
    */
 
   function cartKey(): string {
-    return CART_KEY_PREFIX + slug
+    return tableOrder ? `${CART_KEY_PREFIX}${slug}.tab.${tabId}` : CART_KEY_PREFIX + slug
   }
 
   function remember(lines: any[]): void {
@@ -716,6 +719,7 @@ export function cartHandlers(page: CartSignals) {
       tipCents: page.checkout().tipCents,
       notes: page.checkout().note,
       lines: lines(),
+      ...(tableOrder ? { tableCode, tabId } : {}),
       ...deliveryFields(),
     }
   }
@@ -772,8 +776,11 @@ export function cartHandlers(page: CartSignals) {
       }
 
       forget()
-      page.placed.set(payload.data)
-      void startPayment(payload.data.orderId)
+      const tabUrl = tableOrder ? `/t/${encodeURIComponent(tableCode)}` : null
+      page.placed.set({ ...payload.data, tabUrl })
+
+      if (!tabUrl)
+        void startPayment(payload.data.orderId)
     }
     catch {
       page.cartError.set(say('checkout.could_not_place', 'That order could not be placed.'))
@@ -910,9 +917,9 @@ export function cartHandlers(page: CartSignals) {
       return []
 
     return [
-      business.offersDelivery ? { value: 'delivery', label: say('order.delivery', 'Delivery') } : null,
-      business.offersPickup ? { value: 'pickup', label: say('order.pickup', 'Pickup') } : null,
-      business.offersDineIn ? { value: 'dine_in', label: say('order.dine_in', 'Dine in') } : null,
+      !tableOrder && business.offersDelivery ? { value: 'delivery', label: say('order.delivery', 'Delivery') } : null,
+      !tableOrder && business.offersPickup ? { value: 'pickup', label: say('order.pickup', 'Pickup') } : null,
+      tableOrder && business.offersDineIn ? { value: 'dine_in', label: say('order.dine_in', 'Dine in') } : null,
     ].filter(Boolean) as Array<{ value: string, label: string }>
   }
 
@@ -924,7 +931,8 @@ export function cartHandlers(page: CartSignals) {
   }
 
   async function load(): Promise<void> {
-    loadAddresses()
+    if (!tableOrder)
+      loadAddresses()
 
     // Awaited, not fired alongside: `restoreCart` reads the restored lines
     // against the menu, and has nothing to read them against until it lands.

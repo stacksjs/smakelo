@@ -2,6 +2,7 @@ import type { PricedLine } from './pricing'
 import { db } from '@stacksjs/database'
 import { customerForVisitor } from '../Visitor/identity'
 import { distanceInMeters } from '../Business/geo'
+import { tableTabForCode } from '../Dine/tables'
 import { priceOrder } from './pricing'
 
 /**
@@ -42,7 +43,7 @@ export interface PlaceOrderInput {
    */
   visitorToken?: unknown
   scheduledFor?: string | null
-  tableId?: number | null
+  tableCode?: string
   tabId?: number | null
   notes?: string
 }
@@ -65,6 +66,7 @@ interface PreparedOrder {
   lines: PricedLine[]
   pricing: ReturnType<typeof priceOrder>
   currency: string
+  tableId: number | null
 }
 
 export async function previewOrder(input: PlaceOrderInput): Promise<{ ok: true, pricing: ReturnType<typeof priceOrder> } | RejectedOrder> {
@@ -80,7 +82,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
     if (!prepared.ok)
       return prepared
 
-    const { business, lines, pricing, currency } = prepared
+    const { business, lines, pricing, currency, tableId } = prepared
 
     const trackingToken = crypto.randomUUID().replace(/-/g, '').slice(0, 24)
     const uuid = crypto.randomUUID()
@@ -114,8 +116,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
       tracking_token: trackingToken,
       scheduled_for: input.scheduledFor ?? null,
       customer_id: customerId,
-      table_id: input.tableId ?? null,
-      tab_id: input.tabId ?? null,
+      table_id: tableId,
+      tab_id: tableId === null ? null : input.tabId,
       estimated_delivery_time: String(readyInMinutes(business, pricing)),
     } as never).executeTakeFirst()
 
@@ -160,6 +162,16 @@ async function prepareOrder(input: PlaceOrderInput): Promise<PreparedOrder | Rej
   if (!capability)
     return { ok: false, reason: `${business.name} does not offer ${input.fulfilment.replace('_', ' ')}.` }
 
+  let tableId: number | null = null
+  if (input.fulfilment === 'dine_in') {
+    const table = await tableTabForCode(input.tableCode ?? '', Number(input.tabId))
+
+    if (!table || table.businessId !== Number(business.id))
+      return { ok: false, reason: 'Scan the table code again to order on its open tab.' }
+
+    tableId = table.tableId
+  }
+
   const priced = await priceLines(Number(business.id), input.lines)
   if ('reason' in priced)
     return { ok: false, reason: priced.reason }
@@ -202,7 +214,7 @@ async function prepareOrder(input: PlaceOrderInput): Promise<PreparedOrder | Rej
   if (input.fulfilment === 'delivery' && (input.deliveryAddress?.trim().length ?? 0) < 5)
     return { ok: false, reason: 'Enter a delivery address with a street and number.' }
 
-  return { ok: true, business, lines: priced.lines, pricing, currency }
+  return { ok: true, business, lines: priced.lines, pricing, currency, tableId }
 }
 
 

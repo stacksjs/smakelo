@@ -1,5 +1,6 @@
 import { db } from '@stacksjs/database'
 import { toSvg } from 'ts-qr-codes'
+import { splitEvenly } from '../Order/pricing'
 
 /**
  * Tables, their codes, and the tab a code opens.
@@ -52,7 +53,7 @@ export async function tableCodesFor(businessSlug: string, origin: string): Promi
     .execute() as Array<Record<string, unknown>>
 
   return tables.map((table) => {
-    const url = `${origin}/t/${String(table.qr_token)}`
+    const url = `${origin}/t/${encodeURIComponent(String(table.qr_token))}`
 
     return {
       id: Number(table.id),
@@ -77,6 +78,36 @@ export interface TableSession {
   }>
 }
 
+async function tableForCode(token: string): Promise<Record<string, unknown> | undefined> {
+  if (!token)
+    return undefined
+
+  return await db.selectFrom('tables')
+    .where('qr_token', '=', token)
+    .where('is_active', '=', 1)
+    .selectAll()
+    .executeTakeFirst() as Record<string, unknown> | undefined
+}
+
+export async function tableTabForCode(token: string, tabId: number): Promise<{ tableId: number, businessId: number, seats: number } | null> {
+  if (!Number.isSafeInteger(tabId) || tabId < 1)
+    return null
+
+  const table = await tableForCode(token)
+  if (!table)
+    return null
+
+  const tab = await db.selectFrom('tabs')
+    .where('id', '=', tabId)
+    .where('table_id', '=', Number(table.id))
+    .where('business_id', '=', Number(table.business_id))
+    .where('status', '=', 'open')
+    .select(['id'])
+    .executeTakeFirst()
+
+  return tab ? { tableId: Number(table.id), businessId: Number(table.business_id), seats: Number(table.seats ?? 2) } : null
+}
+
 /**
  * Resolve a scanned code into a table and its open tab, opening one if needed.
  *
@@ -86,20 +117,16 @@ export interface TableSession {
  * joins the first person's bill rather than starting a rival one.
  */
 export async function sessionForToken(token: string): Promise<TableSession | null> {
-  if (!token)
-    return null
-
-  const table = await db.selectFrom('tables')
-    .where('qr_token', '=', token)
-    .where('is_active', '=', 1)
-    .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
+  const table = await tableForCode(token)
 
   if (!table)
     return null
 
   const business = await db.selectFrom('businesses')
     .where('id', '=', Number(table.business_id))
+    .where('deleted_at', 'is', null)
+    .where('is_partner', '=', 1)
+    .where('offers_dine_in', '=', 1)
     .selectAll()
     .executeTakeFirst() as Record<string, unknown> | undefined
 
@@ -111,32 +138,36 @@ export async function sessionForToken(token: string): Promise<TableSession | nul
     .select(['currency'])
     .executeTakeFirst() as { currency?: string } | undefined
 
-  let tab = await db.selectFrom('tabs')
-    .where('table_id', '=', Number(table.id))
-    .where('status', '=', 'open')
-    .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
+  const tab = await db.transaction(async () => {
+    let current = await db.selectFrom('tabs')
+      .where('table_id', '=', Number(table.id))
+      .where('status', '=', 'open')
+      .selectAll()
+      .executeTakeFirst() as Record<string, unknown> | undefined
 
-  if (!tab) {
-    const uuid = crypto.randomUUID()
+    if (!current) {
+      const uuid = crypto.randomUUID()
 
-    await db.insertInto('tabs').values({
-      uuid,
-      business_id: Number(business.id),
-      table_id: Number(table.id),
-      status: 'open',
-      split_mode: 'by_item',
-      party_size: Number(table.seats ?? 2),
-      opened_at: new Date().toISOString(),
-      total_cents: 0,
-      paid_cents: 0,
-    } as never).executeTakeFirst()
+      await db.insertInto('tabs').values({
+        uuid,
+        business_id: Number(business.id),
+        table_id: Number(table.id),
+        status: 'open',
+        split_mode: 'by_item',
+        party_size: Number(table.seats ?? 2),
+        opened_at: new Date().toISOString(),
+        total_cents: 0,
+        paid_cents: 0,
+      } as never).executeTakeFirst()
 
-    tab = await db.selectFrom('tabs').where('uuid', '=', uuid).selectAll().executeTakeFirst() as Record<string, unknown>
-  }
+      current = await db.selectFrom('tabs').where('uuid', '=', uuid).selectAll().executeTakeFirst() as Record<string, unknown>
+    }
+    return current
+  })
 
   const orders = await db.selectFrom('orders')
     .where('tab_id', '=', Number(tab.id))
+    .where('status', '!=', 'CANCELLED')
     .orderBy('id', 'asc')
     .selectAll()
     .execute() as Array<Record<string, unknown>>
@@ -190,7 +221,7 @@ export async function sessionForToken(token: string): Promise<TableSession | nul
     tab: {
       id: Number(tab.id),
       status: String(tab.status),
-      totalCents: Number(tab.total_cents ?? 0),
+      totalCents: rounds.reduce((sum, round) => sum + round.totalCents, 0),
       paidCents: Number(tab.paid_cents ?? 0),
       splitMode: String(tab.split_mode ?? 'by_item'),
     },
@@ -198,62 +229,39 @@ export async function sessionForToken(token: string): Promise<TableSession | nul
   }
 }
 
-/**
- * Recompute a tab's total from its rounds.
- *
- * Derived rather than incremented, so a cancelled round or an edited order
- * cannot leave the tab quietly wrong. A running total maintained by addition is
- * right until the first thing that is not an addition.
- */
-export async function recomputeTab(tabId: number): Promise<number> {
-  const orders = await db.selectFrom('orders')
-    .where('tab_id', '=', tabId)
-    .where('status', '!=', 'CANCELLED')
-    .select(['total_amount'])
-    .execute() as Array<{ total_amount: number }>
+/** Close the open tab for this table code and divide its non-cancelled rounds. */
+export async function closeTab(
+  token: string,
+  tabId: number,
+  splitMode: 'even' | 'by_item' | 'single_payer',
+): Promise<{ totalCents: number, shares: number[] } | null> {
+  return await db.transaction(async () => {
+    const table = await tableTabForCode(token, tabId)
+    if (!table)
+      return null
 
-  const total = orders.reduce((sum, order) => sum + Number(order.total_amount ?? 0), 0)
-
-  await db.updateTable('tabs')
-    .set({ total_cents: total } as never)
-    .where('id', '=', tabId)
-    .execute()
-
-  return total
-}
-
-/**
- * Close a tab and say what each person owes.
- *
- * `even` divides the total without losing a cent; `by_item` bills each round to
- * whoever ordered it, which is what a code on a table makes possible in the
- * first place - the app already knows which phone ordered what.
- */
-export async function closeTab(tabId: number, splitMode: 'even' | 'by_item' | 'single_payer', ways = 1): Promise<{
-  totalCents: number
-  shares: number[]
-}> {
-  const total = await recomputeTab(tabId)
-
-  await db.updateTable('tabs')
-    .set({ status: 'closed', split_mode: splitMode, closed_at: new Date().toISOString(), paid_cents: total } as never)
-    .where('id', '=', tabId)
-    .execute()
-
-  if (splitMode === 'even') {
-    const { splitEvenly } = await import('../Order/pricing')
-    return { totalCents: total, shares: splitEvenly(total, Math.max(1, ways)) }
-  }
-
-  if (splitMode === 'by_item') {
     const orders = await db.selectFrom('orders')
       .where('tab_id', '=', tabId)
       .where('status', '!=', 'CANCELLED')
+      .orderBy('id', 'asc')
       .select(['total_amount'])
       .execute() as Array<{ total_amount: number }>
 
-    return { totalCents: total, shares: orders.map(order => Number(order.total_amount ?? 0)) }
-  }
+    if (orders.length === 0)
+      return null
 
-  return { totalCents: total, shares: [total] }
+    const rounds = orders.map(order => Number(order.total_amount ?? 0))
+    const totalCents = rounds.reduce((sum, amount) => sum + amount, 0)
+
+    await db.updateTable('tabs')
+      .set({ status: 'closed', split_mode: splitMode, closed_at: new Date().toISOString(), total_cents: totalCents } as never)
+      .where('id', '=', tabId)
+      .execute()
+
+    const shares = splitMode === 'even'
+      ? splitEvenly(totalCents, table.seats)
+      : splitMode === 'by_item' ? rounds : [totalCents]
+
+    return { totalCents, shares }
+  })
 }

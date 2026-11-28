@@ -38,6 +38,7 @@ declare global {
   const me: typeof autoImports.me
   const forgetMe: typeof autoImports.forgetMe
   const may: typeof autoImports.may
+  const tableSessionHandlers: typeof autoImports.tableSessionHandlers
 }
 
 export {}

@@ -243,6 +243,8 @@ status:
   shipped: Overgedragen
 
 tracking:
+  review_code: QR-code voor een review
+  review_code_alt: Scan om het reviewformulier te openen
   pickup_title: Afhaalstatus
   dine_in_title: Status van je tafelbestelling
   pickup_ready: Klaar om af te halen
@@ -296,6 +298,8 @@ orders:
   write_review: Review schrijven
 
 table:
+  back_to_tab: Terug naar je tafelrekening
+  bill_error: De rekening kon niet worden gemaakt. Probeer opnieuw.
   scan_prompt: Scan om te bestellen
   tab_open: Je rekening
   add_round: Meer bestellen
@@ -646,7 +650,7 @@ checkout:
   stripe_test: Stripe-testmodus
   stripe_card: Kaart 4242 4242 4242 4242, elke toekomstige vervaldatum, elke CVC. Er gaat geen geld heen.
   pay_test_mode: Betalen in testmodus
-  placed_body: "{name} heeft hem, en de keuken is begonnen. Vanaf hier kun je hem volgen."
+  placed_body: "Je bestelling is bij {name} binnen. Je kunt de status hier volgen."
 
 allergen:
   gluten: gluten

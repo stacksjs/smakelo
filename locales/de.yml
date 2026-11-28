@@ -243,6 +243,8 @@ status:
   shipped: Übergeben
 
 tracking:
+  review_code: QR-Code zur Bewertung
+  review_code_alt: Scannen, um das Bewertungsformular zu öffnen
   pickup_title: Status der Abholung
   dine_in_title: Status der Tischbestellung
   pickup_ready: Bereit zur Abholung
@@ -296,6 +298,8 @@ orders:
   write_review: Bewertung schreiben
 
 table:
+  back_to_tab: Zurück zur Tischrechnung
+  bill_error: Die Rechnung konnte nicht erstellt werden. Versuche es erneut.
   scan_prompt: Zum Bestellen scannen
   tab_open: Deine Rechnung
   add_round: Mehr bestellen
@@ -646,7 +650,7 @@ checkout:
   stripe_test: Stripe-Testmodus
   stripe_card: Karte 4242 4242 4242 4242, ein beliebiges künftiges Ablaufdatum, eine beliebige Prüfziffer. Es fließt kein Geld.
   pay_test_mode: Im Testmodus bezahlen
-  placed_body: "{name} hat sie, und die Küche hat angefangen. Von hier aus kannst du sie verfolgen."
+  placed_body: "Deine Bestellung ist bei {name} eingegangen. Den Status siehst du hier."
 
 allergen:
   gluten: Gluten

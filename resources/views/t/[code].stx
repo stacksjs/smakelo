@@ -1,0 +1,21 @@
+<script client>
+import { money } from '../../functions/session'
+import { tableSessionHandlers } from '../../functions/table-session'
+
+const session = state(null)
+const bill = state(null)
+const splitMode = state('')
+const loading = state(true)
+const token = state('')
+const billError = state(false)
+const closing = state(false)
+
+const {
+  load, close, menuLink, say,
+  currency, tabTotal, numberedRounds, numberedShares,
+} = tableSessionHandlers({ session, bill, splitMode, loading, token, billError, closing })
+
+load()
+</script>
+
+@include('table-session')

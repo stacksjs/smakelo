@@ -244,6 +244,8 @@ status:
   shipped: Handed over
 
 tracking:
+  review_code: Review QR code
+  review_code_alt: Scan to open the review form
   pickup_title: Pickup status
   dine_in_title: Dine-in order status
   pickup_ready: Ready for pickup
@@ -297,6 +299,8 @@ orders:
   write_review: Write a review
 
 table:
+  back_to_tab: Back to your tab
+  bill_error: Could not prepare the bill. Try again.
   scan_prompt: Scan to order
   tab_open: Your tab
   add_round: Order more
@@ -647,7 +651,7 @@ checkout:
   stripe_test: Stripe test mode
   stripe_card: Card 4242 4242 4242 4242, any future expiry, any CVC. No money moves.
   pay_test_mode: Pay in test mode
-  placed_body: "{name} has it, and the kitchen has started. You can follow it from here."
+  placed_body: "Your order went to {name}. You can follow its status here."
 
 allergen:
   gluten: gluten

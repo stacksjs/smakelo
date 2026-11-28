@@ -1,5 +1,5 @@
-import { config } from '@stacksjs/config'
 import { response, route } from '@stacksjs/router'
+import { toSvg } from 'ts-qr-codes'
 import { businessBySlug, searchBusinesses } from '../app/Actions/Business/search'
 import { menuFor } from '../app/Actions/Order/menu'
 import { createOrder, ordersForVisitor, quoteOrder, trackOrder } from '../app/Actions/Order/api'
@@ -15,6 +15,7 @@ import type { Viewer } from '../app/Actions/Account/access'
 import { can, canActOnBusiness, canReadStatement, courierFor, viewerFor } from '../app/Actions/Account/access'
 import { DEMO_PASSWORD, demoAccounts, meState } from '../app/Actions/Account/surfaces'
 import { runGuards } from '../app/Actions/Admin/guards'
+import { storefrontOrigin } from '../app/Actions/Request/context'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
 import { addressesFor, removeAddress, saveAddress } from '../app/Actions/Customer/addresses'
 import { confirmPayment, paymentNotice, preparePayment } from '../app/Actions/Payment/checkout'
@@ -150,6 +151,25 @@ route.get('/orders/track/{token}', async (request: any) => {
   return response.json({ data: tracked })
 })
 
+/** A receipt QR opens the public review form without carrying the order token. */
+route.get('/orders/track/{token}/review-code', async (request: any) => {
+  const token = String(request?.getParam?.('token') ?? '')
+  const order = await trackOrder(token)
+
+  if (!order?.reviewPath)
+    return response.json({ message: 'No review code for that order.' }, 404)
+
+  const link = new URL(order.reviewPath, storefrontOrigin())
+  const svg = toSvg(link.href, { size: 176, margin: 2 })
+
+  return new Response(svg, {
+    headers: {
+      'Content-Type': 'image/svg+xml; charset=utf-8',
+      'Cache-Control': 'private, no-store',
+    },
+  })
+})
+
 /**
  * Resolve a scanned table code.
  *
@@ -186,7 +206,10 @@ route.post('/tabs/{id}/close', async (request: any) => {
   if (!['even', 'by_item', 'single_payer'].includes(mode))
     return response.json({ message: 'Split mode must be even, by_item or single_payer.' }, 422)
 
-  const result = await closeTab(tabId, mode as 'even' | 'by_item' | 'single_payer', Number(body?.ways ?? 1))
+  const result = await closeTab(String(body?.tableCode ?? ''), tabId, mode as 'even' | 'by_item' | 'single_payer')
+
+  if (!result)
+    return response.json({ message: 'No open tab with orders for that table code.' }, 422)
 
   return response.json({ data: result })
 })
@@ -757,12 +780,7 @@ route.get('/manage/{slug}/codes', async (request: any) => {
    * Taking the origin off the incoming request gave them the API's own port,
    * which is a QR code pointing at a JSON endpoint.
    */
-  const configured = String(config.app?.url ?? '')
-  const origin = configured
-    ? (/^https?:\/\//.test(configured) ? configured : `https://${configured}`)
-    : 'http://localhost:3000'
-
-  const codes = await tableCodesFor(slug, origin)
+  const codes = await tableCodesFor(slug, storefrontOrigin())
 
   if (!codes)
     return response.json({ message: 'No such business.' }, 404)

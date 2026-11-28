@@ -53,7 +53,7 @@ function readInput(body: any): PlaceOrderInput | { reason: string } {
     // of the courier's share.
     tipCents: Math.max(0, Math.min(50_000, Math.round(Number(body?.tipCents ?? 0)) || 0)),
     scheduledFor: typeof body?.scheduledFor === 'string' ? body.scheduledFor : null,
-    tableId: Number.isFinite(Number(body?.tableId)) ? Number(body.tableId) : null,
+    tableCode: typeof body?.tableCode === 'string' ? body.tableCode.slice(0, 100) : '',
     tabId: Number.isFinite(Number(body?.tabId)) ? Number(body.tabId) : null,
     notes: typeof body?.notes === 'string' ? body.notes.slice(0, 500) : '',
     // Passed by the route from the `x-visitor` header rather than read from the
@@ -106,7 +106,7 @@ export async function trackOrder(token: string) {
 
   const business = await db.selectFrom('businesses')
     .where('id', '=', Number(order.business_id))
-    .select(['name', 'slug', 'address', 'city', 'latitude', 'longitude'])
+    .select(['name', 'slug', 'address', 'city', 'latitude', 'longitude', 'is_partner'])
     .executeTakeFirst() as Record<string, unknown> | undefined
 
   const stops = await db.selectFrom('delivery_stops')
@@ -135,6 +135,9 @@ export async function trackOrder(token: string) {
 
   return {
     status: String(order.status),
+    reviewPath: order.status === 'DELIVERED' && Number(business?.is_partner) === 1
+      ? `/places/${encodeURIComponent(String(business?.slug))}#reviews`
+      : null,
     orderType: String(order.order_type),
     totalCents: Number(order.total_amount ?? 0),
     currency: String(order.currency ?? 'usd'),

@@ -15,6 +15,7 @@ export { placeMap, placeHandlers } from '../../../resources/functions/place-page
 export type { PlaceSignals } from '../../../resources/functions/place-page'
 export { csrfToken, visitorToken, authToken, setAuthToken, clearAuthToken, send, money, apiGet, me, forgetMe, may } from '../../../resources/functions/session'
 export type { MeState } from '../../../resources/functions/session'
+export { tableSessionHandlers } from '../../../resources/functions/table-session'
 export { fetchWebAnalytics, fetchSalesAnalytics, fetchCampaignAnalytics, fetchEventAnalytics, recordAnalyticsEvent, useAnalytics } from '@stacksjs/defaults/functions/analytics.ts'
 export type { AnalyticsOverview, TrafficDataPoint, PageData, ReferrerData, DeviceData, BrowserData, CountryData, AnalyticsRange, AnalyticsScope, WebAnalyticsResponse, SalesAnalyticsResponse, CampaignAnalyticsResponse, EventAnalyticsResponse, RecordAnalyticsEventInput } from '@stacksjs/defaults/functions/analytics.ts'
 export { resolveApiBaseUrl } from '@stacksjs/defaults/functions/api-url.ts'

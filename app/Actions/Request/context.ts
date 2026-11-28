@@ -67,3 +67,14 @@ export function requestLocale(): string {
   return config.app?.locale ?? 'en'
 }
 
+
+/** The public storefront origin used by printed and digital QR codes. */
+export function storefrontOrigin(): string {
+  const configured = String(config.app?.url ?? '')
+
+  if (!configured)
+    return 'http://localhost:3000'
+
+  const url = /^https?:\/\//.test(configured) ? configured : `https://${configured}`
+  return new URL(url).origin
+}
