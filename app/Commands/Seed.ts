@@ -1,5 +1,5 @@
 import { defineCommand, log } from '@stacksjs/cli'
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
 import { nextPackingDay } from '../Actions/Csa/membership'
 import { dispatchOrder } from '../Actions/Delivery/dispatch'
 import { advanceOrder } from '../Actions/Merchant/board'
@@ -22,33 +22,55 @@ import { REVIEWS } from '../../database/data/reviews'
  * written rather than generated. Faker would fill the same columns and
  * demonstrate nothing.
  *
- * Idempotent by slug, so it can be re-run against a database that already has
- * some of it - which is what a deploy does.
+ * Deploys use --if-empty to initialize a fresh marketplace. Existing
+ * marketplaces retain their orders, listings, accounts, and operator changes.
  */
 export default defineCommand((cli) => {
   cli
     .command('seed:demo', 'Load the curated Los Angeles and Nordrhein-Westfalen demo data')
     .option('--fresh', 'Delete existing demo rows first', { default: false })
-    .action(async (options: { fresh?: boolean }) => {
+    .option('--if-empty', 'Seed only a marketplace with no listings', { default: false })
+    .action(async (options: { fresh?: boolean, ifEmpty?: boolean }) => {
+      if (options.fresh && options.ifEmpty)
+        throw new Error('Choose either --fresh or --if-empty.')
+
+      if (options.ifEmpty) {
+        await db.transaction(async () => {
+          const listing = await db.selectFrom('businesses').select(['id']).executeTakeFirst()
+
+          if (listing) {
+            log.info('Marketplace already initialized. Keeping existing data.')
+            return
+          }
+
+          await seedDemo()
+        }, sqliteWriteOptions())
+        return
+      }
+
       if (options.fresh)
         await clearDemoRows()
 
-      const marketIds = await seedMarkets()
-      const businessIds = await seedBusinesses(marketIds)
-      const menuItems = await seedMenus(businessIds)
-      const reviewCount = await seedReviews(businessIds)
-      const tableCount = await seedTables(businessIds)
-      const courierCount = await seedCouriers()
-      const planCount = await seedCsaPlans(businessIds)
-      const memberCount = await seedCsaMembers()
-      const history = await seedOrders()
-      const people = await seedAccounts(businessIds)
-      const carts = await seedAbandonedCarts()
-      const marketing = await seedMarketingSurface()
-
-      log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares (${memberCount} members), ${history.orders} orders (${history.dispatched} dispatched), ${people.accounts} accounts across ${people.teams} teams, ${carts.carts} abandoned carts (${carts.recovered} recovered), ${marketing.lists} email list (${marketing.subscribers} subscribers), ${marketing.posts} social posts`)
+      await seedDemo()
     })
 })
+
+async function seedDemo(): Promise<void> {
+  const marketIds = await seedMarkets()
+  const businessIds = await seedBusinesses(marketIds)
+  const menuItems = await seedMenus(businessIds)
+  const reviewCount = await seedReviews(businessIds)
+  const tableCount = await seedTables(businessIds)
+  const courierCount = await seedCouriers()
+  const planCount = await seedCsaPlans(businessIds)
+  const memberCount = await seedCsaMembers()
+  const history = await seedOrders()
+  const people = await seedAccounts(businessIds)
+  const carts = await seedAbandonedCarts()
+  const marketing = await seedMarketingSurface()
+
+  log.success(`Seeded ${Object.keys(businessIds).length} businesses, ${menuItems} menu items, ${reviewCount} reviews, ${tableCount} tables, ${courierCount} couriers, ${planCount} CSA shares (${memberCount} members), ${history.orders} orders (${history.dispatched} dispatched), ${people.accounts} accounts across ${people.teams} teams, ${carts.carts} abandoned carts (${carts.recovered} recovered), ${marketing.lists} email list (${marketing.subscribers} subscribers), ${marketing.posts} social posts`)
+}
 
 /**
  * Empty every table the demo writes to, children before parents.

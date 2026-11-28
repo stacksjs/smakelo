@@ -182,14 +182,10 @@ export const tsCloud: TsCloudConfig = {
     /**
      * The stx app server.
      *
-     * `preStart` migrates, seeds and then regenerates the place pages, in that
-     * order, because each needs the one before it: the seed needs tables, and
-     * the generated pages are one file per seeded business. Regenerating on
-     * every release is what keeps the pages and the data from drifting apart -
-     * a page for a business no longer in the seed would route to nothing.
-     *
-     * The database lives outside the atomic release directories, so a deploy
-     * never swaps it out from under the running service.
+     * Apply committed migrations to the shared SQLite database and seed only
+     * on first initialization. Regenerate place pages from the saved listings
+     * on every release. Orders, claims, saved places, and table QR codes must
+     * survive a new application build.
      */
     main: {
       root: '.',
@@ -200,25 +196,8 @@ export const tsCloud: TsCloudConfig = {
       preStart: [
         'bun install --frozen-lockfile',
         'mkdir -p /var/lib/smakelo',
-        /*
-         * The schema is rebuilt from the corpus on every deploy, and then
-         * reseeded.
-         *
-         * Heavy-handed for a real product and right for this one: every row
-         * here comes from `seed:demo`, so there is nothing a rebuild can lose
-         * that the next line does not immediately restore. Orders a visitor
-         * placed between deploys do go, which is the honest behaviour for a
-         * demonstration whose orders reach nobody.
-         *
-         * It also fixes the failure this replaces. `migrate` applies pending
-         * files, so after the corpus was regenerated wholesale the ALTERs
-         * collided with columns that already existed, the run aborted, and the
-         * trailing `|| true` swallowed it - leaving production on a schema
-         * without `orders.business_id` while the deploy reported success. Every
-         * order POST then answered 500 against a site that looked perfect.
-         */
-        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate:fresh --force',
-        'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate --no-generate',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js seed:demo --if-empty',
         'bun node_modules/@stacksjs/buddy/dist/cli.js build:places',
         /*
          * No static build here, deliberately.
@@ -233,7 +212,7 @@ export const tsCloud: TsCloudConfig = {
          * Rendering per request is also the only thing that can work here: the
          * locale comes from the URL, the cookie or the Accept-Language header,
          * the region comes from the query string, and the contents come from a
-         * database that the deploy reseeds two lines above. A static snapshot
+         * database shared by releases. A static snapshot
          * is one language, one region and one moment.
          *
          * `bunx --bun @stacksjs/stx build --out dist` still works - it is what
@@ -264,19 +243,6 @@ export const tsCloud: TsCloudConfig = {
          */
         DB_DATABASE: '/var/lib/smakelo/smakelo.sqlite',
         DB_DATABASE_PATH: '/var/lib/smakelo/smakelo.sqlite',
-        /*
-         * Lift the production guard on `migrate:fresh`, deliberately.
-         *
-         * The guard is right by default and wrong here. It exists to stop a
-         * command wiping a database somebody cares about, and every row in this
-         * one comes from `seed:demo`, which runs on the very next line of
-         * preStart. The framework cannot know that, so this says it out loud
-         * rather than the deploy quietly routing around the check.
-         *
-         * If this app ever holds a row a person would miss, delete this line
-         * before anything else.
-         */
-        DB_MIGRATE_FRESH: 'allow',
       },
     },
 
