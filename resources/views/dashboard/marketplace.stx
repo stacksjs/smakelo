@@ -1,3 +1,5 @@
+@extends('../../../storage/framework/defaults/views/dashboard/layouts/default.stx')
+
 <script server>
 import { t } from '../../../app/Actions/Locale/translate'
 
@@ -11,8 +13,6 @@ export const operationLabels = {
 }
 defineClientPayload({ operationLabels })
 </script>
-
-@extends('layouts/default')
 
 @section('content')
 @title('Marketplace operations')
