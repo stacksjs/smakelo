@@ -21,6 +21,32 @@ The `@stacksjs/auth` package provides comprehensive authentication and authoriza
 - Middleware aliases: `app/Middleware.ts`
 - Auth types: `storage/framework/core/types/src/auth.ts`
 
+## Changing the sign-in flow: `buddy make:auth`
+
+Login, registration, two-factor sign-in, logout and password reset already run
+from the framework defaults: `defaults/routes/auth.ts` serves them, and nothing
+has to be copied for them to work. `buddy make:auth` is for changing them. It
+copies the files that make up the flow to the paths the framework reads before
+its own:
+
+- pages: `resources/views/login.stx`, `register.stx`, `forgot-password.stx`,
+  `password/reset/[token].stx`;
+- the components they render, under `resources/components/Dashboard/Auth/`.
+  Each page is a thin wrapper: `LoginDashboard` signs in and redirects, `Login`
+  is the form, `AuthCard` the shared card. Change the form in `Login.stx`;
+- the actions the default routes name, under `app/Actions/Auth/` and
+  `app/Actions/Password/`, plus `app/password-policy.ts`, which they import.
+
+The routes are not copied: user routes load first and the router reads an
+action from `app/Actions` before the default, so the default routes already run
+the copies. A file the app has is kept unless `--force` is passed, so running it
+again only fills in what is missing. `--api` copies the actions only, and
+`--dry-run` lists the files. It regenerates the action registry, so the router
+does not warn that the registry is stale. A copied file no longer receives
+framework updates from `buddy upgrade`; copy one file at a time with
+`buddy publish:view`, `publish:component` or `publish:action` when that is all
+you need.
+
 ## Source Files
 
 ```
@@ -249,6 +275,7 @@ the operation must do both separately.
 - `Auth.revokeOtherTokens(userId?: number, { exceptTokenId? }): Promise<{ keptTokenId: number | null }>` - keeps `exceptTokenId`, else the request's own token; when neither resolves it revokes every token (fail closed)
 - `Auth.pruneExpiredTokens(): Promise<number>`
 - `Auth.pruneRevokedTokens(): Promise<number>`
+- The scheduler runs `auth/prune` daily by default (expired tokens, revoked ones older than 7 days); `pruneTokens: false` in config/auth.ts turns it off. `tokenRotation` is read by nothing, and the scheduler warns when it is set.
 - `Auth.rotateToken(oldToken: string): Promise<AuthToken | null>`
 - `Auth.findToken(tokenId: number): Promise<PersonalAccessToken | null>`
 
@@ -990,7 +1017,15 @@ consume it before accepting a callback. These helpers return provider subject
 identity only; they never assign roles or link a local account by email.
 
 HQ.support uses operator-approved issuer/endpoint configuration. The OIDC helper
-requires discovery endpoints on the issuer origin and client-secret-post support.
+requires HTTPS endpoints on the issuer origin by default, plus client-secret-post
+support. For a provider such as Amazon Cognito, set
+`approvedEndpoints.authorizationEndpoint` and `approvedEndpoints.tokenEndpoint`
+to the complete hosted URLs ending in `/oauth2/authorize` and `/oauth2/token`.
+Discovery must match each configured URL exactly. Keep the pool's regional URL
+as `issuer`. If the signing keys also use a separate origin, approve their exact
+URL with `approvedEndpoints.jwksUri`. Leave approvals unset for endpoints that
+follow the issuer-origin default.
+
 SAML requires persistent NameIDs, RSA-SHA256 and SHA256 digests, exact audience and
 callback recipient, request correlation and bounded assertion lifetime. Provider
 configuration and private keys belong to the operator, never login input.

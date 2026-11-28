@@ -412,6 +412,76 @@ const path = await file.move('new/path/file.jpg', 'local')
 
 `store()` generates a hash-based filename using `crypto.randomUUID()`. `storeAs()` validates the filename: rejects path traversal (`..`), forward slashes, and backslashes.
 
+## Uploads in parts (upload sessions)
+
+For files too large or too precious for one request: a phone clip on a gym's
+wifi, anything behind a gateway with a body limit. The client announces the
+file, sends parts of 8 MiB that are each retried alone, and a part that
+arrived is never sent again, even after the page reloads.
+
+```ts
+import { createUploadSessions, UploadSessionError } from '@stacksjs/storage'
+
+const uploads = createUploadSessions({
+  directory: storagePath('app/upload-sessions'), // local, private to this process
+  maxBytes: 2 * 1024 ** 3,
+})
+
+// One action answers all four routes (POST /uploads, GET and DELETE /uploads/{id},
+// PUT /uploads/{id}/parts/{index}), told apart by method and the captured params:
+export default new Action({
+  name: 'UploadSessions',
+  handle: async request => handleUploadSessionRequest(request, uploads, {
+    owner: (await authUser(request))?.id,
+    accept: file => /\.(mp4|mov|webm)$/i.test(file.name) ? null : 'Choose a video.',
+  }),
+})
+
+// In the action that uses the file, whichever way it came (whole, or as a session):
+const upload = await receiveUpload(request, { owner: user.id, sessions: uploads, field: 'video' })
+if (!upload) return response.json({ error: 'Send a video' }, 422)
+// upload.path for a session (on this machine), upload.blob either way
+await Storage.disk().putStream(key, upload.blob.stream(), { contentType })
+await upload.discard()
+```
+
+The lower-level calls (`begin`, `status`, `receive`, `complete`, `abort`) are
+there for anything the handler does not cover.
+
+- Every call names the `owner` given at `begin`; anyone else gets `not-found`,
+  the same as an id that never existed. `UploadSessionError` carries the HTTP
+  `status` to answer with (404, 409 incomplete, 413, 422, 429).
+- A part must be exactly `partBytes` (the last one, the remainder). Sending one
+  again replaces it, so a retry after a timeout is safe. `complete` is safe to
+  repeat too.
+- Parts live on this machine's filesystem, not on a disk: an object store
+  cannot append, and consumers need a path. With several servers, share the
+  directory or pin a session to one of them.
+- Run `uploads.prune()` from the scheduler; unfinished sessions go after
+  `ttlSeconds` (a day by default). `maxOpenPerOwner` caps what one account can
+  leave lying around.
+- Browser side: `sendUpload(path, file, { field, fields, transport, onProgress,
+  signal })` from `@stacksjs/browser` sends a file of up to 8 MiB whole and a
+  larger one in parts, then posts the action `upload` (the session id) with
+  the same fields; `receiveUpload` reads either. Under it, `uploadInParts(file,
+  { endpoint, transport, onProgress, signal, resumeKey })` speaks exactly these routes, retries
+  each part with a growing pause, honours `Retry-After`, and with
+  `resumeKey: uploadResumeKey(file, purpose)` continues a file picked again.
+  Route bodies are `{ upload: <session view> }`.
+
+Source: core/storage/src/upload-sessions.ts, core/browser/src/utils/uploads.ts.
+Tests: core/storage/tests/upload-sessions.test.ts, core/browser/tests/uploads.test.ts.
+
+## Serving large files (`locateFile`)
+
+Do not read a video or an archive into memory to answer a request: a player
+asks for `Range: bytes=0-1` first. `locateFile(path, { disks, expiresIn })`
+answers `{ kind: 'file', file }` (a lazy `Bun.file` on a local disk, which
+`videoFileResponse` in `@stacksjs/video` slices) or `{ kind: 'url', url }` (a
+temporary URL on an object store, to redirect to), trying each disk in order
+and passing over one that throws. `localDiskRoot(disk)` is the root a local
+disk keeps files under, or null for a store.
+
 ## Low-Level File Operations
 
 ### Read/Write Files

@@ -92,7 +92,8 @@ of forcing a cast. See `orm/tests/inference-attributes.test-d.ts`.
 | `nullable` | Explicit nullability override |
 | `default` | Column default (`string \| number \| boolean \| Date`) |
 | `unique` | Unique constraint |
-| `type` | Force the column type instead of inferring from the rule |
+| `type` | Force the column type instead of inferring from the rule. `'number'` is a decimal and wins over the rule (see Gotchas) |
+| `precision` / `scale` | Digits of a decimal column, `decimal(precision, scale)`. Declaring either makes the column a decimal; unset is `decimal(10,2)` |
 | `order` | Column order in the table and in dashboard forms |
 | `fillable` | Allow mass assignment |
 | `guarded` | Block mass assignment |
@@ -102,6 +103,13 @@ of forcing a cast. See `orm/tests/inference-attributes.test-d.ts`.
 | `factory` | `(faker, attributes) => value`, used by seeders and tests. `attributes` holds what this record's earlier-declared factories produced, so one value can depend on another: `(faker, { discountType }) => ...` |
 | `validation` | `{ rule, message? }` - declared rules are enforced on direct ORM writes and generated CRUD |
 | `encrypted` | Encrypt persisted values and decrypt model reads; raw queries still see stored ciphertext |
+
+`encrypted` applies to the model's own writes and reads only. A write through the
+query builder (`db.insertInto(table).values(row)`) is not encrypted on its own: wrap
+the row with `encryptRow(table, row)`, and decrypt query-builder reads with
+`decryptRow(table, row)` / `decryptRows(table, rows)`, all from `@stacksjs/orm`.
+They take column or attribute names, are idempotent, and throw for a table no loaded
+model defines; `encryptedColumns(table)` lists a table's encrypted columns.
 
 ### Traits
 
@@ -551,6 +559,14 @@ commands, not a project's resolved models.
   `database/seeders` are also supported for ordered bootstrap work.
 - **`hidden` is serialization, `guarded` is mass assignment.** They are different
   protections; a password wants both `hidden` and no `fillable`.
+- **A fractional number needs its digits declared.** `type: 'number'` maps to a
+  decimal column and wins over the validator, and an undeclared decimal is
+  `decimal(10,2)`. With `schema.float()` that silently rounds a probability of
+  0.6234 to 0.62. `generate:migrations` warns (`-- qb: ... rounded to 2 decimal
+  places`). Declare `precision` / `scale` (`precision: 8, scale: 6` for a 0-1
+  probability, `precision: 12, scale: 4` for a price), or `type: 'double'` for a
+  floating-point column. Adding them to an existing model emits a `MODIFY
+  COLUMN` / `ALTER COLUMN ... TYPE`; widening the scale is lossless.
 - **Declared validation is enforced on ORM writes**, including quiet writes.
   Type inference also accepts explicit types, factories, and defaults; absence
   of a validator is not a promise that an arbitrary request body is safe.

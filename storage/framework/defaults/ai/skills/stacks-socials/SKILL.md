@@ -117,7 +117,107 @@ through it. PublishPostInput/PublishedPost/SocialPublishingDriver are exported
 contracts. Read their driver methods before using media, metrics, deletion,
 refresh or profile functionality; support differs per provider.
 
+Each driver measures its limit the way its network counts (countText and
+exceedsLimit in text.ts: graphemes on Bluesky and Threads, X's weighted count,
+Mastodon's link and mention rules) and sends several images with alt text: X up
+to four, carousels on Threads and Instagram, multiImage on LinkedIn. An image
+given by URL is downloaded through fetchPostImage (the outbound guard in
+@stacksjs/security) and a URL that gives no image throws PostImageError; tests
+replace a driver's fetchImage. Mastodon's publish takes a third argument
+(idempotencyKey, visibility, spoilerText, language) and reads the instance's
+limits. Bluesky uploads external.thumb for link cards, and its publish takes a
+third argument too: { rkey } from blueskyRecordKey(), kept per post, so a retry
+answers with the post that already went out instead of posting twice. Bluesky
+hashtags take letters from any script (#café, #日本), and images leave a link
+card out with a warning, since a post holds one attachment. A Bluesky account on
+its own PDS signs in there: when no service is configured and bsky.social refuses
+the password, createSession looks the account's PDS up from its DID document
+(resolveBlueskyService), and the session's service is where its posts go.
+
+For Mastodon polls, read the instance's advertised `instanceLimits().poll`
+and supply `publish(..., { poll: { options, expiresIn, multiple?, hideTotals? } })`.
+Duration is in seconds. Mastodon quote posts require the advertised
+`instanceLimits().quotePosts` capability. `resolvePostId(identity, permalink)`
+uses the account's instance and `read:search` to obtain its local ID. Pass
+that ID as `quotedStatusId` and keep the reference with the publishing
+target. A poll, a quote, and attached images are mutually exclusive on Mastodon.
+
+For Bluesky, `resolveQuote(identity, permalinkOrAtUri)` checks the
+viewer's quote permission and returns the post's URI and CID. Keep that
+reference with the post, then pass it as `quote` in the driver's third
+argument. A quote can accompany images or an external card. Supply
+`selfLabels` in the same argument to attach the author's content labels.
+
+Mastodon and Bluesky take one MP4 in `PublishPostInput.video` with its bytes,
+MIME type, optional alt text, and optional dimensions. Mastodon checks the
+instance's advertised media limits and waits for its attachment endpoint to
+return the processed video. Bluesky uses a PDS-scoped upload token and waits
+for its video service to return the processed blob. Reuse the normal Mastodon
+idempotency key or Bluesky record key on retry. The other drivers reject a
+video before they publish a post.
+
+Instagram waits for
+each media container to be FINISHED before publishing it (containerTimeoutMs,
+five minutes by default), sends alt text on images and carousel items, refuses an
+image whose mimeType is not JPEG, and looks through every page of the user's
+Facebook Pages for the linked account. Threads deletes with deletePost (the
+threads_delete permission, 100 a day). LinkedIn posts as a company Page when the
+identity's did (the memberUrn setting) is an urn:li:organization URN, with the
+w_organization_social scope; listOrganizations(accessToken) lists the Pages the
+member may post for (rw_organization_admin). PublishedPost.warnings
+lists what went out without failing the post. The LinkedIn version is
+LINKEDIN_API_VERSION unless a configured one is still supported.
+
+For LinkedIn and Instagram first comments, call
+`createComment(identity, publishedPost.uri, text)` after saving the published
+post. LinkedIn needs `w_member_social_feed` or `w_organization_social_feed`
+and the matching author URN. Instagram (Facebook Login) needs a Facebook User
+token with `instagram_manage_comments` in addition to its normal account access.
+An accepted response can return no comment ID. The comment is a distinct
+write. Do not send the parent post again when this write fails, and do not
+blindly repeat a timed-out comment whose outcome is unknown.
+
+A driver error's isAuthError is narrow; classifySocialError in
+publish-errors.ts sorts any failure by status and body, and only `expired`
+means the account must sign in again (a duplicate post on X is a 403).
+
+Every driver error (BlueskyApiError, TwitterApiError, ...) is a SocialApiError
+from errors.ts: `network`, `status`, the raw `body`, `kind` (the
+classification), `reason` (the network's own sentence) and `retryAfterMs`. Its
+message is the network's reason or the status text, never the raw body.
+`retryAfterMs` reads Retry-After on any answer and, on a rate limit, X's
+`x-rate-limit-reset`, Bluesky's `ratelimit-reset`, Mastodon's
+`x-ratelimit-reset` and Meta's `estimated_time_to_regain_access`. Meta answers
+a rate limit with a 400 ("(#4) Application request limit reached"), which still
+classifies as `rate-limited`.
+
+Engagement is a separate capability, like deletion: `supportsMetrics(driver)`,
+then `driver.metrics(identity, uris)` with any number of `PublishedPost.uri`s,
+answering `PostMetrics` (`likes`, `reposts`, `replies`, `quotes`, `views`,
+`shares`). A count the network does not report is absent, not zero, and a post
+that is gone is left out. Bluesky batches 25 a request (no views). Mastodon
+batches 40 with `GET /api/v1/statuses?id[]=` and falls back to one status at a
+time before 4.3 (no views; quotes from 4.5). Threads asks one post at a time
+(`/{id}/insights`, the threads_manage_insights permission). Instagram asks one
+post at a time too (`/{id}/insights`, instagram_manage_insights) and adds
+`reach` and `saves`. LinkedIn batches 20 through Social Metadata: `likes` is
+every reaction together, and it needs r_organization_social_feed for a Page
+(r_member_social_feed for a member, granted to select developers only). X uses
+Post Lookup with `tweet.read` and requests public metrics for up to 100 post IDs
+per call. These reads are billed per returned post. Apply the application's
+read budget before calling the driver.
+
 ## Authorization and operational limits
+
+For X messaging, request `dm.read` and `dm.write` only when the user enables
+that feature. `TwitterPublishingDriver.listDirectMessageEvents(identity,
+{ limit, cursor, conversationId })` reads one page for the account or a
+conversation and returns the next cursor. The request expands only the sender
+so a caller can reserve the maximum charge for one DM event and one user per
+result. `sendDirectMessage(identity, conversationId, text)` sends one reply
+and returns its confirmed event ID. A permission refusal does not invalidate
+the account's token. See the [X API pricing](https://docs.x.com/x-api/getting-started/pricing)
+and [DM lookup reference](https://docs.x.com/x-api/direct-messages/lookup/introduction).
 
 The native terminal consent helper in authorize.ts currently supports X only.
 It uses loopback callback URI, checked state and PKCE; offline.access supplies
@@ -133,8 +233,10 @@ conformance or successful publication for arbitrary accounts.
 ## Source and evidence
 
 `storage/framework/core/socials/src/index.ts`, registry.ts, abstract.ts, flows.ts,
-handoff.ts, identities.ts, publish.ts, authorize.ts, meta-graph.ts and drivers/.
+handoff.ts, identities.ts, publish.ts, authorize.ts, meta-graph.ts, text.ts,
+media.ts, publish-errors.ts and drivers/.
 Tests: registry.test.ts, apple.test.ts, session-handoff.test.ts, oauth-flows.test.ts,
 provider-flow-state.test.ts, auth/tests/social-callback-flow.test.ts,
 identities.test.ts, publish.test.ts, authorize.test.ts,
-credentials-stay-out-of-output.test.ts and meta-graph.test.ts.
+credentials-stay-out-of-output.test.ts, meta-graph.test.ts,
+publishing-drivers.test.ts, text.test.ts and publish-errors.test.ts.

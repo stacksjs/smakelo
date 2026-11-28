@@ -127,6 +127,31 @@ unprotected HTTP server. Web middleware declarations are refused by this native
 adapter instead of silently skipped. Writes use the model's validation, fillable
 allowlist and hidden-field serialization; index requests have bounded pagination.
 
+### Migrating a compiled app's own database
+
+When adopting the webview build for an existing workspace, set
+`desktop.webview.agent.database` to `{ filename: 'workspace.sqlite' }` to keep
+the database already in the app data directory. `database: true` uses
+`database.sqlite`.
+
+Set `desktop.webview.agent.prepare` to a module whose default export is a
+`WebviewAgentPreparation` function if app-owned credentials or environment
+settings must be ready before config and routes load. It receives the locked
+data directory, the database path when configured, and the agent's loopback
+origin. Throwing during preparation stops launch and opens the startup error
+window.
+
+A build that ships the framework's generated `.sql` migrations (rather than the
+native model planner above) applies them at launch with
+`migrateCompiledDatabase({ databasePath, migrations, backupDir?, keepBackups? })`
+from `@stacksjs/database/compiled-migrations`, before any framework module loads.
+It runs table rebuilds (`PRAGMA foreign_keys=OFF; BEGIN; ... COMMIT;`) as written,
+backs up with `VACUUM INTO` so writes still in the WAL are kept, refuses a
+database a newer build changed (`NewerSchemaError`, nothing touched), restores the
+backup when a file fails (`MigrationRestoredError`), keeps three backups, and
+records the framework's `migrations` ledger plus `PRAGMA user_version`. Show the
+user the error's message: it says the data was put back and where the copy is.
+
 The launcher Stacks compiles opens a Craft window on the URL in `desktop.json`,
 which is what a hosted Stacks application wants. An app whose subject is the
 machine it runs on - a disk cleaner, a log viewer, a device tool - has no such
@@ -137,12 +162,11 @@ Write `app/Desktop/launcher.ts` and `build:desktop` compiles that instead, the
 same way anything under `app/` overrides its framework default. `DESKTOP_URL`
 and `APP_URL` then become optional, because the launcher decides what to open.
 
-Every launcher, the framework's or yours, compiles through
-`desktopLauncherCompileArgs()` to bytecode as an ES module: parsing the bundle
-was most of a launcher's start (Browser's agent reached its window host in
-379 ms as source, 146 ms as bytecode), for an executable about a quarter
-larger. Pass `bytecode: false` only to compare. Compile any helper binary of
-your own with the same function rather than hand-written `bun build` flags.
+Buddy builds a compact executable through `desktopLauncherCompileArgs()`
+with minified JavaScript and one Bun runtime. The helper accepts
+`bytecode: true` for a caller explicitly trading installed size for startup
+time. Compile helpers with the same build options, or use subcommands to keep
+one Bun executable in the app.
 
 ```ts
 // app/Desktop/launcher.ts - compiled to Contents/MacOS/<AppName>
@@ -173,6 +197,37 @@ Two things follow from declaring your own launcher:
 `build:dmg` also narrows App Transport Security for these bundles: an exception
 for `127.0.0.1` rather than `NSAllowsArbitraryLoads`, which would additionally
 permit every unencrypted host on the internet.
+
+### Building a local launcher
+
+Declare the installed identity and packaged inputs for an
+`app/Desktop/launcher.ts` project in `config/desktop.ts`:
+
+```ts
+import type { DesktopConfig } from '@stacksjs/types'
+
+export default {
+  launcher: {
+    appName: 'Library',
+    bundleId: 'org.example.library',
+    views: { routes: ['/app'], clientScripts: 'resources/scripts' },
+    sqliteMigrations: true,
+    appStore: { networkServer: true, userSelectedFiles: true },
+  },
+} satisfies DesktopConfig
+```
+
+`buddy build` compiles the executable, prerenders the declared routes, bundles
+local assets, and stages fresh migrations inside the payload. On macOS it
+also makes the `.app` and `.dmg`. Store packaging uses
+`buddy desktop:apple:package` with Craft's App Store host and the launcher as
+its inherited helper. The network server entitlement is for a launcher that
+actually listens for the window's local requests.
+
+`DESKTOP_BUN_EXECUTABLE` selects the runtime embedded by Bun's compiler.
+For App Store distribution, preflight rejects executables dynamically linked
+to Apple's system ICU library. Use a runtime linked to upstream ICU. The
+regular development build can continue to use the installed Bun.
 
 ### Info.plist entries
 
@@ -508,6 +563,37 @@ What the launcher (`runWebviewApp`) does, the same on every platform:
 
 `agent.publicPaths` opens paths to callers without the cookie (an MCP endpoint behind its own bearer token). The
 app's handler must authenticate those itself; the views are never served there.
+
+`agent.appRoutes: true` serves the project's own routes from the agent: the route files `app/Routes.ts` registers,
+the actions they name by string and every middleware, imported statically by the generated entry so a built app
+carries them (`appBundleFiles`, the same collector the macOS agent uses). They answer after `agent.entry`; a path no
+route matches (`isUnmatchedRouteResponse` from `@stacksjs/router`) goes on to the views, while a route's own 404 is
+still the app's answer. Off by default.
+
+`agent.database: true` gives the app its own SQLite file, `database.sqlite` in its data directory. The build runs
+`buddy migrate --no-generate` against a scratch file and compiles in exactly the migrations it applied
+(`appMigrationFiles`); at every launch, once the instance lock is held and before the agent module loads, they are
+applied with `migrateCompiledDatabase` and `DB_CONNECTION`/`DB_DATABASE_PATH` point the app at the file. A database a
+newer version changed, or a migration that fails (the backup is put back), stops the launch with the reason in the
+app's log.
+
+A launch that fails once the instance lock is held (the database, config, the agent module or its `start`) says why in
+a small window of its own as well as the log, since nobody reads the log of an app opened from Finder or a desktop
+entry. The agent is stopped first. The page is static and escaped, served from loopback only while the window is open,
+and names the log file when the log goes to one. The window keeps its titlebar whatever `window.titlebarHidden` says.
+Closing it quits with exit code 1 and releases the lock (`showFailureWindow`, `renderFailurePage`).
+
+`buddy build:desktop` also bundles the project's own scripts that pages load as `src="/assets/....ts"` (every `.stx`
+under `resources/` is read for them): each is built for the browser with what it imports (`appClientScripts`) and
+embedded at the URL the page asks for, served as JavaScript. A page naming a script that is not in `resources/assets`
+fails the build.
+
+`agent.config: true` compiles the project's `config/*.ts` into the app: every file the config loader reads that the
+project has (`appConfigFiles`), each named in a static `import()`. At launch, after the database and before the agent
+module, they are registered with `registerBundledConfig` and loaded, so a built app runs on its own config rather
+than the framework defaults. A file that throws stops the launch with the reason in the log. Either way the app logs
+which config it booted with (`[App] config: app.ts, database.ts compiled into the app; framework defaults for the
+rest`, or `no config/*.ts under <root>` when a built app has none). Off by default.
 
 **Views.** `buddy dev:desktop` serves `agent.views` live through stx (`bun-plugin-stx/serve`, with the gate and the
 agent module in its `onRequest`). `buddy build:desktop` builds them to static pages with stx's `buildStaticSite`

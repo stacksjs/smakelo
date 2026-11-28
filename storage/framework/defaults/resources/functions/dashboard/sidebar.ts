@@ -5,10 +5,14 @@
  * native STX Sidebar component. Markup, icons, disclosure state, and
  * persistence stay inside the component instead of being serialized as HTML.
  */
+import type { DashboardProviderOptions } from '@stacksjs/types'
+import type { ResolvedDashboardToggles } from './toggles'
 import { capitalCase, plural } from '@stacksjs/strings'
 import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
+import { dashboardPageAvailable, readDashboardPageAvailability, unavailableDashboardPages } from './page-availability'
+import { dashboardProjectIdentity } from './project-switcher'
 
 type ModelCategory = 'userland' | 'data' | 'commerce' | 'content' | 'marketing' | 'system'
 
@@ -202,22 +206,21 @@ function normalizeSchemaModels(value: unknown): string[] {
   return value as string[]
 }
 
-/** Hide built-in modules whose backing models are outside this app's schema. */
-export function filterSchemaNavSections(sections: Array<[string, string, NavItem[]]>, schemaModels?: readonly string[], capabilities: { inbox?: boolean } = {}): Array<[string, string, NavItem[]]> {
-  if (!schemaModels && capabilities.inbox !== false) return sections
-  const available = schemaModels ? new Set(schemaModels) : undefined
-  const required: Record<string, string[]> = {
-    '/activity': ['Activity'], '/teams': ['Team'], '/subscribers': ['Subscriber'],
-    '/releases': ['Release'], '/deployments': ['Deployment'], '/requests': ['Request'],
-    '/queries': ['QueryLog'], '/queries/slow': ['QueryLog'], '/queries/history': ['QueryLog'],
-    '/errors': ['Error'], '/notifications/dashboard': ['Notification'], '/logs': ['Log'],
-    '/management/permissions': ['Role', 'Permission'], '/kanban': ['Board', 'Card', 'Column'],
-    '/data/activity': ['Activity'], '/data/teams': ['Team'], '/data/subscribers': ['Subscriber'],
-    '/inbox/settings': ['MailPreference'],
-  }
-  return sections.map(([id, label, items]): [string, string, NavItem[]] => [id, label, id.startsWith('app-nav-') ? items : items.filter(item =>
-    (!(capabilities.inbox === false && ['/inbox', '/inbox/activity'].includes(item.to))
-      && (required[item.to] ?? []).every(model => !available || available.has(model))))])
+/** Hide built-in navigation to pages the dashboard server does not serve. */
+export function filterSchemaNavSections(
+  sections: Array<[string, string, NavItem[]]>,
+  schemaModels?: readonly string[],
+  capabilities: { inbox?: boolean, remote?: boolean, providers?: DashboardProviderOptions } = {},
+  toggles?: ResolvedDashboardToggles,
+): Array<[string, string, NavItem[]]> {
+  const unavailable = unavailableDashboardPages({ sections: toggles, schemaModels, ...capabilities })
+  if (!unavailable.length)
+    return sections
+
+  return sections
+    .map(([id, label, items]): [string, string, NavItem[]] => [
+      id, label, id.startsWith('app-nav-') ? items : items.filter(item => dashboardPageAvailable(item.to, unavailable)),
+    ])
     .filter(([, , items]) => items.length > 0)
 }
 
@@ -423,8 +426,8 @@ export function buildNavSections(
     ...categoryNavItems(discoveredModels, 'system', new Set()),
   ]])
 
-  // Data pins model-declared highlights. Other visible models stay accessible
-  // through a collapsed disclosure using the shared Sidebar component.
+  // Data pins model-declared highlights. All Models links to the registry and
+  // discloses the remaining models through the shared Sidebar component.
   // Per-model rows link to `/models/<id>` (dynamic ORM viewer); the
   // built-in dashboard / activity / users / teams / subscribers rows keep
   // their bespoke pages under `/data/<row>`.
@@ -436,8 +439,8 @@ export function buildNavSections(
   if (dataRows.users) dataNav.push({ to: '/data/users', icon: 'users', text: 'Users' })
   if (dataRows.teams) dataNav.push({ to: '/data/teams', icon: 'group', text: 'Teams' })
   if (dataRows.subscribers) dataNav.push({ to: '/data/subscribers', icon: 'mail', text: 'Subscribers' })
-  if (dataRows.allModels) dataNav.push({ to: '/models', icon: 'table', text: 'All Models' })
-  const moreModels: NavItem[] = []
+  const pinnedModels: NavItem[] = []
+  const modelChildren: NavItem[] = []
   const highlighted = (model: DiscoveredModel) => model.dashboard?.highlight === true
     || (typeof model.dashboard?.highlight === 'number' && Number.isFinite(model.dashboard.highlight))
   const rank = (model: DiscoveredModel) => typeof model.dashboard?.highlight === 'number' ? model.dashboard.highlight : Number.POSITIVE_INFINITY
@@ -463,10 +466,19 @@ export function buildNavSections(
         ? { roles: m.dashboard.roles }
         : {}),
     }
-    if (highlighted(m)) dataNav.push(item)
-    else moreModels.push(item)
+    if (highlighted(m)) pinnedModels.push(item)
+    else modelChildren.push(item)
   }
-  if (moreModels.length) dataNav.push({ id: 'models-more', to: '', text: 'More models', icon: 'table', expanded: false, children: moreModels })
+  if (dataRows.allModels || modelChildren.length) {
+    dataNav.push({
+      id: 'models',
+      to: dataRows.allModels ? '/models' : '',
+      icon: 'table',
+      text: 'All Models',
+      ...(modelChildren.length ? { children: modelChildren, expanded: false } : {}),
+    })
+  }
+  dataNav.push(...pinnedModels)
   sections.push(['data', 'data', dataNav])
 
   if (toggles.commerce) {
@@ -588,17 +600,11 @@ export function buildNavSections(
     sections.push(['management', 'management', managementItems])
   }
 
-  // Utilities section: real paths are flat (`/buddy`, `/environment`,
-  // `/access-tokens`) or under `/settings/*` for billing/mail. The
-  // historical `/utilities/*` URLs were uniformly 404s.
   if (toggles.utilities) {
     sections.push(['utilities', 'utilities', [
       { to: '/buddy', icon: 'terminal', text: 'Buddy CLI' },
-      { to: '/environment', icon: 'settings', text: 'Environment' },
       { to: '/access-tokens', icon: 'lock', text: 'Access Tokens' },
       { to: '/settings', icon: 'settings', text: 'Settings' },
-      { to: '/settings/appearance', icon: 'paintbrush', text: 'Appearance' },
-      { to: '/settings/mail', icon: 'mail', text: 'Mail Settings' },
     ]])
   }
 
@@ -752,12 +758,8 @@ function loadAppNavFromConfig(configPath = resolve(process.cwd(), 'config/dashbo
 export function buildWebSidebarSections(): WebSidebarSection[] {
   const manifest = loadDiscoveredManifest()
   const appNav = manifest.nav.length > 0 ? manifest.nav : loadAppNavFromConfig()
-  const { config } = createRequire(import.meta.url)('@stacksjs/config')
-  // The current inbox SDK reads S3 objects. The native IMAP/SMTP server does
-  // not write that bucket; linking its mailboxes to this UI only produces 503s.
-  const mailServer = config.email?.server
-  const inbox = !(mailServer?.enabled && (mailServer.mode ?? 'server') === 'server')
-  const sections = filterSchemaNavSections(buildNavSections(manifest.models, manifest.sections, appNav), manifest.schemaModels, { inbox })
+  const { sections: toggles, schemaModels, ...capabilities } = readDashboardPageAvailability()
+  const sections = filterSchemaNavSections(buildNavSections(manifest.models, toggles, appNav), schemaModels, capabilities, toggles)
 
   const webItem = (item: NavItem): WebSidebarItem => ({
     id: item.id ?? navItemId(item.to),
@@ -772,7 +774,12 @@ export function buildWebSidebarSections(): WebSidebarSection[] {
     {
       id: 'top',
       label: '',
-      items: [{ id: 'home', label: 'Home', icon: NAV_ICON_CLASSES.home!, iconColor: 'blue', href: '/' }],
+      items: [
+        { id: 'home', label: 'Home', icon: NAV_ICON_CLASSES.home!, iconColor: 'blue', href: '/' },
+        ...(dashboardProjectIdentity().enabled
+          ? [{ id: 'github-issues', label: 'GitHub Issues', icon: 'i-hugeicons-github', iconColor: 'blue', href: '/github-issues' }]
+          : []),
+      ],
     },
     ...sections.map(([key, label, items]) => ({
       id: key,

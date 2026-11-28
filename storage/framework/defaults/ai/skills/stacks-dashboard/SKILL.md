@@ -1,6 +1,6 @@
 ---
 name: stacks-dashboard
-description: Use when building or customizing the Stacks admin dashboard, including dashboard pages, model management views, analytics widgets, commerce dashboards, content management, settings panels, deployment monitoring, job/queue management, or the 445 built-in dashboard components. Covers the dashboard system at storage/framework/defaults/.
+description: Use when building or customizing the Stacks admin dashboard, including dashboard pages, model management views, analytics widgets, commerce dashboards, content management, settings panels, deployment monitoring, job/queue management, or the 456 built-in dashboard components. Covers the dashboard system at storage/framework/defaults/.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -8,7 +8,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Dashboard
 
-The Stacks admin dashboard provides a full-featured admin panel with 100+ route views, 445 components, and a multi-section layout.
+The Stacks admin dashboard provides a full-featured admin panel with 100+ route views, 456 components, and a multi-section layout.
 
 ## Key Paths
 - Dashboard components: `storage/framework/defaults/resources/components/Dashboard/`
@@ -244,13 +244,14 @@ inject message HTML into the dashboard document.
 - `/packages`, `/dependencies` - package and dependency inspection
 
 ### Settings
-- `/settings` - typed `config/*.ts` browser and editor
+- `/settings` - Command-Comma opens General in the Craft Settings window. Project settings have dedicated panes under `/settings/config/:section` for database, security, networking, and other concerns. The sidebar shows sections with files and searches for individual configs. Unknown project files appear in Custom Configuration. Field forms organize related literal values and use adjacent source comments as help. TypeScript mode edits bindings, named exports, and structure. The dev dashboard loads one selected file at a time and refuses to overwrite newer disk edits.
 - `/settings/appearance` - dashboard appearance
 - `/settings/billing` - account billing
 - `/settings/mail` - mail configuration
-- `/environment` - environment summary
+- `/settings/environment` - edit the env files this project loads
 - `/access-tokens` - access-token management
-- `/cloud`, `/dns`, `/mailboxes` - infrastructure-specific settings
+- `/settings/config/dns` - list and add app DNS declarations for the next deployment
+- `/cloud`, `/dns`, `/mailboxes` - infrastructure views
 
 ### Deployments
 - `/deployments` - deployment history, deployment controls, the custom
@@ -541,6 +542,27 @@ Persisted shell appearance is applied with STX's
 storage key and defaults aligned with `composables/useAppearance.ts`. Never
 replace it with raw `window`, `document`, or `localStorage` code in the layout.
 
+Dashboard themes are selected in Settings → Appearance. The Original
+retains both existing sidebar styles. System Cleaner and imported version 1
+JSON themes apply validated light and dark palettes to the shared shell and
+components. Keep theme definitions in `views/dashboard/composables/dashboard-themes.ts`
+and reusable styling in `styles/dashboard-theme.css`. Extend shared components
+with semantic styling hooks or dashboard theme CSS variables so every theme
+can use the same STX navigation, controls and page markup. Use fallbacks that
+match The Original when referencing optional theme variables.
+
+For the `sections` navigation style, build the sidebar links and home cards
+from the same enabled dashboard sections. Each link opens
+`/sections/{section}` with cards for its existing routes, including model
+destinations nested in the expandable sidebar. Apply the same viewer role
+requirements to the cards and sidebar links. Keep mobile navigation on the
+shared sidebar instance.
+
+Both dashboard servers expose the same theme stylesheet and synchronous
+bootstrap. The bootstrap and the appearance picker share the same manifest
+validator and read browser-local state. Keep both assets in the head when
+publishing a custom dashboard layout that supports themes.
+
 At widths below 1024px:
 
 - Hide the fixed desktop sidebar and reset `[data-stx-content]` to
@@ -553,9 +575,22 @@ At widths below 1024px:
 - Verify `document.documentElement.scrollWidth <= innerWidth` at phone and
   tablet sizes.
 
-At 1024px and wider, the desktop sidebar must retain its existing theme,
-250px width, fixed placement, persisted collapse state, and
-`--stx-sidebar-width` content-shell contract.
+At 1024px and wider, the desktop sidebar keeps its 250px width, fixed
+placement, persisted collapse state, and `--stx-sidebar-width` content-shell
+contract across themes.
+
+The Settings layout keeps the Craft sidebar, search, and toolbar outside the
+routed outlet. Settings links, search results, and history replace the detail
+pane without a view transition. Keep individual Settings views inside that
+outlet so opening a pane preserves the sidebar's focus and scroll position.
+Use `SettingsPicker` for choices in Settings. It opens a Craft system menu
+with the current choice checked and renders an ordinary select in the
+browser. Use the shared Settings group, row, and switch for inline
+preferences. When discarding changes needs confirmation, ask Craft for a
+system dialog and use the shared confirm dialog on the web.
+Use `SettingsCodeEditor` for Settings source. It wraps the shared STX editor
+with incremental `ts-syntax-highlighter` tokenization and Settings keyboard
+shortcuts.
 
 ### Reactive page components
 
@@ -751,8 +786,16 @@ The desktop sidebar is fixed and publishes its current width through
 drawers must use the shared `dashboard-modal-layer` class so their interactive
 surface starts beside that sidebar and returns to `left: 0` on mobile and in
 the Craft native-sidebar shell. The class owns the layer's whole horizontal
-box (`left`, `right` and `width`), so a dialog is centred over the content and
-a drawer ends at the window's edge. Do not put a width utility (`w-screen`,
+box (`left`, `right` and `width`), so a drawer ends at the window's edge. A
+dialog (`dashboard-modal-dialog` beside it) takes the whole window instead and
+is centred on it: its `::backdrop` dims the whole window, sidebar included, so
+centring it on the content alone looked off centre. Dialogs fade their dim in
+and lift their panel into place on open, and run the reverse on close through
+stx's `data-stx-if-transition` (a still copy of the dialog fades out, so its
+text does not change as the state that closed it is cleared). The dim is the
+dialog's own background, not its `::backdrop`, because the leaving copy is not
+a modal dialog. Under `prefers-reduced-motion` the panel does not move and
+closing is a short fade. Do not put a width utility (`w-screen`,
 `w-full`) on an element that carries it: beside `left: 250px` that runs the
 layer a sidebar's width past the window. The rule's selector is
 `html .dashboard-modal-layer`, so it outweighs `inset-0` whichever stylesheet
@@ -772,6 +815,20 @@ surface such as the global command palette or mobile navigation may own a
 custom layer only when the shared dialog or drawer semantics do not fit. It
 must still use `dashboard-modal-layer` and provide complete keyboard, focus,
 and ARIA behavior. Do not solve sidebar overlap by increasing z-index alone.
+
+### Which pages are available
+
+`config/dashboard.ts` controls bundled page sections through `sections`.
+Set a section or data row to `{ enabled: false }` to remove its bundled views
+and navigation. Content, Commerce, and Marketing require their corresponding
+installed features. Pages backed by optional schema models, the serverless
+mail inbox, or remote hosts are available when those resources are configured.
+
+The standalone Buddy dashboard can still run when `dashboard.enabled` is
+false. That flag controls dashboard integration in the app's own server.
+Settings remains reachable for the dashboard itself. Disabling All Models
+removes the index and keeps individual model pages. App views in
+`resources/views/dashboard` keep precedence, and `nav` adds their links.
 
 ### Live dashboard audit
 
@@ -811,7 +868,7 @@ or a fake success response.
 - Dashboard runs on port 3002 by default (separate from frontend on 3000)
 - Dashboard components use STX templating with ts-css utilities
 - Dashboard routes are registered from `storage/framework/defaults/routes/`, not from a generated type file
-- Settings panels read/write from the corresponding `config/*.ts` files
+- Project Configuration reads and writes project TypeScript source under `config/`. Environment variables are edited in the Environment pane of the same Settings window.
 - Models with `useApi` get generated REST actions and routes, not bespoke dashboard views
 - `dashboard: { highlight: true }` makes models prominent in the dashboard
 - Dashboard layout uses a sidebar + navbar pattern
@@ -1760,7 +1817,8 @@ reporter stores allowlisted operational context and excludes bodies and headers.
 
 Declare `dashboard: { highlight: true }` on a model to pin its Data row, or use
 numeric `highlight` values to order pinned rows. Other enabled Data models live
-under the native Sidebar's collapsed More models disclosure. Labels, icons and
+under the All Models disclosure. The row label opens the registry when the
+All Models page is enabled in dashboard config. Labels, icons and
 role gates apply to nested rows too. `enabled: false` omits navigation;
 `access: false` excludes generic catalogs and reads as well.
 

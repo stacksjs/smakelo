@@ -295,6 +295,7 @@ export const actions = {
   'Actions/Commerce/WaitlistRestaurantStoreAction': '@stacksjs/defaults/app/Actions/Commerce/WaitlistRestaurantStoreAction.ts',
   'Actions/Commerce/WaitlistRestaurantUpdateAction': '@stacksjs/defaults/app/Actions/Commerce/WaitlistRestaurantUpdateAction.ts',
   'Actions/Commerce/commerce-action': '@stacksjs/defaults/app/Actions/Commerce/commerce-action.ts',
+  'Actions/ConfirmSubscriptionAction': '@stacksjs/defaults/app/Actions/ConfirmSubscriptionAction.ts',
   'Actions/ContactAction': '@stacksjs/defaults/app/Actions/ContactAction.ts',
   'Actions/Dashboard/Actions/GetActions': '@stacksjs/defaults/app/Actions/Dashboard/Actions/GetActions.ts',
   'Actions/Dashboard/Analytics/BlogAnalyticsAction': '@stacksjs/defaults/app/Actions/Dashboard/Analytics/BlogAnalyticsAction.ts',
@@ -543,6 +544,8 @@ export const actions = {
   'Actions/Dashboard/Infrastructure/ServerShowAction': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/ServerShowAction.ts',
   'Actions/Dashboard/Infrastructure/dns-overview': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/dns-overview.ts',
   'Actions/Dashboard/Infrastructure/environment-file': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/environment-file.ts',
+  'Actions/Dashboard/Infrastructure/environment-layers': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/environment-layers.ts',
+  'Actions/Dashboard/Infrastructure/environment-page': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/environment-page.ts',
   'Actions/Dashboard/Infrastructure/insights-dashboard': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/insights-dashboard.ts',
   'Actions/Dashboard/Infrastructure/log-dashboard': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/log-dashboard.ts',
   'Actions/Dashboard/Infrastructure/log-provider': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/log-provider.ts',
@@ -817,4 +820,6 @@ export const actions = {
   'Actions/TestErrorAction': '@stacksjs/defaults/app/Actions/TestErrorAction.ts',
   'Actions/UnsubscribeAction': '@stacksjs/defaults/app/Actions/UnsubscribeAction.ts',
   'Actions/UploadTestAction': '@stacksjs/defaults/app/Actions/UploadTestAction.ts',
+  'Actions/form-return': '@stacksjs/defaults/app/Actions/form-return.ts',
+  'Actions/subscription-page': '@stacksjs/defaults/app/Actions/subscription-page.ts',
 } as const

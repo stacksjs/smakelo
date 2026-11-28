@@ -17,9 +17,11 @@
 // `storage/framework/tsconfig.app.json` and falls back to the installed
 // package when there is none, so it resolves in both layouts.
 import { dashboardProjectIdentity } from '@stacksjs/defaults/resources/functions/dashboard/project-switcher'
+import { buildDashboardSectionHubs } from '@stacksjs/defaults/resources/functions/dashboard/section-navigation'
 import { buildWebSidebarSections, webSidebarRoleMap } from '@stacksjs/defaults/resources/functions/dashboard/sidebar'
 
 export const sidebarSections = buildWebSidebarSections()
+export const sectionHubs = buildDashboardSectionHubs(sidebarSections)
 
 // The project this dashboard serves, for the switcher at the top of the
 // sidebar. Only its name: the list of other projects is fetched by the
@@ -47,14 +49,16 @@ defineClientPayload({ sidebarRoleMap, sidebarSections })
 @head
 <link rel="icon" href="/images/logos/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/images/logos/favicon-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/__deps/dashboard-theme.css">
+<script src="/__deps/dashboard-theme.js"></script>
 @endhead
 
 <!-- Dashboard icon stylesheet. Most dashboard icons are applied via dynamic
     `:class="…"` bindings whose class names live in client script state, which the
     stx Crosswind extractor cannot see, so their CSS is never generated inline and
-    they render as empty boxes. The dev server generates the full icon set once and
+    they render as empty boxes. The dashboard generates the full icon set once and
     serves it here (browser-cached), instead of inlining ~260KB into every page.
-    Route: `/__deps/dashboard-icons.css` in actions/src/dev/dashboard.ts.
+    Route: `/__deps/dashboard-icons.css` in actions/src/dashboard-assets.ts.
 
     No angle-bracket tag names in this comment. stx parses them as elements, which
     breaks OUT of the comment: the closing marker is then never emitted, and the
@@ -137,13 +141,13 @@ select:not([multiple]):not([size]):not([data-ui-select]) {
      the document or moving the fixed dashboard shell. */
   overflow-x: hidden;
   margin-left: var(--stx-sidebar-width, 250px);
-  background: #f4f4f5;
+  background: #f6f6f9;
   transition: margin-left 0.3s ease-out;
 }
 /*
- * A dialog or drawer covers the content pane: from the sidebar's edge to the
- * window's, so a dialog is centred over the page and a drawer ends where the
- * window does.
+ * A drawer covers the content pane: from the sidebar's edge to the window's,
+ * so it ends where the window does. A dialog takes the whole window; see the
+ * rule after this one.
  *
  * `html` is in the selector for its weight, not its meaning. The dialogs also
  * carry `inset-0`, a utility of the same weight as a bare class, and the
@@ -162,6 +166,16 @@ html .dashboard-modal-layer {
   left: var(--stx-sidebar-width, 250px);
   width: auto;
   transition: left 0.3s ease-out;
+}
+/*
+ * A dialog is centred on the whole window, not on the content beside the
+ * sidebar. Its ::backdrop dims the whole window, sidebar included, so a dialog
+ * centred on the content alone sat half a sidebar right of the middle of what
+ * the visitor sees. A drawer keeps the rule above: it is pinned to the right
+ * edge, and starting beside the sidebar only caps how wide it can grow.
+ */
+html .dashboard-modal-layer.dashboard-modal-dialog {
+  left: 0;
 }
 /*
  * The window's sidebar pane while it is in the mobile drawer: it fills the
@@ -188,29 +202,8 @@ html .dashboard-modal-layer {
     left: 0;
   }
 }
-/*
- * These three rules used to hide the web sidebar and collapse the content
- * offset, because Craft rendered a real NSOutlineView in that strip and
- * showing both would have meant two navigations side by side.
- *
- * That native sidebar is retired (see actions/src/dev/dashboard.ts: "the web
- * one owns rendering and behavior"), and the dev server never requests one.
- * It does request `webSidebarMaterial: true`, purely for the NSVisualEffectView
- * vibrancy that sits BEHIND the stx-rendered rows.
- *
- * Craft conflates the two: macos.zig gates its native-sidebar bootstrap on
- * `style.web_sidebar_material` alone, and that bootstrap sets the global
- * `__craftNativeSidebar` flag. So asking for vibrancy silently asserted "a
- * native sidebar exists", the marker got stamped on the root element, and
- * these rules hid the only navigation the window had. The Craft window showed
- * a vibrant empty strip.
- *
- * Removed rather than re-gated: with the native sidebar retired there is no
- * state in which hiding the web sidebar is correct. The upstream conflation is
- * worth fixing in Craft too, so the flag stops lying to every other consumer.
- */
 .dark [data-stx-content] {
-  background: #0a0a0a;
+  background: #121318;
 }
 
 /* ===========================================================================
@@ -242,7 +235,7 @@ html .dashboard-modal-layer {
  * attribute is what wins, and it wins by specificity rather than by `!important`
  * so the rules stay overridable downstream.
  * ======================================================================== */
-html[data-appearance="arc"] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) {
   /* Warmer and a shade deeper than the content card it carries. The stx `arc`
      theme paints its pane at #f7f5f1 over whatever sits behind it; here the
      panel IS the backdrop, so it has to be flat and darker than white or the
@@ -253,26 +246,26 @@ html[data-appearance="arc"] {
 }
 /* The dark class is written onto the root element itself, so it stacks with
    the appearance attribute rather than sitting above it. */
-html[data-appearance="arc"].dark {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark {
   --dash-arc-panel: #171717;
 }
 
 /* The gap around the content card is the body showing through, which is what
    makes the card read as floating on the sidebar rather than beside it. */
-html[data-appearance="arc"] body {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) body {
   background: var(--dash-arc-panel);
 }
 
 /* The card owns scrolling, so the page must not also scroll: a document
    scrollbar would eat the right-hand gap and there would be nothing for it to
    scroll anyway. */
-html[data-appearance="arc"],
-html[data-appearance="arc"] body {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])),
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) body {
   height: 100%;
   overflow: hidden;
 }
 
-html[data-appearance="arc"] [data-stx-content] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-stx-content] {
   /* Only three margins. `margin-left` is deliberately left to the base rule.
 
      It is the one margin that transitions (0.3s, for the sidebar collapse),
@@ -299,59 +292,37 @@ html[data-appearance="arc"] [data-stx-content] {
      page. This is also what Arc does: the sidebar is stationary and the card
      scrolls inside its frame. */
   height: calc(100vh - (2 * var(--dash-arc-gap)));
-  overflow-y: auto;
+  overflow: hidden;
   border-radius: var(--dash-arc-radius);
   background: #fff;
-  /* Clip page content to the rounded corners - full-bleed headers and tables
-     otherwise square them off at the top. */
-  overflow-x: hidden;
   box-shadow:
     0 0 0 0.5px rgba(0, 0, 0, 0.07),
     0 1px 2px rgba(0, 0, 0, 0.05),
     0 8px 24px rgba(0, 0, 0, 0.06);
   transition: margin-left 0.3s ease-out;
 }
-html[data-appearance="arc"].dark [data-stx-content] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-stx-content] {
   background: #0a0a0a;
   box-shadow:
     0 0 0 0.5px rgba(255, 255, 255, 0.08),
     0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-/* An overlay scrollbar inside the card, so the rounded corner is not cut by a
-   full-width native gutter. */
-html[data-appearance="arc"] [data-stx-content] {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-html[data-appearance="arc"] [data-stx-content]::-webkit-scrollbar {
-  width: 8px;
-}
-html[data-appearance="arc"] [data-stx-content]::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background-clip: content-box;
-  background-color: rgba(0, 0, 0, 0.2);
-}
-html[data-appearance="arc"] [data-stx-content]::-webkit-scrollbar-track {
-  background: transparent;
-}
-html[data-appearance="arc"].dark [data-stx-content] {
-  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
-}
-html[data-appearance="arc"].dark [data-stx-content]::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.25);
+@media (min-width: 1024px) {
+  html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-stx-scroll="dashboard"] {
+    --dashboard-scrollbar: light-dark(rgb(0 0 0 / .2), rgb(255 255 255 / .25));
+  }
 }
 
 /* On narrow viewports the sidebar is hidden entirely, so the card would float
    on nothing. Return it to a flush pane. */
 @media (max-width: 1023px) {
-  html[data-appearance="arc"],
-  html[data-appearance="arc"] body {
+  html[data-appearance="arc"]:where(:not([data-dashboard-layout])),
+  html[data-appearance="arc"]:where(:not([data-dashboard-layout])) body {
     height: auto;
     overflow: visible;
   }
-  html[data-appearance="arc"] [data-stx-content] {
+  html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-stx-content] {
     margin-top: 0;
     margin-right: 0;
     margin-bottom: 0;
@@ -364,41 +335,41 @@ html[data-appearance="arc"].dark [data-stx-content]::-webkit-scrollbar-thumb {
 }
 
 /* The panel is the body; the pane just holds rows. */
-html[data-appearance="arc"] [data-stx-sidebar] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-stx-sidebar] {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   color: #2c2a28;
 }
-html[data-appearance="arc"].dark [data-stx-sidebar] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-stx-sidebar] {
   color: #ededf0;
 }
 /* Liquid Glass belongs to the macOS material. Arc's panel is flat. */
-html[data-appearance="arc"] .stx-sidebar-rim {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) .stx-sidebar-rim {
   display: none;
 }
 
 /* Rows: discrete cards with a 2px gutter, not AppKit's contiguous run. */
-html[data-appearance="arc"] [data-sidebar-row] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-row] {
   height: 32px;
 }
-html[data-appearance="arc"] [data-sidebar-item] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-item] {
   height: 30px;
   border-radius: 8px;
   color: inherit;
 }
-html[data-appearance="arc"] [data-sidebar-item]:hover {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-item]:hover {
   background: rgba(255, 255, 255, 0.55);
 }
-html[data-appearance="arc"].dark [data-sidebar-item]:hover {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-sidebar-item]:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
 /* Selection: a raised white card, in both window states. Matching the
    component's own selector shape is what gives these the specificity to win. */
-html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"],
-html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="false"] [data-sidebar-item][data-active="true"],
-html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"]:hover {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-selection="accent"][data-window-key="false"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"]:hover {
   background: #fff;
   color: #1b1a19;
   font-weight: 500;
@@ -406,9 +377,9 @@ html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="t
     0 0 0 1px rgba(0, 0, 0, 0.05),
     0 1px 2px rgba(0, 0, 0, 0.08);
 }
-html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"],
-html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="false"] [data-sidebar-item][data-active="true"],
-html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"]:hover {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-sidebar-selection="accent"][data-window-key="false"] [data-sidebar-item][data-active="true"],
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"]:hover {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
   box-shadow:
@@ -418,20 +389,20 @@ html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-k
 
 /* The icon, count and chevron turn white on a macOS accent fill. On a white
    card they must not - they keep their own tint, the same as an idle row. */
-html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-icon],
-html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-chevron] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-icon],
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-chevron] {
   color: var(--stx-sidebar-icon, currentColor);
 }
-html[data-appearance="arc"] [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-count] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-count] {
   color: rgba(44, 42, 40, 0.45);
 }
-html[data-appearance="arc"].dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-count] {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])).dark [data-sidebar-selection="accent"][data-window-key="true"] [data-sidebar-item][data-active="true"] [data-sidebar-count] {
   color: rgba(237, 237, 240, 0.45);
 }
 
 /* Section headers: sentence case and quieter than the macOS uppercase strip. */
-html[data-appearance="arc"] [data-sidebar-section-header],
-html[data-appearance="arc"] [data-sidebar-section] > div:first-child {
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-section-header],
+html[data-appearance="arc"]:where(:not([data-dashboard-layout])) [data-sidebar-section] > div:first-child {
   opacity: 0.55;
 }
 
@@ -465,18 +436,39 @@ html[data-appearance="arc"] [data-sidebar-section] > div:first-child {
   place-items: center;
   border-radius: 4px;
   color: currentColor;
-  opacity: .55;
+  opacity: 0;
+  pointer-events: none;
   cursor: grab;
   touch-action: none;
 }
 .dashboard-sidebar-order-grip[data-sidebar-order-handle="section"] { right: 23px; top: 7px; }
 [data-section-id="top"] > .dashboard-sidebar-order-grip { right: 1px; top: 2px; }
 .dashboard-sidebar-order-grip > span { display: block; width: 14px; height: 14px; }
-.dashboard-sidebar-order-grip:hover,
+[data-dashboard-sidebar-order]:has([data-sidebar-order-editing="true"]) .dashboard-sidebar-order-grip,
+[data-sidebar-row]:has(> [data-sidebar-item]:focus-visible) > .dashboard-sidebar-order-grip,
+[data-sidebar-section]:has(> [data-sidebar-section-header]:focus-visible) > .dashboard-sidebar-order-grip,
+.dashboard-sidebar-order-grip:focus-visible { opacity: .72; pointer-events: auto; }
 .dashboard-sidebar-order-grip:focus-visible { opacity: 1; background: rgba(127, 127, 127, .16); }
 .dashboard-sidebar-order-grip:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }
-.dashboard-sidebar-order-grip:disabled { cursor: wait; opacity: .25; }
-[data-order-dragging="true"] > .dashboard-sidebar-order-grip { cursor: grabbing; opacity: 1; }
+.dashboard-sidebar-order-grip:disabled { cursor: wait; }
+[data-order-dragging="true"] > .dashboard-sidebar-order-grip { cursor: grabbing; opacity: 1; pointer-events: auto; }
+@media (any-hover: hover) {
+  [data-sidebar-row]:hover > .dashboard-sidebar-order-grip,
+  [data-sidebar-section]:has(> :first-child:hover) > .dashboard-sidebar-order-grip,
+  .dashboard-sidebar-order-grip:hover { opacity: .72; pointer-events: auto; }
+  .dashboard-sidebar-order-grip:hover { opacity: 1; background: rgba(127, 127, 127, .16); }
+}
+@media (pointer: coarse) {
+  .dashboard-sidebar-order-mode { min-height: 44px; }
+  [data-dashboard-sidebar-order]:has([data-sidebar-order-editing="true"]) [data-sidebar-item],
+  [data-dashboard-sidebar-order]:has([data-sidebar-order-editing="true"]) [data-sidebar-section-header] { min-height: 44px; }
+  [data-dashboard-sidebar-order]:has([data-sidebar-order-editing="true"]) [data-sidebar-item] { padding-right: 50px; }
+  [data-dashboard-sidebar-order]:has([data-sidebar-order-editing="true"]) [data-sidebar-section-header] { padding-right: 68px; }
+  [data-dashboard-sidebar-order]:has([data-sidebar-order-editing="true"]) .dashboard-sidebar-order-grip { top: 0; width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-sidebar-order-grip { transition: opacity 120ms ease; }
+}
 [data-order-drop="before"] { box-shadow: 0 -2px #3b82f6; }
 [data-order-drop="after"] { box-shadow: 0 2px #3b82f6; }
 </style>
@@ -492,7 +484,10 @@ import type { ToastType } from '@stacksjs/defaults/functions/toasts'
 import type { CraftSidebarSelectEvent } from '@stacksjs/defaults/functions/craft'
 import { useToasts, dismissToast } from '@stacksjs/defaults/functions/toasts'
 import { ensureCraftNativeSidebarMarker, useCraftSidebarSelection } from '@stacksjs/defaults/functions/craft'
-import { readStoredAppearance, useAppearance } from '@stacksjs/defaults/views/dashboard/composables/useAppearance'
+import { dashboardNavigationPath } from '@stacksjs/defaults/resources/functions/dashboard/section-navigation'
+import { useAppearance } from '@stacksjs/defaults/views/dashboard/composables/useAppearance'
+import { handleDashboardSettingsClick, listenForSettingsCommand, openDashboardSettings } from '@stacksjs/defaults/views/dashboard/composables/settings-window'
+import { useDashboardThemes } from '@stacksjs/defaults/views/dashboard/composables/useDashboardThemes'
 import { authStore } from '@stacksjs/defaults/views/dashboard/stores/auth'
 import { kanbanStore } from '@stacksjs/defaults/views/dashboard/stores/kanban'
 import { createDashboardSidebarOrder } from '@stacksjs/defaults/functions/dashboard-sidebar-order'
@@ -533,12 +528,14 @@ const route = useRoute()
 const sidebarHost = useRef('dashboardSidebarHost')
 const mobileSidebarHost = useRef('dashboardMobileSidebarHost')
 const sidebarOrderStatus = state({ ready: false, saving: false, custom: false, message: 'Loading sidebar order…' })
+const sidebarReordering = state(false)
 const sidebarOrder = createDashboardSidebarOrder({
   pane: () => sidebarPanes()[0],
   sections: sidebarSections,
   status: value => sidebarOrderStatus.set(value),
 })
 let removeCraftSidebarSelection = () => {}
+let removeSettingsCommand: (() => void) | undefined
 ensureCraftNativeSidebarMarker()
 auth.load()
 
@@ -582,6 +579,7 @@ effect(() => {
 // ---------------------------------------------------------------------------
 
 const appearance = useAppearance()
+const themes = useDashboardThemes()
 
 effect(() => {
   // Reading the signals here is what subscribes this effect to them; `apply`
@@ -602,7 +600,9 @@ function applySectionVisibility() {
   // ends up with no dependency and never runs again. The toggle then appears to
   // do nothing until a reload.
   const hidden = appearance.hiddenSections()
+  const flatNavigation = themes.sectionNavigation()
   for (const pane of sidebarPanes()) {
+    pane.setAttribute('tabindex', flatNavigation ? '-1' : '0')
     for (const section of pane.querySelectorAll<HTMLElement>('[data-sidebar-section]')) {
       const id = section.dataset.sectionId || ''
       section.setAttribute('data-viewer-hidden', String(hidden.includes(id)))
@@ -618,21 +618,11 @@ function applySectionVisibility() {
 effect(applySectionVisibility)
 
 
-// Another tab changed the preferences. `storage` only fires in OTHER tabs, so
-// this cannot loop back on the tab that made the change. The store's own
-// persistence writes but does not watch, so the re-read is explicit.
-useEventListener('storage', (event) => {
-  if (event?.key !== 'stacks-dashboard-appearance') return
-  const next = readStoredAppearance()
-  appearance.sidebarStyle.set(next.sidebarStyle)
-  appearance.colorMode.set(next.colorMode)
-  appearance.hiddenSections.set(next.hiddenSections)
-  appearance.apply()
+useEventListener('click', handleDashboardSettingsClick, { capture: true })
+useEventListener('keydown', (event) => {
+  if (!removeSettingsCommand && event.metaKey && event.key === ',' && openDashboardSettings())
+    event.preventDefault()
 })
-
-function normalizeRoutePath(path: string | null | undefined): string {
-  return (path || '/').replace(/\/+$/, '') || '/'
-}
 
 // Highlight the current route. Longest-prefix matching keeps a detail page
 // such as /commerce/products/42 attached to its /commerce/products row while
@@ -646,7 +636,7 @@ function syncActiveSidebarRow(url?: string): void {
     catch {}
   }
 
-  const currentPath = normalizeRoutePath(path)
+  const currentPath = dashboardNavigationPath(path || '/')
   for (const pane of sidebarPanes()) {
     let bestMatch = null
     let bestLength = -1
@@ -655,7 +645,7 @@ function syncActiveSidebarRow(url?: string): void {
     for (const link of links) {
       const href = link.getAttribute('href') || ''
       if (href.startsWith('http')) continue
-      const candidatePath = normalizeRoutePath(href)
+      const candidatePath = dashboardNavigationPath(href)
       if (`${currentPath}/`.startsWith(`${candidatePath}/`) && candidatePath.length > bestLength) {
         bestMatch = link
         bestLength = candidatePath.length
@@ -678,7 +668,8 @@ function handleSidebarItemClick(payload: { item?: { href?: string }, event?: { p
   const href = payload?.item?.href
   if (!href || href.startsWith('http')) return
   payload.event?.preventDefault()
-  navigate(href)
+  if (!openDashboardSettings(href))
+    navigate(href)
 }
 
 // Where the Sidebar sat in the window while it is lent to the drawer.
@@ -696,6 +687,7 @@ function showSidebarInDrawer() {
     drawer.appendChild(element)
   }
   applyRoleFilter()
+  applySectionVisibility()
   syncActiveSidebarRow()
 }
 
@@ -703,6 +695,7 @@ function showSidebarInDrawer() {
 // markup is already gone by now, so the Sidebar is put back from the
 // reference kept above rather than looked up.
 function returnSidebarFromDrawer() {
+  sidebarReordering.set(false)
   if (!lentSidebar) return
   const { element, parent, next } = lentSidebar
   lentSidebar = null
@@ -718,10 +711,15 @@ function handleCraftSidebarSelection(event: CraftSidebarSelectEvent | undefined)
     const link = row?.querySelector('a[data-sidebar-item][href]')
     const href = link?.getAttribute('href')
     if (href) {
-      navigate(href)
+      if (!openDashboardSettings(href))
+        navigate(href)
       return
     }
   }
+}
+
+function attachSettingsCommand(): void {
+  removeSettingsCommand ??= listenForSettingsCommand(() => { openDashboardSettings() })
 }
 
 function attachCraftSidebarSelection() {
@@ -734,26 +732,29 @@ useEventListener('stx:hydrated', () => syncActiveSidebarRow(), { once: true })
 useEventListener('craft:ready', () => {
   ensureCraftNativeSidebarMarker()
   attachCraftSidebarSelection()
+  attachSettingsCommand()
 })
 
 onMount(() => {
+  themes.sync()
   sidebarOrder.attach()
   void sidebarOrder.load()
   syncActiveSidebarRow()
   applyRoleFilter()
   applySectionVisibility()
   attachCraftSidebarSelection()
+  attachSettingsCommand()
 })
 
 onDestroy(() => {
   sidebarOrder.destroy()
+  removeSettingsCommand?.()
   removeCraftSidebarSelection()
 })
 </script>
 
 <div ref="dashboardSidebarHost" data-dashboard-web-sidebar>
   <Sidebar
-    :sections="sidebarSections"
     theme="macos"
     width="250"
     placement="fixed"
@@ -776,9 +777,16 @@ onDestroy(() => {
         <ProjectSwitcher :name="dashboardProject.name" />
       @endif
     </template>
+    <div data-dashboard-sidebar-tree>
+      <SidebarSections :sections="sidebarSections" theme="macos" />
+    </div>
+    <DashboardSectionSidebar :sectionHubs="sectionHubs" :primaryItems="sidebarSections[0].items" />
     <template #footer>
-      <div class="px-3 py-2 text-neutral-600 text-xs dark:text-neutral-300" data-sidebar-order-controls>
+      <div class="px-3 py-2 text-neutral-600 text-xs dark:text-neutral-300" data-sidebar-order-controls data-dashboard-muted :data-sidebar-order-editing="sidebarReordering() ? 'true' : 'false'">
         <p role="status" aria-live="polite" :text="sidebarOrderStatus.message"></p>
+        <Button :if="sidebarOrderStatus.ready" class="dashboard-sidebar-order-mode" variant="ghost" size="xs" @click="sidebarReordering.set(!sidebarReordering())">
+          <span :text="sidebarReordering() ? 'Done reordering' : 'Reorder sidebar'">Reorder sidebar</span>
+        </Button>
         <Button :if="!sidebarOrderStatus.ready" variant="ghost" size="xs" @click="sidebarOrder.load()">Retry loading order</Button>
         <Button :if="sidebarOrderStatus.ready" variant="ghost" size="xs" :disabled="sidebarOrderStatus.saving" @click="sidebarOrder.reset()">Reset order</Button>
       </div>
@@ -793,8 +801,10 @@ onDestroy(() => {
   <div ref="dashboardMobileSidebarHost" data-dashboard-mobile-sidebar class="h-full"></div>
 </MobileSidebar>
 
-<main data-stx-content>
-  @slot('content')
+<main data-stx-content data-dashboard-content>
+  <div data-stx-scroll="dashboard">
+    @slot('content')
+  </div>
 </main>
 
 <GlobalSearch />
