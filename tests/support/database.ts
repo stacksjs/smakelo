@@ -340,10 +340,15 @@ export function refreshDatabase(options: { auth?: boolean } = {}): TestDatabase 
 
     database.exec('PRAGMA foreign_keys = OFF')
 
-    for (const { name } of tables)
-      database.exec(`DELETE FROM "${name}"`)
-
-    database.exec('PRAGMA foreign_keys = ON')
+    try {
+      database.transaction(() => {
+        for (const { name } of tables)
+          database.exec(`DELETE FROM "${name}"`)
+      })()
+    }
+    finally {
+      database.exec('PRAGMA foreign_keys = ON')
+    }
   }
 
   return { seed, truncate, connection: open }

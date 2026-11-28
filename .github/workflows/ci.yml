@@ -82,6 +82,9 @@ jobs:
       - name: Typecheck
         run: bun buddy test:types
 
+      - name: Check translation keys
+        run: ./buddy lang:check --strict
+
   test:
     runs-on: ${{ matrix.os }}
 

@@ -37,6 +37,11 @@ if (!Bun.env.STRIPE_SECRET_KEY)
  */
 Bun.env.DB_DATABASE_PATH = `storage/framework/testing/test-${process.pid}.sqlite`
 
+// The app suite resets its data between cases. Keep asynchronous telemetry
+// writes outside that database lifecycle so a finished test cannot write into
+// the next test's fixture. Query logging is covered by the framework tests.
+Bun.env.DB_QUERY_LOGGING_ENABLED = 'false'
+
 import { applyRuntimeDirectoryEnv } from '@stacksjs/path'
 import { setupTestEnvironment } from '@stacksjs/testing'
 
