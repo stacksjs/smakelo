@@ -549,6 +549,7 @@ earnings:
   none_of_yours: Bij dit account hoort geen afrekening. Afrekeningen horen bij een zaak of een koerier.
 
 account:
+  sign_out_failed: Uitloggen mislukt. Probeer het opnieuw.
   title: Je account
   make_account: Account maken
   sign_in: Inloggen

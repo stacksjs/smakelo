@@ -550,6 +550,7 @@ earnings:
   none_of_yours: There is no statement on this account. Statements belong to a business or a courier.
 
 account:
+  sign_out_failed: Could not sign out. Try again.
   title: Your account
   make_account: Make an account
   sign_in: Sign in

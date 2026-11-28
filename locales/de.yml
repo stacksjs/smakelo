@@ -549,6 +549,7 @@ earnings:
   none_of_yours: Zu diesem Konto gibt es keine Abrechnung. Abrechnungen gehören zu einem Betrieb oder einem Kurier.
 
 account:
+  sign_out_failed: Abmelden fehlgeschlagen. Versuche es erneut.
   title: Dein Konto
   make_account: Konto erstellen
   sign_in: Anmelden

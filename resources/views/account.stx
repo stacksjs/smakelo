@@ -358,6 +358,8 @@ const canonicalPath = '/account'
       const email = state('')
       const password = state('')
       const error = state('')
+      const signingOut = state(false)
+      const signOutFailed = state(false)
       const busy = state(false)
 
       const initials = derived(() => {
@@ -538,14 +540,15 @@ const canonicalPath = '/account'
           return
 
         const { data } = await response.json()
+        const loadedAccount = data.user ? await me() : null
+
+        if (authToken() !== token)
+          return
 
         user.set(data.user)
         providers.set(data.providers)
         carries.set(data.carries)
-
-        // What this account runs, for the list of screens above. Only worth
-        // asking once there is an account to ask about.
-        account.set(data.user ? await me() : null)
+        account.set(loadedAccount)
         if (data.user)
           await loadAddresses()
       }
@@ -670,21 +673,39 @@ const canonicalPath = '/account'
       }
 
       async function signOut() {
-        clearAuthToken()
-        forgetMe()
-        user.set(null)
-        account.set(null)
-        password.set('')
-        addresses.set([])
-        addressLine.set('')
-        addressLabel.set('')
-        addressSaveFailed.set(false)
+        if (signingOut())
+          return
 
-        // Back to signing in, not to making a second account. Somebody who has
-        // just signed out has an account by definition.
-        mode.set('login')
+        signingOut.set(true)
+        signOutFailed.set(false)
 
-        load()
+        try {
+          const response = await send('/logout')
+
+          if (!response.ok && response.status !== 401) {
+            signOutFailed.set(true)
+            return
+          }
+
+          clearAuthToken()
+          forgetMe()
+          user.set(null)
+          account.set(null)
+          password.set('')
+          addresses.set([])
+          addressLine.set('')
+          addressLabel.set('')
+          addressSaveFailed.set(false)
+          mode.set('login')
+
+          void load()
+        }
+        catch {
+          signOutFailed.set(true)
+        }
+        finally {
+          signingOut.set(false)
+        }
       }
 
       load()
