@@ -15,6 +15,7 @@ import { listings, setHidden } from '../app/Actions/Admin/curation'
 import type { Viewer } from '../app/Actions/Account/access'
 import { can, canActOnBusiness, canReadStatement, courierFor, viewerFor } from '../app/Actions/Account/access'
 import { DEMO_PASSWORD, demoAccounts, meState } from '../app/Actions/Account/surfaces'
+import { t } from '../app/Actions/Locale/translate'
 import { runGuards } from '../app/Actions/Admin/guards'
 import { storefrontOrigin } from '../app/Actions/Request/context'
 import { claims, decideClaim, submitClaim } from '../app/Actions/Claim/claims'
@@ -645,7 +646,9 @@ route.get('/claims', async (request: any) => {
 
   const status = request?.query?.status ? String(request.query.status) : undefined
 
-  return response.json({ data: await claims(status as 'pending' | 'approved' | 'rejected' | undefined) })
+  const data = await claims(status as 'pending' | 'approved' | 'rejected' | undefined)
+
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 route.post('/claims/{id}/{decision}', async (request: any) => {
@@ -906,7 +909,14 @@ route.get('/admin/guards', async (request: any) => {
   if (!can(viewer, 'guards.read'))
     return refuse(viewer)
 
-  return response.json({ data: await runGuards() })
+  const report = await runGuards()
+  const results = report.results.map(check => ({
+    ...check,
+    title: t(`guard.${check.key}_name`),
+    detail: t(`guard.${check.key}_${check.detailKey}`, check.detailValues),
+  }))
+
+  return Response.json({ data: { ...report, results } }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 route.get('/admin/listings', async (request: any) => {
@@ -915,7 +925,9 @@ route.get('/admin/listings', async (request: any) => {
   if (!can(viewer, 'listings.curate'))
     return refuse(viewer)
 
-  return response.json({ data: await listings(String(request?.query?.q ?? '')) })
+  const data = await listings(String(request?.query?.q ?? ''))
+
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 route.post('/admin/listings/{slug}/{action}', async (request: any) => {

@@ -461,6 +461,19 @@ admin:
   guards_lede: Was diese Seite über sich selbst zusagt, geprüft an dem, was tatsächlich gespeichert ist. Eine Prüfung, deren Stand niemand sehen kann, ist eine, von der man hinterher erfährt.
   listings_lede: Einen Eintrag auszublenden nimmt ihn von der Entdecken-Seite, aus der Suche, von der Karte und von seiner eigenen Seite, und man kann dort nicht mehr bestellen. Die Zeile bleibt, damit er zurückkommen kann, falls sich herausstellt, dass die Anfrage von jemandem kam, der den Betrieb gar nicht führt.
 
+marketplace:
+  operations: Marktplatzverwaltung
+  demo_checks: Demo-Prüfungen
+  recent_decisions: Letzte Entscheidungen
+  approved: Genehmigt
+  rejected: Abgelehnt
+  search: Suchen
+  no_listings: Keine Einträge entsprechen deiner Suche.
+  partner: Partnerbetrieb
+  claimed: Beansprucht
+  passed: Bestanden
+  failed: Fehlgeschlagen
+
 shares:
   title: Anteile
   none: Du hast keine Anteile.

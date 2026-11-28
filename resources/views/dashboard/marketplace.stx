@@ -1,0 +1,239 @@
+<script server>
+import { t } from '../../../app/Actions/Locale/translate'
+
+export const operationLabels = {
+  approved: t('claims.approve'),
+  rejected: t('claims.reject'),
+  hide: t('admin.take_down'),
+  restore: t('admin.put_back'),
+  cancel: t('common.cancel'),
+  failed: t('common.error'),
+}
+defineClientPayload({ operationLabels })
+</script>
+
+@extends('layouts/default')
+
+@section('content')
+@title('Marketplace operations')
+<section class="mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-5xl w-full" aria-labelledby="marketplace-title">
+  <h1 id="marketplace-title" class="font-semibold text-2xl text-gray-900 tracking-tight dark:text-white">{{ t('marketplace.operations') }}</h1>
+
+  <div class="flex flex-wrap gap-2 mt-5" role="group" aria-label="{{ t('marketplace.operations') }}">
+    <button type="button" :aria-pressed="active() === 'claims'" @click="select('claims')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('claims.title') }}</button>
+    <button type="button" :aria-pressed="active() === 'listings'" @click="select('listings')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('admin.listings') }}</button>
+    <button type="button" :aria-pressed="active() === 'guards'" @click="select('guards')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('marketplace.demo_checks') }}</button>
+  </div>
+
+  <div :if="failure()" class="flex flex-wrap gap-3 items-center mt-6" role="alert">
+    <p class="text-gray-700 text-sm dark:text-gray-300">{{ failure().message }}</p>
+    <a :if="failure().status === 401" href="/login" class="font-medium text-blue-700 text-sm underline dark:text-blue-300">{{ t('nav.sign_in') }}</a>
+    <Button :if="failure().status !== 401 && failure().status !== 403" variant="secondary" @click="load">{{ t('common.retry') }}</Button>
+  </div>
+  <p :if="loading()" class="mt-6 text-gray-600 text-sm dark:text-gray-400" role="status">{{ t('common.loading') }}</p>
+  <p :if="notice()" class="mt-6 text-gray-700 text-sm dark:text-gray-300" role="status">{{ t('common.saved') }}</p>
+
+  <section :if="active() === 'claims' && !failure() && !loading()" class="mt-7" aria-labelledby="pending-claims">
+    <h2 id="pending-claims" class="font-semibold text-gray-900 text-lg dark:text-white">{{ t('claims.waiting') }}</h2>
+    <p :if="pendingClaims().length === 0" class="mt-3 text-gray-600 text-sm dark:text-gray-400">{{ t('claims.nothing_waiting') }}</p>
+    <div :if="pendingClaims().length > 0" class="mt-3 border-gray-200 border-y divide-gray-200 divide-y dark:border-gray-700 dark:divide-gray-700">
+      <article :for="claim in pendingClaims()" class="flex flex-wrap gap-3 items-start justify-between py-4">
+        <div class="min-w-0">
+          <h3 class="font-medium text-gray-900 dark:text-white">{{ claim.businessName }}</h3>
+          <p class="mt-1 break-words text-gray-600 text-sm dark:text-gray-400">{{ claim.claimantName }} · {{ claim.claimantEmail }}</p>
+          <p :if="claim.message" class="mt-2 break-words text-gray-800 text-sm dark:text-gray-200">{{ claim.message }}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <Button variant="secondary" @click="ask('approved', claim)">{{ t('claims.approve') }}</Button>
+          <Button variant="secondary" @click="ask('rejected', claim)">{{ t('claims.reject') }}</Button>
+        </div>
+      </article>
+    </div>
+    <section :if="decided().length > 0" class="mt-8" aria-labelledby="recent-decisions">
+      <h2 id="recent-decisions" class="font-semibold text-gray-900 text-lg dark:text-white">{{ t('marketplace.recent_decisions') }}</h2>
+      <div class="mt-3 border-gray-200 border-y divide-gray-200 divide-y dark:border-gray-700 dark:divide-gray-700">
+        <div :for="claim in decided()" class="flex flex-wrap gap-2 justify-between py-3 text-sm">
+          <span class="font-medium">{{ claim.businessName }}</span>
+          <span :if="claim.status === 'approved'" class="text-gray-700 dark:text-gray-300">{{ t('marketplace.approved') }}</span>
+          <span :if="claim.status === 'rejected'" class="text-gray-700 dark:text-gray-300">{{ t('marketplace.rejected') }}</span>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section :if="active() === 'listings' && failure()?.status !== 401 && failure()?.status !== 403" class="mt-7" aria-labelledby="listing-management">
+    <h2 id="listing-management" class="font-semibold text-gray-900 text-lg dark:text-white">{{ t('admin.listings') }}</h2>
+    <form @submit="searchListings($event)" class="flex flex-wrap gap-3 items-end mt-4">
+      <label class="block flex-1">
+        <span class="block text-gray-700 text-sm dark:text-gray-300">{{ t('admin.find_listing') }}</span>
+        <input type="search" maxlength="100" :value="query()" @input="query.set($event.target.value)" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-gray-900 border border-gray-300 rounded-lg dark:border-gray-700">
+      </label>
+      <Button type="submit" variant="secondary" :disabled="loading()">{{ t('marketplace.search') }}</Button>
+    </form>
+    <p :if="!failure() && !loading() && listings().length === 0" class="mt-4 text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.no_listings') }}</p>
+    <div :if="!failure() && !loading() && listings().length > 0" class="mt-4 border-gray-200 border-y divide-gray-200 divide-y dark:border-gray-700 dark:divide-gray-700">
+      <div :for="listing in listings()" class="flex flex-wrap gap-3 items-center justify-between py-3">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 dark:text-white">{{ listing.name }}</p>
+          <p class="mt-1 text-gray-600 text-sm dark:text-gray-400">{{ listing.city }} · {{ listing.type }}</p>
+        </div>
+        <div class="flex flex-wrap gap-2 items-center text-sm">
+          <span :if="listing.hidden" class="text-gray-700 dark:text-gray-300">{{ t('admin.hidden') }}</span>
+          <span :if="listing.isPartner" class="text-gray-700 dark:text-gray-300">{{ t('marketplace.partner') }}</span>
+          <span :if="listing.isClaimed && !listing.isPartner" class="text-gray-700 dark:text-gray-300">{{ t('marketplace.claimed') }}</span>
+          <Button :if="listing.hidden" variant="secondary" @click="ask('restore', listing)">{{ t('admin.put_back') }}</Button>
+          <Button :if="!listing.hidden && !listing.isPartner" variant="secondary" @click="ask('hide', listing)">{{ t('admin.take_down') }}</Button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section :if="active() === 'guards' && !failure() && !loading()" class="mt-7" aria-labelledby="demo-checks">
+    <h2 id="demo-checks" class="font-semibold text-gray-900 text-lg dark:text-white">{{ t('marketplace.demo_checks') }}</h2>
+    <p :if="report()?.allPassed" class="mt-2 text-gray-600 text-sm dark:text-gray-400">{{ t('admin.all_holding') }}</p>
+    <p :if="report() && !report().allPassed" class="mt-2 font-medium text-red-700 text-sm dark:text-red-300">{{ t('admin.something_wrong') }}</p>
+    <div class="mt-4 border-gray-200 border-y divide-gray-200 divide-y dark:border-gray-700 dark:divide-gray-700">
+      <div :for="check in report()?.results ?? []" class="flex flex-wrap gap-3 items-start justify-between py-3">
+        <div>
+          <h3 class="font-medium text-gray-900 dark:text-white">{{ check.title }}</h3>
+          <p class="mt-1 text-gray-600 text-sm dark:text-gray-400">{{ check.detail }}</p>
+        </div>
+        <span :if="check.ok" class="text-gray-700 text-sm dark:text-gray-300">{{ t('marketplace.passed') }}</span>
+        <span :if="!check.ok" class="font-medium text-red-700 text-sm dark:text-red-300">{{ t('marketplace.failed') }}</span>
+      </div>
+    </div>
+  </section>
+
+  <ConfirmDialog
+    :isOpen="Boolean(task())"
+    :title="task()?.title ?? ''"
+    :description="task()?.description ?? ''"
+    :cancelLabel="labels.cancel"
+    :confirmLabel="task()?.label ?? ''"
+    :variant="task()?.danger ? 'danger' : 'warning'"
+    :busy="working()"
+    :error="mutationError()"
+    @close="task.set(null)"
+    @confirm="apply"
+  />
+</section>
+
+<style>
+.marketplace-tab[aria-pressed="true"] {
+  background: var(--color-gray-900, #111827);
+  border-color: var(--color-gray-900, #111827);
+  color: white;
+}
+.dark .marketplace-tab[aria-pressed="true"] {
+  background: var(--color-gray-100, #f3f4f6);
+  border-color: var(--color-gray-100, #f3f4f6);
+  color: var(--color-gray-900, #111827);
+}
+</style>
+
+<script client>
+import { dashboardApi, DashboardApiError } from '@stacksjs/defaults/functions/dashboard-api'
+
+const labels = operationLabels
+const active = state('claims')
+const loading = state(true)
+const failure = state(null)
+const notice = state(false)
+const claims = state([])
+const listings = state([])
+const report = state(null)
+const query = state('')
+const search = state('')
+const task = state(null)
+const working = state(false)
+const mutationError = state('')
+
+const pendingClaims = derived(() => claims().filter(claim => claim.status === 'pending'))
+const decided = derived(() => claims().filter(claim => claim.status !== 'pending').slice(0, 8))
+let requestNumber = 0
+
+function select(section) {
+  if (active() === section)
+    return
+
+  active.set(section)
+  notice.set(false)
+  load()
+}
+
+async function load() {
+  const section = active()
+  const request = ++requestNumber
+  loading.set(true)
+  failure.set(null)
+
+  try {
+    const endpoint = section === 'claims' ? '/api/claims'
+      : section === 'guards' ? '/api/admin/guards'
+        : '/api/admin/listings?q=' + encodeURIComponent(search())
+    const { data } = await dashboardApi(endpoint)
+
+    if (request !== requestNumber)
+      return
+
+    if (section === 'claims')
+      claims.set(data)
+    else if (section === 'guards')
+      report.set(data)
+    else
+      listings.set(data)
+  }
+  catch (error) {
+    if (request === requestNumber)
+      failure.set({ message: error instanceof DashboardApiError ? error.message : labels.failed, status: error.status ?? 0 })
+  }
+  finally {
+    if (request === requestNumber)
+      loading.set(false)
+  }
+}
+
+function searchListings(event) {
+  event.preventDefault()
+  search.set(query().trim())
+  notice.set(false)
+  load()
+}
+
+function ask(action, item) {
+  const listing = action === 'hide' || action === 'restore'
+  const label = labels[action]
+  const path = listing
+    ? `/api/admin/listings/${encodeURIComponent(item.slug)}/${action}`
+    : `/api/claims/${item.id}/${action}`
+  mutationError.set('')
+  task.set({ path, label, title: label + '?', description: listing ? item.name : item.businessName, danger: action === 'hide' || action === 'rejected' })
+}
+
+async function apply() {
+  const change = task()
+
+  if (!change || working())
+    return
+
+  working.set(true)
+  mutationError.set('')
+  notice.set(false)
+
+  try {
+    await dashboardApi(change.path, { method: 'POST', body: {} })
+    task.set(null)
+    await load()
+    notice.set(true)
+  }
+  catch (error) {
+    mutationError.set(error instanceof DashboardApiError ? error.message : labels.failed)
+  }
+  finally {
+    working.set(false)
+  }
+}
+
+load()
+</script>
+@endsection

@@ -461,6 +461,19 @@ admin:
   guards_lede: Wat deze site over zichzelf belooft, getoetst aan wat er werkelijk is opgeslagen. Een controle waarvan niemand de stand kan zien, is er een waar je achteraf van hoort.
   listings_lede: Een vermelding verbergen haalt hem van de ontdekpagina, uit het zoeken, van de kaart en van zijn eigen pagina, en er kan niet meer besteld worden. De regel blijft staan, zodat hij terug kan komen als blijkt dat het verzoek van iemand kwam die de zaak helemaal niet runt.
 
+marketplace:
+  operations: Marktplaatsbeheer
+  demo_checks: Democontroles
+  recent_decisions: Recente beslissingen
+  approved: Goedgekeurd
+  rejected: Afgewezen
+  search: Zoeken
+  no_listings: Geen vermeldingen komen overeen met je zoekopdracht.
+  partner: Partner
+  claimed: Geclaimd
+  passed: Geslaagd
+  failed: Mislukt
+
 shares:
   title: Aandelen
   none: Je hebt geen aandelen.

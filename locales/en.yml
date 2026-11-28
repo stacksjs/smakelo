@@ -462,6 +462,19 @@ admin:
   guards_lede: What this site promises about itself, checked against what is actually stored. A guard nobody can see the state of is one you find out about afterwards.
   listings_lede: Hiding a listing takes it off the discover page, the search, the map and its own page, and stops it being ordered from. The row stays, so it can come back if the request turns out to have come from somebody who did not run the place after all.
 
+marketplace:
+  operations: Marketplace operations
+  demo_checks: Demo checks
+  recent_decisions: Recent decisions
+  approved: Approved
+  rejected: Rejected
+  search: Search
+  no_listings: No listings match your search.
+  partner: Partner
+  claimed: Claimed
+  passed: Passed
+  failed: Failed
+
 shares:
   title: Shares
   none: You have no shares.

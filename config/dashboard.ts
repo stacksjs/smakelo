@@ -26,6 +26,7 @@ export default {
     {
       title: 'Marketplace',
       items: [
+        { label: 'Operations', href: '/marketplace', icon: 'activity', roles: operatorRoles },
         { label: 'Orders', href: '/models/order', icon: 'orders', roles: operatorRoles },
         { label: 'Business listings', href: '/models/business', icon: 'cart', roles: operatorRoles },
         { label: 'Claims', href: '/models/claim', icon: 'document', roles: operatorRoles },

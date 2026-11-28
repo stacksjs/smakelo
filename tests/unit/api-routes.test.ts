@@ -453,9 +453,12 @@ describe('what a signed-in stranger still may not do', () => {
     seedShop()
     const token = await signIn(['admin'])
 
-    const { status } = await get('/admin/guards', { authorization: `Bearer ${token}` })
+    const { status, body } = await get('/admin/guards', { authorization: `Bearer ${token}` })
 
     expect(status).toBe(200)
+    expect(body.data.results).toHaveLength(6)
+    expect(body.data.results.find((check: { key: string }) => check.key === 'payments'))
+      .toMatchObject({ title: 'Sandbox payments only', detail: expect.any(String) })
   })
 
   test('a role that runs a restaurant does not run the site', async () => {
