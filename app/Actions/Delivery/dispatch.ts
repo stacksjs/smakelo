@@ -23,6 +23,31 @@ export interface DispatchResult {
 }
 
 export async function dispatchOrder(orderId: number): Promise<DispatchResult> {
+  return await db.transaction(() => assignOrder(orderId))
+}
+
+/** Assign the oldest platform delivery when a kitchen or courier is ready. */
+export async function dispatchNextReadyOrder(): Promise<DispatchResult | null> {
+  return await db.transaction(async () => {
+    const [order] = await db.unsafe(`
+      SELECT orders.id
+      FROM orders
+      JOIN businesses ON businesses.id = orders.business_id
+      WHERE orders.order_type = 'DELIVERY'
+        AND orders.status = 'SHIPPED'
+        AND businesses.self_delivery = 0
+        AND NOT EXISTS (
+          SELECT 1 FROM delivery_stops WHERE delivery_stops.order_id = orders.id
+        )
+      ORDER BY orders.id
+      LIMIT 1
+    `).execute() as Array<{ id: number }>
+
+    return order ? await assignOrder(Number(order.id), true) : null
+  })
+}
+
+async function assignOrder(orderId: number, requireAccount = false): Promise<DispatchResult> {
   const order = await db.selectFrom('orders')
     .where('id', '=', orderId)
     .selectAll()
@@ -54,6 +79,7 @@ export async function dispatchOrder(orderId: number): Promise<DispatchResult> {
   const courier = await nearestAvailableCourier(
     Number(business.latitude),
     Number(business.longitude),
+    requireAccount,
   )
 
   if (!courier)
@@ -128,9 +154,10 @@ export async function dispatchOrder(orderId: number): Promise<DispatchResult> {
  * search does it: SQLite has no trigonometry to rely on, and the candidate set
  * here is a handful of rows.
  */
-async function nearestAvailableCourier(latitude: number, longitude: number): Promise<Record<string, unknown> | null> {
-  const couriers = await db.selectFrom('couriers')
-    .where('status', '=', 'active')
+async function nearestAvailableCourier(latitude: number, longitude: number, requireAccount: boolean): Promise<Record<string, unknown> | null> {
+  const query = db.selectFrom('couriers').where('status', '=', 'active')
+  const couriers = await (requireAccount ? query.where('user_id', 'is not', null) : query)
+    .orderBy('id')
     .selectAll()
     .execute() as Array<Record<string, unknown>>
 

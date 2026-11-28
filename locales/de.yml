@@ -243,6 +243,14 @@ status:
   shipped: Übergeben
 
 tracking:
+  pickup_title: Status der Abholung
+  dine_in_title: Status der Tischbestellung
+  pickup_ready: Bereit zur Abholung
+  picked_up: Abgeholt
+  served: Serviert
+  courier_ready: Bereit für den Kurier
+  pickup_address: Abholadresse
+  estimated_wait: Voraussichtliche Wartezeit
   title: Wo deine Bestellung ist
   arriving_now: Kommt jetzt an
   looking: Bestellung wird gesucht…
@@ -400,6 +408,11 @@ claims:
   lede: Die Einträge stammen aus offenen Daten, deshalb schreiben die meisten, weil sie herauswollen. Das ist ein vernünftiger Wunsch, und er steht hier an erster Stelle.
 
 kitchen:
+  send_delivery: Zur Lieferung aufgeben
+  complete_delivery: Als geliefert markieren
+  picked_up: Abgeholt
+  served: Serviert
+  update_failed: Die Bestellung konnte nicht aktualisiert werden. Versuche es erneut.
   loading_board: Board wird geladen…
   no_board: Für diesen Betrieb gibt es kein Board.
   orders: Bestellungen
@@ -570,6 +583,11 @@ cart:
   group_needs_choice: Bitte etwas bei „{group}“ auswählen.
 
 home_kitchen:
+  send_delivery: Zur Lieferung aufgeben
+  complete_delivery: Als geliefert markieren
+  picked_up: Abgeholt
+  served: Serviert
+  update_failed: Die Bestellung konnte nicht aktualisiert werden. Versuche es erneut.
   address_note: Das Viertel, nicht die Adresse. Die Hausnummer bekommt, wer die Bestellung abholt.
   nav: Hausküchen
   headline: Eine Küche muss kein Restaurant sein, damit sich das Bestellen lohnt.
@@ -596,6 +614,9 @@ home_kitchen:
   browse: Hausküchen durchsuchen
 
 checkout:
+  updating_total: Gesamtbetrag wird aktualisiert…
+  placing_order: Bestellung wird aufgegeben…
+  payment_setup_failed: Die Bestellung wurde aufgegeben. Die Zahlung konnte nicht eingerichtet werden.
   loading_menu: Speisekarte wird geladen…
   unavailable: Diese Speisekarte ist nicht verfügbar.
   order_placed: Bestellung aufgegeben

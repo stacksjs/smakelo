@@ -82,7 +82,21 @@ export function cartHandlers(page: CartSignals) {
     signal.set({ ...signal(), [field]: value })
   }
 
-  const setCheckout = (field: string, value: unknown) => patch(page.checkout, field, value)
+  let quoteVersion = 0
+  let quoteTimer: ReturnType<typeof setTimeout> | undefined
+
+  function setCheckout(field: string, value: unknown): void {
+    patch(page.checkout, field, value)
+
+    if (field === 'addressLine') {
+      patch(page.checkout, 'address', null)
+      patch(page.checkout, 'quoting', true)
+      page.cartError.set('')
+      quoteVersion += 1
+      clearTimeout(quoteTimer)
+      quoteTimer = setTimeout(refreshQuote, 350)
+    }
+  }
   const setConfig = (field: string, value: unknown) => patch(page.config, field, value)
 
   function currency(): string {
@@ -596,8 +610,7 @@ export function cartHandlers(page: CartSignals) {
 
   function clearCart(): void {
     setCart([])
-    page.quote.set(null)
-    page.cartError.set('')
+    void refreshQuote()
   }
 
   function openCart(): void {
@@ -696,70 +709,96 @@ export function cartHandlers(page: CartSignals) {
     }))
   }
 
-  async function refreshQuote(): Promise<void> {
-    if (page.cart().length === 0) {
-      page.quote.set(null)
-      return
-    }
-
-    const response = await send('/api/orders/quote', {
+  function checkoutRequest(): Record<string, unknown> {
+    return {
       businessSlug: slug,
       fulfilment: page.checkout().fulfilment,
       tipCents: page.checkout().tipCents,
       notes: page.checkout().note,
       lines: lines(),
       ...deliveryFields(),
-    })
+    }
+  }
 
-    const payload = await response.json()
+  async function refreshQuote(): Promise<void> {
+    clearTimeout(quoteTimer)
+    const version = ++quoteVersion
+    page.cartError.set('')
 
-    page.quote.set(response.ok ? payload.data : null)
-    page.cartError.set(response.ok ? '' : payload.message || '')
+    const draft = page.checkout()
+    if (page.cart().length === 0 || (draft.fulfilment === 'delivery' && draft.addressLine.trim().length < 5)) {
+      page.quote.set(null)
+      patch(page.checkout, 'quoting', false)
+      return
+    }
+
+    patch(page.checkout, 'quoting', true)
+
+    try {
+      const response = await send('/api/orders/quote', checkoutRequest())
+      const payload = await response.json()
+
+      if (version === quoteVersion) {
+        page.quote.set(response.ok ? payload.data : null)
+        page.cartError.set(response.ok ? '' : payload.message || '')
+      }
+    }
+    catch {
+      if (version === quoteVersion) {
+        page.quote.set(null)
+        page.cartError.set(say('checkout.could_not_place', 'That order could not be placed.'))
+      }
+    }
+    finally {
+      if (version === quoteVersion)
+        patch(page.checkout, 'quoting', false)
+    }
   }
 
   async function placeOrder(): Promise<void> {
-    const response = await send('/api/orders', {
-      businessSlug: slug,
-      fulfilment: page.checkout().fulfilment,
-      tipCents: page.checkout().tipCents,
-      notes: page.checkout().note,
-      lines: lines(),
-      ...deliveryFields(),
-    })
-
-    const payload = await response.json()
-
-    if (!response.ok) {
-      page.cartError.set(payload.message || say('checkout.could_not_place', 'That order could not be placed.'))
+    if (page.checkout().placing || page.checkout().quoting || !page.quote() || page.placed())
       return
+
+    patch(page.checkout, 'placing', true)
+    page.cartError.set('')
+
+    try {
+      const response = await send('/api/orders', checkoutRequest())
+      const payload = await response.json()
+
+      if (!response.ok) {
+        page.cartError.set(payload.message || say('checkout.could_not_place', 'That order could not be placed.'))
+        return
+      }
+
+      forget()
+      page.placed.set(payload.data)
+      void startPayment(payload.data.orderId)
     }
-
-    /*
-     * The order has gone to a kitchen, so the basket it came from is spent.
-     * Left written, the next visit would open onto a basket somebody has
-     * already sent and paid for, inviting them to send it again.
-     */
-    forget()
-    page.placed.set(payload.data)
-
-    /*
-     * Placing and paying are separate steps on purpose: the kitchen board
-     * shows the order either way, which is what happens in a restaurant when
-     * a card is declined.
-     */
-    startPayment(payload.data.orderId)
+    catch {
+      page.cartError.set(say('checkout.could_not_place', 'That order could not be placed.'))
+    }
+    finally {
+      patch(page.checkout, 'placing', false)
+    }
   }
 
   async function startPayment(orderId: number): Promise<void> {
-    const response = await send(`/api/payment/${orderId}/intent`)
-    const { data } = await response.json()
+    try {
+      const response = await send(`/api/payment/${orderId}/intent`)
+      const { data } = await response.json()
 
-    page.payment.set({ ...data, status: '' })
+      if (!response.ok || !data)
+        throw new Error('Payment setup failed')
 
-    if (!data.configured || !data.clientSecret)
-      return
+      page.payment.set({ ...data, status: '' })
 
-    whenPresent('card-element', () => mountStripe(data))
+      if (data.configured && data.clientSecret)
+        whenPresent('card-element', () => mountStripe(data))
+    }
+    catch {
+      page.payment.set({ configured: false, reason: say('checkout.payment_setup_failed', 'The order was placed. Payment setup failed.'), status: '' })
+    }
   }
 
   /* Stripe mounts a real element, so it waits for the branch that holds it. */

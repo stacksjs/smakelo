@@ -158,3 +158,7 @@ storage/framework/core/defaults/*
 !storage/framework/core/defaults/tests/**
 /storage/framework/stacks/storage/framework/stx/bundle-tmp
 .stx-probe/
+
+# Local test databases and incremental compiler state.
+/storage/framework/testing/*.sqlite*
+/tsconfig.tsbuildinfo

@@ -244,6 +244,14 @@ status:
   shipped: Handed over
 
 tracking:
+  pickup_title: Pickup status
+  dine_in_title: Dine-in order status
+  pickup_ready: Ready for pickup
+  picked_up: Picked up
+  served: Served
+  courier_ready: Ready for the courier
+  pickup_address: Pickup address
+  estimated_wait: Estimated wait
   title: Where your order is
   arriving_now: Arriving now
   looking: Looking for that order…
@@ -401,6 +409,11 @@ claims:
   lede: The listings come from open data, so most people writing in are asking to come off it. That is a reasonable thing to want, and it is the first option here.
 
 kitchen:
+  send_delivery: Send for delivery
+  complete_delivery: Mark delivered
+  picked_up: Picked up
+  served: Served
+  update_failed: Could not update the order. Try again.
   loading_board: Loading the board…
   no_board: No board for that business.
   orders: Orders
@@ -571,6 +584,11 @@ cart:
   group_needs_choice: Pick an option for "{group}".
 
 home_kitchen:
+  send_delivery: Send for delivery
+  complete_delivery: Mark delivered
+  picked_up: Picked up
+  served: Served
+  update_failed: Could not update the order. Try again.
   address_note: The neighbourhood, not the address. The door number goes to whoever is coming to collect.
   nav: Home kitchens
   headline: A kitchen does not have to be a restaurant to be worth ordering from.
@@ -597,6 +615,9 @@ home_kitchen:
   browse: Browse home kitchens
 
 checkout:
+  updating_total: Updating total…
+  placing_order: Placing order…
+  payment_setup_failed: The order was placed. Payment setup failed.
   loading_menu: Loading the menu…
   unavailable: That menu is not available.
   order_placed: Order placed

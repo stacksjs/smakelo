@@ -597,6 +597,7 @@ import { t } from '../../app/Actions/Locale/translate'
             <button
               :for="option in group.options"
               @click="toggleChoice(group, option.id)"
+              :aria-pressed="chosenIn(group.id, option.id)"
               class="px-3.5 py-2 text-[13px] rounded-full transition-all duration-500"
               :style="chosenIn(group.id, option.id) ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
             >{{ option.name }}{{ optionPrice(option) }}</button>
@@ -763,6 +764,7 @@ import { t } from '../../app/Actions/Locale/translate'
               <button
                 :for="mode in fulfilmentChoices()"
                 @click="setFulfilment(mode.value)"
+                :aria-pressed="checkout().fulfilment === mode.value"
                 class="px-4 py-2 text-[13px] rounded-full transition-all duration-500"
                 :style="checkout().fulfilment === mode.value ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
               >{{ mode.label }}</button>
@@ -784,6 +786,8 @@ import { t } from '../../app/Actions/Locale/translate'
             </div>
 
             <input
+              aria-label="{{ t('checkout.street_number') }}"
+              autocomplete="street-address"
               placeholder="{{ t('checkout.street_number') }}"
               maxlength="255"
               :value="checkout().addressLine"
@@ -828,13 +832,14 @@ import { t } from '../../app/Actions/Locale/translate'
               <button
                 :for="option in tipChoices()"
                 @click="setTip(option.cents)"
+                :aria-pressed="checkout().tipCents === option.cents"
                 class="px-3.5 py-2 text-[13px] rounded-full transition-all duration-500"
                 :style="checkout().tipCents === option.cents ? 'background: var(--ink); color: var(--paper)' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
               >{{ option.label }}</button>
             </div>
           </div>
 
-          <p :if="cartError()" class="px-4 py-3 mt-5 text-[13px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ cartError() }}</p>
+          <p :if="cartError()" role="alert" class="px-4 py-3 mt-5 text-[13px] rounded-2xl" style="background: var(--accent-soft); color: var(--accent)">{{ cartError() }}</p>
 
           {{-- Every number here came from the server. --}}
           <dl :if="quote()" class="pt-5 mt-5 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
@@ -864,12 +869,17 @@ import { t } from '../../app/Actions/Locale/translate'
             </div>
           </dl>
 
+          <p :if="checkout().quoting" role="status" class="mt-4 text-[13px]" style="color: var(--ink-soft)">{{ t('checkout.updating_total') }}</p>
           <button
             :if="quote()"
+            :disabled="checkout().quoting || checkout().placing"
             @click="placeOrder()"
-            class="flex gap-3 justify-center items-center px-5 py-3.5 mt-6 w-full text-[14px] font-medium rounded-full transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+            class="mt-6 w-full rounded-full px-5 py-3.5 text-[14px] font-medium transition-colors disabled:opacity-60"
             style="background: var(--accent); color: #fff"
-          >{{ t('order.place_order') }}</button>
+          >
+            <span :if="checkout().placing">{{ t('checkout.placing_order') }}</span>
+            <span :if="!checkout().placing">{{ t('order.place_order') }}</span>
+          </button>
 
           <p :if="quote()" class="mt-3 mb-2 text-[11px] text-center" style="color: var(--ink-soft)">{{ t('checkout.test_mode') }}</p>
         </div>

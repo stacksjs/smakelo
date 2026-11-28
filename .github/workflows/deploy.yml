@@ -156,6 +156,8 @@ jobs:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
           umask 077
           {
@@ -170,6 +172,17 @@ jobs:
             echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN"
             echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID"
           } > .env
+
+          if [ -n "$STRIPE_SECRET_KEY" ] || [ -n "$STRIPE_PUBLISHABLE_KEY" ]; then
+            case "$STRIPE_SECRET_KEY:$STRIPE_PUBLISHABLE_KEY" in
+              sk_test_?*:pk_test_?*) ;;
+              *)
+                echo '::error::Set both Stripe sandbox keys on the deployment environment.'
+                exit 1
+                ;;
+            esac
+            printf 'STRIPE_SECRET_KEY=%s\nSTRIPE_PUBLISHABLE_KEY=%s\n' "$STRIPE_SECRET_KEY" "$STRIPE_PUBLISHABLE_KEY" >> .env
+          fi
 
           # Belt and braces: if APP_KEY were ever empty the line above would
           # write `APP_KEY=` and the deploy would fill it in for us.

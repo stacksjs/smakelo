@@ -243,6 +243,14 @@ status:
   shipped: Overgedragen
 
 tracking:
+  pickup_title: Afhaalstatus
+  dine_in_title: Status van je tafelbestelling
+  pickup_ready: Klaar om af te halen
+  picked_up: Afgehaald
+  served: Geserveerd
+  courier_ready: Klaar voor de koerier
+  pickup_address: Afhaaladres
+  estimated_wait: Geschatte wachttijd
   title: Waar je bestelling is
   arriving_now: Komt nu aan
   looking: Bestelling wordt gezocht…
@@ -400,6 +408,11 @@ claims:
   lede: De vermeldingen komen uit open data, dus de meesten die schrijven willen eraf. Dat is een redelijke wens, en het is hier de eerste optie.
 
 kitchen:
+  send_delivery: Op pad voor bezorging
+  complete_delivery: Markeer als bezorgd
+  picked_up: Afgehaald
+  served: Geserveerd
+  update_failed: De bestelling kon niet worden bijgewerkt. Probeer opnieuw.
   loading_board: Bord wordt geladen…
   no_board: Voor die zaak is er geen bord.
   orders: Bestellingen
@@ -570,6 +583,11 @@ cart:
   group_needs_choice: Kies iets bij "{group}".
 
 home_kitchen:
+  send_delivery: Op pad voor bezorging
+  complete_delivery: Markeer als bezorgd
+  picked_up: Afgehaald
+  served: Geserveerd
+  update_failed: De bestelling kon niet worden bijgewerkt. Probeer opnieuw.
   address_note: De buurt, niet het adres. Het huisnummer gaat naar wie het komt ophalen.
   nav: Thuiskeukens
   headline: Een keuken hoeft geen restaurant te zijn om de moeite van het bestellen waard te zijn.
@@ -596,6 +614,9 @@ home_kitchen:
   browse: Thuiskeukens bekijken
 
 checkout:
+  updating_total: Totaal wordt bijgewerkt…
+  placing_order: Bestelling wordt geplaatst…
+  payment_setup_failed: De bestelling is geplaatst. Het instellen van de betaling is mislukt.
   loading_menu: Menu wordt geladen…
   unavailable: Dat menu is niet beschikbaar.
   order_placed: Bestelling geplaatst

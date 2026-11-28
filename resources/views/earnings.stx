@@ -170,7 +170,7 @@ const canonicalPath = '/earnings'
     </main>
 
     <script client>
-      import { get, may, me, money, send } from '../functions/session'
+      import { apiGet, may, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.

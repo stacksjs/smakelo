@@ -154,7 +154,7 @@ const canonicalPath = '/admin'
     </main>
 
     <script client>
-      import { get, may, me, send } from '../functions/session'
+      import { apiGet, may, me, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.

@@ -23,6 +23,11 @@ const clientStrings = JSON.stringify({
   'status.processing': t('status.processing'),
   'status.out_for_delivery': t('status.out_for_delivery'),
   'status.delivered': t('status.delivered'),
+  'status.cancelled': t('status.cancelled'),
+  'tracking.pickup_ready': t('tracking.pickup_ready'),
+  'tracking.picked_up': t('tracking.picked_up'),
+  'tracking.served': t('tracking.served'),
+  'tracking.courier_ready': t('tracking.courier_ready'),
   'tracking.about_minutes': t('tracking.about_minutes', { minutes: '{minutes}' }),
   'tracking.arriving_now': t('tracking.arriving_now'),
   'tracking.your_address': t('tracking.your_address'),
@@ -45,7 +50,7 @@ const canonicalPath = '/track'
     <main class="mx-auto px-4 sm:px-8 max-w-4xl" data-stx-content>
       <div class="pt-12 pb-24 sm:pb-40">
         {{-- What this page's own script writes, already translated. --}}
-        <div hidden data-i18n-strings="{{ clientStrings }}"></div>
+        <div hidden ref="trackingCopy" data-i18n-strings="{{ clientStrings }}"></div>
 
         <p :if="loading()" class="text-[15px]" style="color: var(--ink-soft)">{{ t('tracking.looking') }}</p>
 
@@ -57,17 +62,22 @@ const canonicalPath = '/track'
 
         <div :if="order()">
           <p class="text-[13px]" style="color: var(--ink-soft)">{{ order().business ? order().business.name : '' }}</p>
-          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">{{ t('tracking.title') }}</h1>
+          <h1 class="mt-1 text-[clamp(2rem,4.5vw,3rem)] font-semibold tracking-[-0.035em]">
+            <span :if="isPickup()">{{ t('tracking.pickup_title') }}</span>
+            <span :if="isDineIn()">{{ t('tracking.dine_in_title') }}</span>
+            <span :if="!isPickup() && !isDineIn()">{{ t('tracking.title') }}</span>
+          </h1>
 
           {{-- The map is set up once and then only moved. It sits outside any
             binding that could re-render it: tearing down a map every five
             seconds would throw away the tiles it just fetched. --}}
-          <div class="p-2 mt-8 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 24px 48px -24px rgba(20,17,15,0.16)">
-            <div id="track-map" class="h-[320px] w-full rounded-[calc(2rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
+          <div :if="!isDineIn()" class="mt-8 p-2 rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 24px 48px -24px rgba(20,17,15,0.16)">
+            <div ref="trackingMap" class="h-[320px] w-full rounded-[calc(2rem-0.5rem)] overflow-hidden" style="background: var(--paper)"></div>
           </div>
 
-          <ol class="mt-8 space-y-3">
-            <li :for="step in steps()" class="flex gap-3 items-center text-[15px]">
+          <p :if="cancelled()" role="status" class="mt-8 text-[15px] font-medium" style="color: var(--accent)">{{ t('status.cancelled') }}</p>
+          <ol :if="!cancelled()" aria-live="polite" class="mt-8 space-y-3">
+            <li :for="step in steps()" :aria-current="step.current ? 'step' : undefined" class="flex gap-3 items-center text-[15px]">
               <span
                 class="inline-flex justify-center items-center w-6 h-6 rounded-full shrink-0"
                 :style="step.done ? 'background: var(--accent); color: #fff' : 'border: 1px solid var(--line); color: var(--ink-soft)'"
@@ -79,9 +89,16 @@ const canonicalPath = '/track'
           </ol>
 
           <dl class="pt-6 mt-8 space-y-2 text-[14px] border-t" style="border-color: var(--line)">
-            <div class="flex justify-between">
-              <dt style="color: var(--ink-soft)">{{ t('tracking.arriving') }}</dt>
+            <div :if="!cancelled() && order().status !== 'DELIVERED' && (!isPickup() || order().status !== 'SHIPPED')" class="flex justify-between">
+              <dt style="color: var(--ink-soft)">
+                <span :if="isPickup() || isDineIn()">{{ t('tracking.estimated_wait') }}</span>
+                <span :if="!isPickup() && !isDineIn()">{{ t('tracking.arriving') }}</span>
+              </dt>
               <dd>{{ arriving() }}</dd>
+            </div>
+            <div :if="isPickup() && order().business" class="flex gap-4 justify-between">
+              <dt style="color: var(--ink-soft)">{{ t('tracking.pickup_address') }}</dt>
+              <dd class="text-right">{{ order().business.address }}</dd>
             </div>
             <div :if="order().courier" class="flex justify-between">
               <dt style="color: var(--ink-soft)">{{ t('tracking.courier') }}</dt>
@@ -113,8 +130,12 @@ const canonicalPath = '/track'
        * own name. The page's holder is in the markup above; the shared bundle
        * is in partials/head.stx.
        */
+      const copy = useRef('trackingCopy')
+      const mapElement = useRef('trackingMap')
+
       function say(key, english) {
-        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+        const strings = copy.current?.dataset.i18nStrings
+        return strings ? JSON.parse(strings)[key] ?? english : english
       }
 
       const order = state(null)
@@ -124,18 +145,42 @@ const canonicalPath = '/track'
       let map = null
       let courierMarker = null
 
-      const STAGES = [
-        { status: 'PENDING', label: say('status.pending', 'Order received') },
-        { status: 'PROCESSING', label: say('status.processing', 'Being prepared') },
-        { status: 'OUT_FOR_DELIVERY', label: say('status.out_for_delivery', 'On the way') },
-        { status: 'DELIVERED', label: say('status.delivered', 'Delivered') },
-      ]
+      const isPickup = derived(() => order()?.orderType === 'PICKUP')
+      const isDineIn = derived(() => order()?.orderType === 'DINE_IN')
+      const cancelled = derived(() => order()?.status === 'CANCELLED')
 
       const steps = derived(() => {
         const current = order()
-        const reached = current ? STAGES.findIndex(stage => stage.status === current.status) : -1
 
-        return STAGES.map((stage, index) => ({ ...stage, done: reached >= index }))
+        if (!current)
+          return []
+
+        const stages = [
+          { status: 'PENDING', label: say('status.pending', 'Order received') },
+          { status: 'PROCESSING', label: say('status.processing', 'Being prepared') },
+        ]
+
+        if (isPickup()) {
+          stages.push(
+            { status: 'SHIPPED', label: say('tracking.pickup_ready', 'Ready for pickup') },
+            { status: 'DELIVERED', label: say('tracking.picked_up', 'Picked up') },
+          )
+        }
+        else if (isDineIn()) {
+          stages.push({ status: 'DELIVERED', label: say('tracking.served', 'Served') })
+        }
+        else {
+          stages.push(
+            { status: 'SHIPPED', label: say('tracking.courier_ready', 'Ready for the courier') },
+            { status: 'OUT_FOR_DELIVERY', label: say('status.out_for_delivery', 'On the way') },
+            { status: 'DELIVERED', label: say('status.delivered', 'Delivered') },
+          )
+        }
+
+        const status = isDineIn() && current.status === 'SHIPPED' ? 'PROCESSING' : current.status
+        const reached = stages.findIndex(stage => stage.status === status)
+
+        return stages.map((stage, index) => ({ ...stage, done: reached >= index, current: reached === index }))
       })
 
       const arriving = derived(() => {
@@ -143,9 +188,6 @@ const canonicalPath = '/track'
 
         if (!current)
           return ''
-
-        if (current.status === 'DELIVERED')
-          return say('status.delivered', 'Delivered')
 
         if (current.stop && current.stop.etaAt) {
           const minutes = Math.round((new Date(current.stop.etaAt) - Date.now()) / 60000)
@@ -186,13 +228,11 @@ const canonicalPath = '/track'
         order.set(data)
         loading.set(false)
 
-        // The map lives outside the reactive tree, so it is driven by hand.
-        // Its container is inside an `:if`, so it does not exist until the
-        // order arrives and the runtime has rendered that branch; a single
-        // rAF was not enough and the map silently never appeared.
-        whenPresent('track-map', () => {
-          setupMap(data)
-          moveCourier(data)
+        void nextTick(() => {
+          if (mapElement.current) {
+            setupMap(data, mapElement.current)
+            moveCourier(data)
+          }
         })
 
         // Stop asking once there is nothing left to change.
@@ -200,26 +240,8 @@ const canonicalPath = '/track'
           setTimeout(tick, 5000)
       }
 
-      /**
-       * Run once the element exists.
-       *
-       * Gives up after a second: if the branch never rendered, the order has no
-       * business to centre on, and retrying forever would hide that.
-       */
-      function whenPresent(id, done, attempts = 20) {
-        if (document.getElementById(id)) {
-          done()
-          return
-        }
-
-        if (attempts > 0)
-          setTimeout(() => whenPresent(id, done, attempts - 1), 50)
-      }
-
-      function setupMap(current) {
-        const el = document.getElementById('track-map')
-
-        if (map || !el || !current.business)
+      function setupMap(current, el) {
+        if (map || !current.business)
           return
 
         map = new TsMap(el, { center: [current.business.latitude, current.business.longitude], zoom: 14 })

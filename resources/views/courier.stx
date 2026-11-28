@@ -181,7 +181,7 @@ const canonicalPath = '/courier'
 
     <script client>
       import { startTracking } from '../functions/courier-tracking'
-      import { get, me, money, send } from '../functions/session'
+      import { apiGet, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.

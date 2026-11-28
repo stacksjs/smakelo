@@ -636,15 +636,19 @@ describe('a basket kept between visits', () => {
   })
 
   test('is forgotten once the order has gone to the kitchen', async () => {
-    const { cart } = build()
+    const { page, cart } = build()
+
+    ;(globalThis as any).fetch = async (url: string) => {
+      const data = url === '/api/orders/quote' ? { totalCents: 600 } : { orderId: 7 }
+      return new Response(JSON.stringify({ data }), { status: 200 })
+    }
 
     cart.addOne(PLAIN.id)
-    ;(globalThis as any).fetch = async () => new Response(JSON.stringify({ data: { orderId: 7 } }), { status: 200 })
+    await Bun.sleep(0)
 
+    expect(page.quote()).toEqual({ totalCents: 600 })
     await cart.placeOrder()
 
-    // Otherwise the next visit opens onto a basket that has already been sent
-    // and paid for, inviting somebody to send it again.
     expect(storage.getItem(CART_KEY)).toBe(null)
   })
 

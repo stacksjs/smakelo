@@ -253,7 +253,7 @@ const canonicalPath = '/manage'
     </main>
 
     <script client>
-      import { get, me, money, send } from '../functions/session'
+      import { apiGet, me, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.

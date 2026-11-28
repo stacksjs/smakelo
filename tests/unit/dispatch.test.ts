@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { dispatchOrder } from '../../app/Actions/Delivery/dispatch'
+import { dispatchNextReadyOrder, dispatchOrder } from '../../app/Actions/Delivery/dispatch'
 import { assertDatabaseCount, assertDatabaseHas, factory, refreshDatabase } from '../support/database'
 
 /**
@@ -101,6 +101,38 @@ describe('what can be dispatched', () => {
     expect(result.reason).toMatch(/No courier is free/)
     assertDatabaseCount('delivery_routes', 0)
     assertDatabaseCount('delivery_stops', 0)
+  })
+})
+
+describe('ready delivery queue', () => {
+  test('waits for a signed-in courier roster entry and assigns the oldest ready platform order', async () => {
+    seedDelivery()
+    const selfDelivery = seedDelivery({ status: 'SHIPPED' })
+    database.connection().query('UPDATE businesses SET self_delivery = 1 WHERE id = ?').run(selfDelivery.businessId)
+    const first = seedDelivery({ status: 'SHIPPED' })
+    const second = seedDelivery({ status: 'SHIPPED' })
+    database.seed('couriers', [factory.courier()])
+
+    expect((await dispatchNextReadyOrder())?.ok).toBe(false)
+    assertDatabaseCount('delivery_stops', 0)
+
+    const [userId] = database.seed('users', [{
+      uuid: crypto.randomUUID(),
+      name: 'Platform courier',
+      email: 'courier@example.invalid',
+      password: 'unused',
+    }])
+    const [courierId] = database.seed('couriers', [factory.courier({ user_id: userId })])
+
+    expect((await dispatchNextReadyOrder())?.courierId).toBe(courierId)
+    assertDatabaseHas('delivery_stops', { order_id: first.orderId, sequence: 1, type: 'pickup' })
+    assertDatabaseHas('delivery_stops', { order_id: first.orderId, sequence: 2, type: 'dropoff' })
+    assertDatabaseCount('delivery_stops', 2)
+
+    database.connection().query("UPDATE couriers SET status = 'active' WHERE id = ?").run(courierId)
+
+    expect((await dispatchNextReadyOrder())?.courierId).toBe(courierId)
+    assertDatabaseHas('delivery_stops', { order_id: second.orderId, sequence: 1, type: 'pickup' })
   })
 })
 

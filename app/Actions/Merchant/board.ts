@@ -21,7 +21,7 @@ export interface BoardOrder {
 }
 
 export interface MerchantBoard {
-  business: { id: number, slug: string, name: string, currency: string }
+  business: { id: number, slug: string, name: string, currency: string, selfDelivery: boolean }
   active: BoardOrder[]
   completed: BoardOrder[]
   today: {
@@ -84,6 +84,7 @@ export async function boardFor(slug: string): Promise<MerchantBoard | null> {
       slug: String(business.slug),
       name: String(business.name),
       currency: String(market?.currency ?? 'usd'),
+      selfDelivery: Number(business.self_delivery) === 1,
     },
     active,
     completed: completed.slice(0, 20),
@@ -151,35 +152,48 @@ async function shapeOrder(order: Record<string, unknown>): Promise<BoardOrder> {
   }
 }
 
-/**
- * Move an order along.
- *
- * The kitchen's vocabulary is smaller than the order lifecycle's: received,
- * cooking, ready. Anything past "ready" belongs to the courier or the counter,
- * so this refuses to skip ahead to DELIVERED - that is the handover's word,
- * not the kitchen's.
- */
+const KITCHEN_TRANSITIONS: Record<string, string> = {
+  PENDING: 'PROCESSING',
+  PROCESSING: 'SHIPPED',
+  SHIPPED: 'DELIVERED',
+}
+
 export async function advanceOrder(orderId: number, to: string): Promise<{ ok: boolean, status?: string, reason?: string }> {
-  const allowed = ['PROCESSING', 'SHIPPED', 'CANCELLED']
+  return await db.transaction(async () => {
+    const order = await db.selectFrom('orders')
+      .where('id', '=', orderId)
+      .select(['status', 'order_type', 'business_id'])
+      .executeTakeFirst() as { status: string, order_type: string, business_id: number } | undefined
 
-  if (!allowed.includes(to))
-    return { ok: false, reason: `A kitchen can move an order to ${allowed.join(', ')}.` }
+    if (!order)
+      return { ok: false, reason: 'No such order.' }
 
-  const order = await db.selectFrom('orders')
-    .where('id', '=', orderId)
-    .select(['id', 'status'])
-    .executeTakeFirst() as { id: number, status: string } | undefined
+    const isCounterOrder = order.order_type === 'PICKUP' || order.order_type === 'DINE_IN'
+    let next = KITCHEN_TRANSITIONS[order.status]
 
-  if (!order)
-    return { ok: false, reason: 'No such order.' }
+    if (order.order_type === 'DELIVERY' && ['SHIPPED', 'OUT_FOR_DELIVERY'].includes(order.status)) {
+      const business = await db.selectFrom('businesses')
+        .where('id', '=', order.business_id)
+        .select(['self_delivery'])
+        .executeTakeFirst() as { self_delivery: number } | undefined
 
-  if (order.status === 'DELIVERED' || order.status === 'CANCELLED')
-    return { ok: false, reason: `That order is already ${order.status.toLowerCase()}.` }
+      next = Number(business?.self_delivery) === 1
+        ? order.status === 'SHIPPED' ? 'OUT_FOR_DELIVERY' : 'DELIVERED'
+        : ''
+    }
 
-  await db.updateTable('orders')
-    .set({ status: to } as never)
-    .where('id', '=', orderId)
-    .execute()
+    const canCancel = to === 'CANCELLED'
+      && (order.status === 'PENDING' || order.status === 'PROCESSING' || (isCounterOrder && order.status === 'SHIPPED'))
 
-  return { ok: true, status: to }
+    if (!canCancel && (!next || next !== to))
+      return { ok: false, reason: 'This order cannot move to that status from the kitchen.' }
+
+    await db.updateTable('orders')
+      .set({ status: to } as never)
+      .where('id', '=', orderId)
+      .where('status', '=', order.status)
+      .execute()
+
+    return { ok: true, status: to }
+  })
 }

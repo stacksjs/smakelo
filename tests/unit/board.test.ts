@@ -198,8 +198,38 @@ describe('moving an order along', () => {
     const result = await advanceOrder(orderId, 'DELIVERED')
 
     expect(result.ok).toBe(false)
-    expect(result.reason).toMatch(/A kitchen can move an order to/)
+    expect(result.reason).toMatch(/cannot move to that status/)
     assertDatabaseHas('orders', { id: orderId, status: 'PENDING' })
+  })
+
+  test('a ready pickup can be handed to the customer and leaves the active board', async () => {
+    const { businessId } = seedShop()
+    const orderId = seedOrder(businessId, { status: 'SHIPPED' })
+
+    expect(await advanceOrder(orderId, 'DELIVERED')).toEqual({ ok: true, status: 'DELIVERED' })
+
+    const board = await boardFor('a-shop')
+
+    expect(board!.active).toHaveLength(0)
+    expect(board!.completed.map(order => order.id)).toEqual([orderId])
+  })
+
+  test('a ready delivery stays with the courier until handover', async () => {
+    const { businessId } = seedShop()
+    const orderId = seedOrder(businessId, { status: 'SHIPPED', order_type: 'DELIVERY' })
+
+    expect((await advanceOrder(orderId, 'DELIVERED')).ok).toBe(false)
+    assertDatabaseHas('orders', { id: orderId, status: 'SHIPPED' })
+  })
+
+  test('a restaurant that delivers its own orders can complete a handover', async () => {
+    const { businessId } = seedShop()
+    const orderId = seedOrder(businessId, { status: 'SHIPPED', order_type: 'DELIVERY' })
+    database.connection().query('UPDATE businesses SET self_delivery = 1 WHERE id = ?').run(businessId)
+
+    expect((await advanceOrder(orderId, 'OUT_FOR_DELIVERY')).ok).toBe(true)
+    expect((await advanceOrder(orderId, 'DELIVERED')).ok).toBe(true)
+    assertDatabaseHas('orders', { id: orderId, status: 'DELIVERED' })
   })
 
   test('and not to a status that does not exist', async () => {

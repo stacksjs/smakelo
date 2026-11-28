@@ -20,6 +20,7 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{{ pageDescription }}">
 <title>{{ pageTitle }}</title>
+<link rel="icon" href="/images/logos/favicon.svg" type="image/svg+xml">
 
 {{-- Nothing here may be indexed. The listings name real Los Angeles businesses
   and sit beside invented reviews, menus and prices; a search result putting
@@ -1105,6 +1106,7 @@ import { currentLocale, t } from '../../app/Actions/Locale/translate'
     'order.delivery': t('order.delivery'),
     'order.pickup': t('order.pickup'),
     'order.dine_in': t('order.dine_in'),
+    'checkout.payment_setup_failed': t('checkout.payment_setup_failed'),
     'common.loading': t('common.loading'),
     'common.error': t('common.error'),
     'common.retry': t('common.retry'),

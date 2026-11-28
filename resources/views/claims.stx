@@ -99,7 +99,7 @@ const canonicalPath = '/claims'
     </main>
 
     <script client>
-      import { get, me, send } from '../functions/session'
+      import { apiGet, me, send } from '../functions/session'
 
       /*
        * A string this script writes, in the language the server served.

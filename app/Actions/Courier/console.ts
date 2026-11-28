@@ -163,8 +163,11 @@ export async function setShift(courierId: number, online: boolean): Promise<{ ok
   if (!courier)
     return { ok: false, reason: 'No such courier.' }
 
-  if (!online && courier.status === 'on_delivery')
-    return { ok: false, reason: 'Finish the delivery you are carrying first.' }
+  if (courier.status === 'on_delivery') {
+    return online
+      ? { ok: true, status: courier.status }
+      : { ok: false, reason: 'Finish the delivery you are carrying first.' }
+  }
 
   const status = online ? 'active' : 'offline'
 

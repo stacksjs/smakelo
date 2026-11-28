@@ -59,7 +59,78 @@ export interface RejectedOrder {
   reason: string
 }
 
+interface PreparedOrder {
+  ok: true
+  business: Record<string, unknown>
+  lines: PricedLine[]
+  pricing: ReturnType<typeof priceOrder>
+  currency: string
+}
+
+export async function previewOrder(input: PlaceOrderInput): Promise<{ ok: true, pricing: ReturnType<typeof priceOrder> } | RejectedOrder> {
+  const prepared = await prepareOrder(input)
+
+  return prepared.ok ? { ok: true, pricing: prepared.pricing } : prepared
+}
+
 export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | RejectedOrder> {
+  return await db.transaction(async () => {
+    const prepared = await prepareOrder(input)
+
+    if (!prepared.ok)
+      return prepared
+
+    const { business, lines, pricing, currency } = prepared
+
+    const trackingToken = crypto.randomUUID().replace(/-/g, '').slice(0, 24)
+    const uuid = crypto.randomUUID()
+
+    /*
+     * Link the order to whoever placed it, when we can tell. This is what makes
+     * an order history possible without accounts, and it is what the verified
+     * badge on a review is checked against later.
+     */
+    const customerId = input.visitorToken
+      ? await customerForVisitor(input.visitorToken, input.customerName ?? 'Guest')
+      : null
+
+    await db.insertInto('orders').values({
+      uuid,
+      business_id: Number(business.id),
+      status: 'PENDING',
+      order_type: input.fulfilment.toUpperCase(),
+      subtotal_cents: pricing.subtotalCents,
+      tax_amount: pricing.taxCents,
+      delivery_fee: pricing.deliveryFeeCents,
+      service_fee_cents: pricing.serviceFeeCents,
+      tip_amount: pricing.tipCents,
+      total_amount: pricing.totalCents,
+      discount_amount: 0,
+      currency,
+      delivery_address: input.fulfilment === 'delivery' ? input.deliveryAddress?.trim() ?? '' : '',
+      delivery_latitude: input.deliveryLatitude ?? null,
+      delivery_longitude: input.deliveryLongitude ?? null,
+      special_instructions: input.notes ?? '',
+      tracking_token: trackingToken,
+      scheduled_for: input.scheduledFor ?? null,
+      customer_id: customerId,
+      table_id: input.tableId ?? null,
+      tab_id: input.tabId ?? null,
+      estimated_delivery_time: String(readyInMinutes(business, pricing)),
+    } as never).executeTakeFirst()
+
+    const order = await db.selectFrom('orders').where('uuid', '=', uuid).select(['id']).executeTakeFirst() as { id: number }
+    const orderId = Number(order.id)
+
+    await writeLines(orderId, lines, input.lines)
+    await writeLedger(orderId, Number(business.id), pricing, currency)
+
+    return { ok: true, orderId, trackingToken, pricing }
+  })
+}
+
+/** One validation and pricing path for the checkout preview and the saved order. */
+async function prepareOrder(input: PlaceOrderInput): Promise<PreparedOrder | RejectedOrder> {
   const business = await db.selectFrom('businesses')
     .where('slug', '=', input.businessSlug)
     // A listing taken down cannot take an order, the same as it cannot be
@@ -119,58 +190,21 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
     minimumOrderCents: Number(business.minimum_order_cents ?? 0),
   })
 
+  const currency = String(market?.currency ?? 'usd')
+
   if (pricing.belowMinimum) {
-    return {
-      ok: false,
-      reason: `Delivery from ${business.name} starts at $${(Number(business.minimum_order_cents) / 100).toFixed(2)}.`,
-    }
+    const minimum = new Intl.NumberFormat('en', { style: 'currency', currency })
+      .format(Number(business.minimum_order_cents) / 100)
+
+    return { ok: false, reason: `Delivery from ${business.name} starts at ${minimum}.` }
   }
 
-  const trackingToken = crypto.randomUUID().replace(/-/g, '').slice(0, 24)
-  const uuid = crypto.randomUUID()
+  if (input.fulfilment === 'delivery' && (input.deliveryAddress?.trim().length ?? 0) < 5)
+    return { ok: false, reason: 'Enter a delivery address with a street and number.' }
 
-  /*
-   * Link the order to whoever placed it, when we can tell. This is what makes
-   * an order history possible without accounts, and it is what the verified
-   * badge on a review is checked against later.
-   */
-  const customerId = input.visitorToken
-    ? await customerForVisitor(input.visitorToken, input.customerName ?? 'Guest')
-    : null
-
-  await db.insertInto('orders').values({
-    uuid,
-    business_id: Number(business.id),
-    status: 'PENDING',
-    order_type: input.fulfilment.toUpperCase(),
-    subtotal_cents: pricing.subtotalCents,
-    tax_amount: pricing.taxCents,
-    delivery_fee: pricing.deliveryFeeCents,
-    service_fee_cents: pricing.serviceFeeCents,
-    tip_amount: pricing.tipCents,
-    total_amount: pricing.totalCents,
-    discount_amount: 0,
-    currency: String(market?.currency ?? 'usd'),
-    delivery_address: input.deliveryAddress ?? '',
-    delivery_latitude: input.deliveryLatitude ?? null,
-    delivery_longitude: input.deliveryLongitude ?? null,
-    special_instructions: input.notes ?? '',
-    tracking_token: trackingToken,
-    scheduled_for: input.scheduledFor ?? null,
-    customer_id: customerId,
-    table_id: input.tableId ?? null,
-    tab_id: input.tabId ?? null,
-    estimated_delivery_time: String(readyInMinutes(business, pricing)),
-  } as never).executeTakeFirst()
-
-  const order = await db.selectFrom('orders').where('uuid', '=', uuid).select(['id']).executeTakeFirst() as { id: number }
-  const orderId = Number(order.id)
-
-  await writeLines(orderId, priced.lines, input.lines)
-  await writeLedger(orderId, Number(business.id), pricing, String(market?.currency ?? 'usd'))
-
-  return { ok: true, orderId, trackingToken, pricing }
+  return { ok: true, business, lines: priced.lines, pricing, currency }
 }
+
 
 /**
  * Look up every product and modifier named, and price them from the database.

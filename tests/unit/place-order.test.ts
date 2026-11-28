@@ -316,6 +316,7 @@ describe('delivery', () => {
 
     const result = await placeOrder(order({
       fulfilment: 'delivery',
+      deliveryAddress: '10 Sample Avenue',
       deliveryLatitude: 34.0245,
       deliveryLongitude: -118.4912,
     }, [{ productId, quantity: 1 }]))
@@ -326,6 +327,28 @@ describe('delivery', () => {
 })
 
 describe('what an accepted order leaves behind', () => {
+  test('a ledger write failure rolls back the order and its lines', async () => {
+    const { productId } = seedShop()
+    const connection = database.connection()
+
+    connection.exec(`
+      CREATE TRIGGER reject_ledger_insert BEFORE INSERT ON ledger_entries
+      BEGIN
+        SELECT RAISE(ABORT, 'ledger writes unavailable');
+      END
+    `)
+
+    try {
+      await expect(placeOrder(order({}, [{ productId, quantity: 1 }]))).rejects.toThrow('ledger writes unavailable')
+      assertDatabaseCount('orders', 0)
+      assertDatabaseCount('order_items', 0)
+      assertDatabaseCount('ledger_entries', 0)
+    }
+    finally {
+      connection.exec('DROP TRIGGER reject_ledger_insert')
+    }
+  })
+
   test('the order itself, with what was actually charged', async () => {
     const { productId } = seedShop()
 
@@ -404,6 +427,7 @@ describe('the ledger', () => {
 
     const result = await placeOrder(order({
       fulfilment: 'delivery',
+      deliveryAddress: '10 Sample Avenue',
       deliveryLatitude: 34.0245,
       deliveryLongitude: -118.4912,
       tipCents: 300,
@@ -426,6 +450,7 @@ describe('the ledger', () => {
 
     const result = await placeOrder(order({
       fulfilment: 'delivery',
+      deliveryAddress: '10 Sample Avenue',
       deliveryLatitude: 34.0245,
       deliveryLongitude: -118.4912,
       tipCents: 300,

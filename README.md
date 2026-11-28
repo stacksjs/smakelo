@@ -9,7 +9,7 @@ Restaurants, coffee shops, and farms.
 > [!IMPORTANT]
 > **This is a demonstration.** The businesses listed are real places in Los
 > Angeles and Santa Monica, but the partner merchants, menus, reviews, orders
-> and couriers are invented, payments run against Stripe's sandbox, and no order
+> and couriers are invented, card payments use Stripe test mode when configured, and no order
 > placed here reaches anybody. Nothing on this site can be bought.
 
 ## What it does
@@ -32,12 +32,24 @@ portal, and are paid out through Stripe Connect.
 ## Running it
 
 ```bash
-buddy install
-buddy migrate --seed
-buddy dev
+bun install --frozen-lockfile
+cp .env.example .env
+./buddy key:generate
+./buddy migrate
+./buddy seed:demo
+./buddy dev
 ```
 
 Requires Bun >= 1.3.0 and SQLite >= 3.47.2.
+
+Choose an invented account on the Account page to try the kitchen or courier
+flows. Use `./buddy dev --dashboard` for the Stacks dashboard and its Marketplace
+section.
+
+To exercise card checkout, configure `STRIPE_SECRET_KEY` and
+`STRIPE_PUBLISHABLE_KEY` from the same Stripe sandbox. For the hosted demo, set
+both secrets on the GitHub `production` environment. The demo can record orders
+without those keys.
 
 ## Built on
 

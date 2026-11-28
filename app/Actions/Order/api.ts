@@ -1,8 +1,6 @@
 import type { PlaceOrderInput } from './place'
 import { db } from '@stacksjs/database'
-import { distanceInMeters } from '../Business/geo'
-import { placeOrder } from './place'
-import { priceOrder } from './pricing'
+import { placeOrder, previewOrder } from './place'
 import { visualFor } from '../Business/identity'
 import { existingCustomerFor } from '../Visitor/identity'
 
@@ -76,9 +74,7 @@ export async function createOrder(body: any) {
 /**
  * Price an order without writing anything.
  *
- * Runs the same `priceOrder` the placement does, on prices read the same way,
- * so the quote and the charge cannot disagree. A separate estimate in the
- * browser would drift the first time a fee changed.
+ * Shares the menu, fulfilment and price validation used by placement.
  */
 export async function quoteOrder(body: any) {
   const input = readInput(body)
@@ -86,77 +82,7 @@ export async function quoteOrder(body: any) {
   if ('reason' in input)
     return { ok: false as const, reason: input.reason }
 
-  const business = await db.selectFrom('businesses')
-    .where('slug', '=', input.businessSlug)
-    .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
-
-  if (!business)
-    return { ok: false as const, reason: 'That business is not listed.' }
-
-  const market = await db.selectFrom('markets')
-    .where('id', '=', Number(business.market_id))
-    .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
-
-  const lines = []
-
-  for (const line of input.lines) {
-    const product = await db.selectFrom('products')
-      .where('id', '=', line.productId)
-      .selectAll()
-      .executeTakeFirst() as Record<string, unknown> | undefined
-
-    if (!product || Number(product.business_id) !== Number(business.id))
-      return { ok: false as const, reason: 'One of those items is not on this menu.' }
-
-    const modifiers = []
-
-    for (const modifierId of line.modifierIds ?? []) {
-      const modifier = await db.selectFrom('modifiers')
-        .where('id', '=', modifierId)
-        .selectAll()
-        .executeTakeFirst() as Record<string, unknown> | undefined
-
-      if (modifier) {
-        modifiers.push({
-          modifierId,
-          groupName: '',
-          name: String(modifier.name),
-          priceDeltaCents: Number(modifier.price_delta_cents ?? 0),
-          quantity: 1,
-        })
-      }
-    }
-
-    lines.push({
-      productId: line.productId,
-      name: String(product.name),
-      unitPriceCents: Number(product.price ?? 0),
-      quantity: line.quantity,
-      modifiers,
-    })
-  }
-
-  const distanceMeters = input.fulfilment === 'delivery' && typeof input.deliveryLatitude === 'number'
-    ? distanceInMeters(
-        { latitude: Number(business.latitude), longitude: Number(business.longitude) },
-        { latitude: input.deliveryLatitude, longitude: Number(input.deliveryLongitude) },
-      )
-    : 0
-
-  const pricing = priceOrder({
-    lines,
-    fulfilment: input.fulfilment,
-    distanceMeters,
-    taxRatePercent: Number(market?.default_tax_rate ?? 0),
-    taxMode: String(market?.tax_mode ?? 'exclusive') as 'inclusive' | 'exclusive',
-    platformFeePercent: Number(process.env.PLATFORM_FEE_PERCENT ?? 10),
-    tipCents: input.tipCents,
-    minimumOrderCents: Number(business.minimum_order_cents ?? 0),
-  })
-
-  return { ok: true as const, pricing }
+  return await previewOrder(input)
 }
 
 /**
@@ -183,14 +109,17 @@ export async function trackOrder(token: string) {
     .select(['name', 'slug', 'address', 'city', 'latitude', 'longitude'])
     .executeTakeFirst() as Record<string, unknown> | undefined
 
-  const stop = await db.selectFrom('delivery_stops')
+  const stops = await db.selectFrom('delivery_stops')
     .where('order_id', '=', Number(order.id))
+    .orderBy('sequence', 'asc')
     .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
+    .execute() as Array<Record<string, unknown>>
 
+  const stop = stops.find(stop => ['pending', 'en_route', 'arrived'].includes(String(stop.status))) ?? stops.at(-1)
+  const isActive = order.status !== 'DELIVERED' && order.status !== 'CANCELLED'
   let courier: Record<string, unknown> | undefined
 
-  if (stop?.delivery_route_id) {
+  if (isActive && stop?.delivery_route_id) {
     const route = await db.selectFrom('delivery_routes')
       .where('id', '=', Number(stop.delivery_route_id))
       .select(['courier_id'])
@@ -212,7 +141,7 @@ export async function trackOrder(token: string) {
     placedAt: order.created_at ?? null,
     estimatedMinutes: Number(order.estimated_delivery_time ?? 0),
     deliveryAddress: String(order.delivery_address ?? ''),
-    destination: order.delivery_latitude
+    destination: order.delivery_latitude != null && order.delivery_longitude != null
       ? { latitude: Number(order.delivery_latitude), longitude: Number(order.delivery_longitude) }
       : null,
     business: business

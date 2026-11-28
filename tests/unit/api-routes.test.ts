@@ -155,10 +155,10 @@ describe('finding places', () => {
 })
 
 describe('placing an order over HTTP', () => {
-  function shopWithADish(): { productId: number } {
-    const { businessId } = seedShop()
+  function shopWithADish(shop: Record<string, unknown> = {}, product: Record<string, unknown> = {}): { productId: number } {
+    const { businessId } = seedShop(shop)
     const [categoryId] = database.seed('categories', [{ name: 'Mains', slug: 'mains', display_order: 1, is_active: 1 }])
-    const [productId] = database.seed('products', [factory.product({ name: 'A Dish', price: 1000, business_id: businessId, category_id: categoryId })])
+    const [productId] = database.seed('products', [factory.product({ name: 'A Dish', price: 1000, business_id: businessId, category_id: categoryId, ...product })])
 
     return { productId }
   }
@@ -181,6 +181,72 @@ describe('placing an order over HTTP', () => {
     const orders = database.connection().query<{ n: number }, []>('SELECT COUNT(*) n FROM orders').get()
 
     expect(orders!.n).toBe(0)
+  })
+
+  test('quote and placement price the same bounded quantity', async () => {
+    const { productId } = shopWithADish()
+    const order = {
+      businessSlug: 'a-shop',
+      fulfilment: 'pickup',
+      lines: [{ productId, quantity: 51 }],
+    }
+
+    const quote = await post('/orders/quote', order)
+    const placed = await post('/orders', order)
+
+    expect(quote.status).toBe(200)
+    expect(placed.status).toBe(201)
+    expect(quote.body.data).toEqual(placed.body.data.pricing)
+    expect(quote.body.data.subtotalCents).toBe(50_000)
+  })
+
+  test('quote rejects a dish the kitchen marked unavailable', async () => {
+    const { productId } = shopWithADish({}, { is_available: 0 })
+    const order = {
+      businessSlug: 'a-shop',
+      fulfilment: 'pickup',
+      lines: [{ productId, quantity: 1 }],
+    }
+
+    const quote = await post('/orders/quote', order)
+    const placed = await post('/orders', order)
+
+    expect(quote.status).toBe(422)
+    expect(quote.body.message).toBe('A Dish is not available right now.')
+    expect(placed.body.message).toBe(quote.body.message)
+  })
+
+  test('delivery needs an address at both checkout steps', async () => {
+    const { productId } = shopWithADish({ offers_delivery: 1 })
+    const order = {
+      businessSlug: 'a-shop',
+      fulfilment: 'delivery',
+      deliveryAddress: '   ',
+      lines: [{ productId, quantity: 1 }],
+    }
+
+    const quote = await post('/orders/quote', order)
+    const placed = await post('/orders', order)
+
+    expect(quote.status).toBe(422)
+    expect(quote.body.message).toBe('Enter a delivery address with a street and number.')
+    expect(placed.body.message).toBe(quote.body.message)
+  })
+
+  test('quote rejects a fulfilment mode the kitchen does not offer', async () => {
+    const { productId } = shopWithADish({ offers_delivery: 0 })
+    const order = {
+      businessSlug: 'a-shop',
+      fulfilment: 'delivery',
+      lines: [{ productId, quantity: 1 }],
+    }
+
+    const quote = await post('/orders/quote', order)
+    const placed = await post('/orders', order)
+
+    expect(quote.status).toBe(422)
+    expect(quote.body.message).toBe('A Shop does not offer delivery.')
+    expect(placed.body.message).toBe(quote.body.message)
   })
 
   test('an order is created and comes back with a way to follow it', async () => {
@@ -245,6 +311,9 @@ describe('what is closed to a stranger', () => {
   const closed: Array<[string, string]> = [
     ['GET', '/merchant/a-shop/board'],
     ['POST', '/merchant/orders/1/status'],
+    ['POST', '/courier/stops/1/start'],
+    ['POST', '/courier/1/ping'],
+    ['POST', '/courier/1/pings'],
     ['GET', '/money/balances'],
     ['GET', '/money/business/1'],
     ['POST', '/money/business/1/payout'],
