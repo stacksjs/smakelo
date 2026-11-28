@@ -9,11 +9,19 @@ const loading = state(true)
 const token = state('')
 const billError = state(false)
 const closing = state(false)
+const billHeading = useRef('billHeading')
 
 const {
-  load, close, menuLink, say,
+  load, close: closeTab, menuLink, say,
   currency, tabTotal, numberedRounds, numberedShares,
 } = tableSessionHandlers({ session, bill, splitMode, loading, token, billError, closing })
+
+async function close(mode) {
+  await closeTab(mode)
+
+  if (bill())
+    void nextTick(() => billHeading.current?.focus())
+}
 
 load()
 </script>

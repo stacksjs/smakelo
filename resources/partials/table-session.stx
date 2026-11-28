@@ -116,7 +116,7 @@ const canonicalPath = '/t'
         {{-- The bill, once somebody has asked for it. --}}
         <div :if="bill()" class="mx-auto p-1.5 max-w-lg rounded-[2rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.04), 0 18px 36px -22px rgba(20,17,15,0.14)">
           <div class="p-8 rounded-[calc(2rem-0.375rem)]">
-            <h1 class="font-semibold text-[24px] tracking-[-0.02em]">{{ t('table.the_bill') }}</h1>
+            <h1 ref="billHeading" tabindex="-1" class="font-semibold text-[24px] tracking-[-0.02em]">{{ t('table.the_bill') }}</h1>
             <p class="mt-2 text-[14px]" style="color: var(--ink-soft)">
               {{ splitMode() === 'even' ? say('table.split_ways', 'Split') + ' ' + bill().shares.length : say('table.each_round', 'Each round billed to whoever ordered it') }}
             </p>
