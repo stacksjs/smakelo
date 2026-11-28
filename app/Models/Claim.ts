@@ -32,12 +32,7 @@ export default defineModel({
 
     useSeeder: { count: 0 },
 
-    useApi: {
-      // Anyone may ask; only staff may read the queue or decide.
-      middleware: { read: ['auth'], write: [] },
-      uri: 'claims',
-    },
-
+    // Claims are submitted and decided through the marketplace's dedicated routes.
     observe: true,
   },
 
