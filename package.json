@@ -80,7 +80,6 @@
     "@stacksjs/components": "^0.2.960",
     "@stacksjs/stx": "^0.2.960",
     "bun-plugin-stx": "^0.2.960",
-    "pickier": "^0.1.65",
     "stacks": "^0.75.717",
     "ts-images": "^0.2.22",
     "ts-maps": "^0.3.6",
@@ -101,7 +100,6 @@
     "commit-msg": "bun x gitlint --edit \"$1\""
   },
   "devDependencies": {
-    "@buddysh/buddy": "^0.11.20",
-    "better-dx": "^0.2.24"
+    "better-dx": "^0.2.40"
   }
 }
