@@ -162,6 +162,7 @@ export default {
    * DB_MIGRATE_CONFIRM / DB_MIGRATE_FRESH env vars.
    */
   safety: {
+    allowHandWrittenMigrations: ['0000000268-enroll-existing-demo-couriers.sql'],
     /**
      * Prompt for confirmation before `buddy migrate` applies changes.
      * `--force` skips it; non-interactive runs (CI) proceed automatically.

@@ -32,6 +32,7 @@ export type Permission =
   | 'listings.curate'
   | 'claims.read'
   | 'claims.decide'
+  | 'couriers.manage'
   /* A business, always in combination with membership of the team that owns it. */
   | 'business.manage'
   | 'business.board'
@@ -71,6 +72,7 @@ export const permissions = defineRolePermissions<Role, Permission>({
     'listings.curate',
     'claims.read',
     'claims.decide',
+    'couriers.manage',
     'earnings.read.all',
     'earnings.read.own',
     'payouts.record',
@@ -108,6 +110,7 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   'listings.curate': 'Take a listing down, or put it back.',
   'claims.read': 'Read the claims people file about their own listing.',
   'claims.decide': 'Approve or reject a claim.',
+  'couriers.manage': 'Manage which markets a courier can serve.',
   'business.manage': 'Edit a business you operate: its menu, its hours, how it takes orders.',
   'business.board': 'Work the orders board of a business you operate.',
   'business.codes': 'Print the table codes of a business you operate.',

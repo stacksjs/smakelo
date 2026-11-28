@@ -34,6 +34,7 @@
     "ConsentEvent": true,
     "Coupon": true,
     "Courier": true,
+    "CourierMarket": true,
     "CourierPing": true,
     "CsaPlan": true,
     "CsaSubscription": true,

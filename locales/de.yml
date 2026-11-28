@@ -419,6 +419,10 @@ claims:
   lede: Die Einträge stammen aus offenen Daten, deshalb schreiben die meisten, weil sie herauswollen. Das ist ein vernünftiger Wunsch, und er steht hier an erster Stelle.
 
 kitchen:
+  courier_waiting: Wartet auf einen Kurier vor Ort
+  courier_offered: Angebot an einen Kurier vor Ort gesendet
+  courier_assigned: Kurier zugewiesen
+  courier_uncovered: Für diese Bestellung ist kein Kurier verfügbar
   send_delivery: Zur Lieferung aufgeben
   complete_delivery: Als geliefert markieren
   picked_up: Abgeholt
@@ -469,6 +473,21 @@ admin:
   listings_lede: Einen Eintrag auszublenden nimmt ihn von der Entdecken-Seite, aus der Suche, von der Karte und von seiner eigenen Seite, und man kann dort nicht mehr bestellen. Die Zeile bleibt, damit er zurückkommen kann, falls sich herausstellt, dass die Anfrage von jemandem kam, der den Betrieb gar nicht führt.
 
 marketplace:
+  coverage_title: Kurierabdeckung
+  coverage_market: Markt
+  coverage_on_shift: Kuriere im Dienst
+  coverage_orders: Bestellungen warten auf Zuweisung
+  coverage_assignments: Kurierzuweisungen
+  coverage_assign: Kurier zuweisen
+  coverage_remove: Kurier entfernen
+  coverage_assigned: Zugewiesen
+  coverage_unassigned: Nicht zugewiesen
+  coverage_inactive: Dieser Markt ist inaktiv.
+  coverage_no_shift: In diesem Markt sind keine Kuriere im Dienst.
+  coverage_no_couriers: Es sind keine Kurierkonten verknüpft.
+  coverage_no_markets: Es wurden noch keine Märkte hinzugefügt.
+  coverage_invalid: Wähle einen gültigen Kurier und Markt aus.
+  coverage_unavailable: Dieser Kurier oder Markt ist nicht verfügbar.
   operations: Marktplatzverwaltung
   demo_checks: Demo-Prüfungen
   recent_decisions: Letzte Entscheidungen

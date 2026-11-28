@@ -420,6 +420,10 @@ claims:
   lede: The listings come from open data, so most people writing in are asking to come off it. That is a reasonable thing to want, and it is the first option here.
 
 kitchen:
+  courier_waiting: Waiting for a local courier
+  courier_offered: Offer sent to a local courier
+  courier_assigned: Courier assigned
+  courier_uncovered: No courier coverage for this order
   send_delivery: Send for delivery
   complete_delivery: Mark delivered
   picked_up: Picked up
@@ -470,6 +474,21 @@ admin:
   listings_lede: Hiding a listing takes it off the discover page, the search, the map and its own page, and stops it being ordered from. The row stays, so it can come back if the request turns out to have come from somebody who did not run the place after all.
 
 marketplace:
+  coverage_title: Courier coverage
+  coverage_market: Market
+  coverage_on_shift: Couriers on shift
+  coverage_orders: Orders awaiting dispatch
+  coverage_assignments: Courier assignments
+  coverage_assign: Assign courier
+  coverage_remove: Remove courier
+  coverage_assigned: Assigned
+  coverage_unassigned: Unassigned
+  coverage_inactive: This market is inactive.
+  coverage_no_shift: No couriers on shift in this market.
+  coverage_no_couriers: No courier accounts are linked.
+  coverage_no_markets: No markets have been added.
+  coverage_invalid: Choose a valid courier and market.
+  coverage_unavailable: This courier or market is unavailable.
   operations: Marketplace operations
   demo_checks: Demo checks
   recent_decisions: Recent decisions

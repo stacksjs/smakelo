@@ -140,7 +140,7 @@ const canonicalPath = '/courier'
 
           <a :href="'/earnings?party=courier:' + courierId()" class="grid grid-cols-3 gap-3 mt-8 transition-transform duration-500 hover:-translate-y-0.5">
             <div :for="tile in earningTiles()" class="p-5 rounded-[1.25rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
-              <p class="text-[22px] font-semibold tracking-[-0.02em] tabular-nums">{{ tile.value }}</p>
+              <p :for="value in tile.values" class="font-semibold tabular-nums text-[18px] sm:text-[22px] tracking-[-0.02em]">{{ value }}</p>
               <p class="mt-1 text-[12px]" style="color: var(--ink-soft)">{{ tile.label }}</p>
             </div>
           </a>
@@ -297,10 +297,13 @@ const canonicalPath = '/courier'
         if (!current)
           return []
 
+        if (current.earnings.amounts.length === 0)
+          return [{ label: say('courier.deliveries', 'Deliveries'), values: [String(current.earnings.deliveries)] }]
+
         return [
-          { label: say('courier.deliveries', 'Deliveries'), value: String(current.earnings.deliveries) },
-          { label: say('courier.fees', 'Fees'), value: money(current.earnings.feeCents) },
-          { label: say('courier.tips', 'Tips'), value: money(current.earnings.tipCents) },
+          { label: say('courier.deliveries', 'Deliveries'), values: [String(current.earnings.deliveries)] },
+          { label: say('courier.fees', 'Fees'), values: current.earnings.amounts.map(row => money(row.feeCents, row.currency)) },
+          { label: say('courier.tips', 'Tips'), values: current.earnings.amounts.map(row => money(row.tipCents, row.currency)) },
         ]
       })
 

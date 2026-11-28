@@ -47,9 +47,7 @@ export interface CourierConsole {
   remaining: CourierRun[]
   earnings: {
     deliveries: number
-    feeCents: number
-    tipCents: number
-    totalCents: number
+    amounts: Array<{ currency: string, feeCents: number, tipCents: number }>
   }
 }
 
@@ -121,14 +119,36 @@ export async function consoleFor(courierId: number): Promise<CourierConsole | nu
     })
   }
 
+  const currencies = await db.unsafe(`
+    SELECT DISTINCT markets.currency
+    FROM courier_markets
+    JOIN markets ON markets.id = courier_markets.market_id
+    WHERE courier_markets.courier_id = ?
+  `, [courierId]).execute() as Array<{ currency: string }>
   const ledger = await db.selectFrom('ledger_entries')
     .where('party_type', '=', 'courier')
     .where('party_id', '=', courierId)
-    .selectAll()
-    .execute() as Array<Record<string, unknown>>
+    .where('kind', 'in', ['delivery_fee', 'tip'])
+    .select(['kind', 'amount_cents', 'currency'])
+    .execute() as Array<{ kind: string, amount_cents: number, currency: string }>
 
-  const feeCents = ledger.filter(row => row.kind === 'delivery_fee').reduce((sum, row) => sum + Number(row.amount_cents ?? 0), 0)
-  const tipCents = ledger.filter(row => row.kind === 'tip').reduce((sum, row) => sum + Number(row.amount_cents ?? 0), 0)
+  const amounts = new Map(currencies.map(({ currency }) => [currency, { currency, feeCents: 0, tipCents: 0 }]))
+  let deliveries = 0
+
+  for (const row of ledger) {
+    const currency = row.currency.toLowerCase()
+    const total = amounts.get(currency) ?? { currency, feeCents: 0, tipCents: 0 }
+
+    if (row.kind === 'delivery_fee') {
+      total.feeCents += row.amount_cents
+      deliveries++
+    }
+    else {
+      total.tipCents += row.amount_cents
+    }
+
+    amounts.set(currency, total)
+  }
 
   return {
     courier: {
@@ -143,10 +163,8 @@ export async function consoleFor(courierId: number): Promise<CourierConsole | nu
     current: runs[0] ?? null,
     remaining: runs.slice(1),
     earnings: {
-      deliveries: ledger.filter(row => row.kind === 'delivery_fee').length,
-      feeCents,
-      tipCents,
-      totalCents: feeCents + tipCents,
+      deliveries,
+      amounts: [...amounts.values()].sort((a, b) => a.currency.localeCompare(b.currency)),
     },
   }
 }

@@ -11,6 +11,7 @@ import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
 import { dispatchReadyDeliveries, respondToDeliveryOffer } from '../app/Actions/Delivery/dispatch'
 import { accountState } from '../app/Actions/Account/session'
 import { linkVisitorToUser } from '../app/Actions/Visitor/identity'
+import { courierCoverage, setCourierMarket } from '../app/Actions/Admin/courier-coverage'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
 import type { Viewer } from '../app/Actions/Account/access'
 import { can, canActOnBusiness, canReadStatement, courierFor, viewerFor } from '../app/Actions/Account/access'
@@ -962,6 +963,35 @@ route.post('/admin/listings/{slug}/{action}', async (request: any) => {
 
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
+
+  return response.json({ data: { ok: true } })
+})
+
+route.get('/admin/courier-coverage', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'couriers.manage'))
+    return refuse(viewer)
+
+  return Response.json({ data: await courierCoverage() }, { headers: { 'Cache-Control': 'private, no-store' } })
+})
+
+route.post('/admin/courier-coverage/{courier}/{market}', async (request: any) => {
+  const viewer = await viewerOf(request)
+
+  if (!can(viewer, 'couriers.manage'))
+    return refuse(viewer)
+
+  const courierId = Number(request?.getParam?.('courier'))
+  const marketId = Number(request?.getParam?.('market'))
+  const body = typeof request?.all === 'function' ? await request.all() : request?.body ?? {}
+
+  if (!Number.isSafeInteger(courierId) || courierId < 1 || !Number.isSafeInteger(marketId) || marketId < 1
+    || typeof body?.enabled !== 'boolean')
+    return response.json({ message: t('marketplace.coverage_invalid') }, 422)
+
+  if (!await setCourierMarket(courierId, marketId, body.enabled))
+    return response.json({ message: t('marketplace.coverage_unavailable') }, 422)
 
   return response.json({ data: { ok: true } })
 })

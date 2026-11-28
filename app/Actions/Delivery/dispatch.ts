@@ -53,7 +53,17 @@ export async function dispatchOrder(orderId: number): Promise<DispatchResult> {
     if (!business)
       return { ok: false, reason: 'That order has no business.' }
 
-    const couriers = await db.selectFrom('couriers').where('status', '=', 'active').orderBy('id').selectAll().execute()
+    if (Number(business.self_delivery) === 1)
+      return { ok: false, reason: 'That business handles its own deliveries.' }
+
+    const couriers = await db.unsafe(`
+      SELECT couriers.*
+      FROM couriers
+      JOIN courier_markets ON courier_markets.courier_id = couriers.id
+      JOIN markets ON markets.id = courier_markets.market_id AND markets.is_active = 1
+      WHERE courier_markets.market_id = ? AND couriers.status = 'active'
+      ORDER BY couriers.id
+    `, [business.market_id]).execute() as Array<Record<string, unknown>>
     const courier = nearestCourier(business, couriers)
     return courier
       ? await createRoute(order, business, courier)
@@ -68,9 +78,10 @@ function unixSeconds(): number {
 /** Run inside the transaction that made an order or courier available. */
 export async function offerReadyDeliveries(firstOrderId?: number): Promise<void> {
   const orders = await db.unsafe(`
-    SELECT orders.id, businesses.latitude, businesses.longitude
+    SELECT orders.id, businesses.market_id, businesses.latitude, businesses.longitude
     FROM orders
     JOIN businesses ON businesses.id = orders.business_id
+    JOIN markets ON markets.id = businesses.market_id AND markets.is_active = 1
     WHERE orders.order_type = 'DELIVERY'
       AND orders.status = 'SHIPPED'
       AND businesses.self_delivery = 0
@@ -82,13 +93,15 @@ export async function offerReadyDeliveries(firstOrderId?: number): Promise<void>
         WHERE delivery_offers.order_id = orders.id AND delivery_offers.status = 'pending'
       )
     ORDER BY CASE WHEN orders.id = ? THEN 0 ELSE 1 END, orders.id
-  `, [firstOrderId ?? null]).execute() as Array<{ id: number, latitude: number | null, longitude: number | null }>
+  `, [firstOrderId ?? null]).execute() as Array<{ id: number, market_id: number, latitude: number | null, longitude: number | null }>
 
   for (const order of orders) {
     const couriers = await db.unsafe(`
       SELECT couriers.id, couriers.latitude, couriers.longitude
       FROM couriers
-      WHERE couriers.status = 'active'
+      JOIN courier_markets ON courier_markets.courier_id = couriers.id
+      WHERE courier_markets.market_id = ?
+        AND couriers.status = 'active'
         AND couriers.user_id IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM delivery_offers
@@ -96,7 +109,7 @@ export async function offerReadyDeliveries(firstOrderId?: number): Promise<void>
             AND (delivery_offers.order_id = ? OR delivery_offers.status = 'pending')
         )
       ORDER BY couriers.id
-    `, [order.id]).execute() as Array<{ id: number, latitude: number | null, longitude: number | null }>
+    `, [order.market_id, order.id]).execute() as Array<{ id: number, latitude: number | null, longitude: number | null }>
 
     const courier = nearestCourier(order, couriers)
     if (!courier)
@@ -132,10 +145,14 @@ export async function offerForCourier(courierId: number): Promise<CourierOffer |
     JOIN orders ON orders.id = delivery_offers.order_id
     JOIN businesses ON businesses.id = orders.business_id
     JOIN couriers ON couriers.id = delivery_offers.courier_id
+    JOIN markets ON markets.id = businesses.market_id AND markets.is_active = 1
+    JOIN courier_markets ON courier_markets.courier_id = couriers.id
+      AND courier_markets.market_id = markets.id
     WHERE delivery_offers.courier_id = ?
       AND delivery_offers.status = 'pending'
       AND delivery_offers.expires_at > ?
       AND couriers.status = 'active'
+      AND couriers.user_id IS NOT NULL
       AND orders.status = 'SHIPPED'
       AND businesses.self_delivery = 0
   `, [courierId, unixSeconds()]).execute() as Array<{ id: number, name: string, address: string, expires_at: number }>
@@ -152,18 +169,31 @@ async function closeOffer(offer: DeliveryOfferRow, status: 'accepted' | 'decline
     .execute()
 }
 
-/** Run inside the shift transaction, after the courier has gone offline. */
-export async function withdrawCourierOffer(courierId: number): Promise<number | undefined> {
-  const offer = await db.selectFrom('delivery_offers')
+/** Run inside the transaction that took the courier off shift or out of a market. */
+export async function withdrawCourierOffer(courierId: number, marketId?: number): Promise<number | undefined> {
+  const query = db.selectFrom('delivery_offers')
     .where('courier_id', '=', courierId)
     .where('status', '=', 'pending')
     .selectAll()
-    .executeTakeFirst() as DeliveryOfferRow | undefined
+  const offer = await query.executeTakeFirst() as DeliveryOfferRow | undefined
 
-  if (offer)
-    await closeOffer(offer, offer.expires_at <= unixSeconds() ? 'expired' : 'withdrawn')
+  if (!offer)
+    return
 
-  return offer?.order_id
+  if (marketId !== undefined) {
+    const [pickup] = await db.unsafe(`
+      SELECT businesses.market_id
+      FROM orders
+      JOIN businesses ON businesses.id = orders.business_id
+      WHERE orders.id = ?
+    `, [offer.order_id]).execute() as Array<{ market_id: number }>
+
+    if (pickup?.market_id !== marketId)
+      return
+  }
+
+  await closeOffer(offer, offer.expires_at <= unixSeconds() ? 'expired' : 'withdrawn')
+  return offer.order_id
 }
 
 export async function expireDeliveryOffer(offerId: number): Promise<void> {
@@ -227,11 +257,15 @@ export async function respondToDeliveryOffer(offerId: number, courierId: number,
       .where('self_delivery', '=', 0)
       .selectAll()
       .executeTakeFirst()
-    const courier = await db.selectFrom('couriers')
-      .where('id', '=', courierId)
-      .where('status', '=', 'active')
-      .selectAll()
-      .executeTakeFirst()
+    const couriers = business && await db.unsafe(`
+      SELECT couriers.*
+      FROM couriers
+      JOIN courier_markets ON courier_markets.courier_id = couriers.id
+      JOIN markets ON markets.id = courier_markets.market_id AND markets.is_active = 1
+      WHERE couriers.id = ? AND courier_markets.market_id = ?
+        AND couriers.status = 'active' AND couriers.user_id IS NOT NULL
+    `, [courierId, business.market_id]).execute() as Array<Record<string, unknown>> | undefined
+    const courier = couriers?.[0]
     const existingStop = await db.selectFrom('delivery_stops')
       .where('order_id', '=', offer.order_id)
       .select('id')
@@ -248,6 +282,43 @@ export async function respondToDeliveryOffer(offerId: number, courierId: number,
     await offerReadyDeliveries()
     return result
   }, sqliteWriteOptions())
+}
+
+export type DispatchProgress = 'assigned' | 'offered' | 'waiting' | 'uncovered'
+
+export async function dispatchProgressFor(businessId: number): Promise<Array<{ id: number, progress: DispatchProgress }>> {
+  return await db.unsafe(`
+    SELECT orders.id,
+      CASE
+        WHEN EXISTS (
+          SELECT 1 FROM delivery_stops WHERE delivery_stops.order_id = orders.id
+        ) THEN 'assigned'
+        WHEN EXISTS (
+          SELECT 1 FROM delivery_offers
+          JOIN courier_markets ON courier_markets.courier_id = delivery_offers.courier_id
+            AND courier_markets.market_id = businesses.market_id
+          JOIN couriers ON couriers.id = courier_markets.courier_id
+          WHERE delivery_offers.order_id = orders.id AND delivery_offers.status = 'pending'
+            AND delivery_offers.expires_at > ? AND couriers.status = 'active'
+            AND couriers.user_id IS NOT NULL AND markets.is_active = 1
+        ) THEN 'offered'
+        WHEN EXISTS (
+          SELECT 1 FROM courier_markets
+          JOIN couriers ON couriers.id = courier_markets.courier_id
+          WHERE courier_markets.market_id = businesses.market_id AND markets.is_active = 1
+            AND couriers.user_id IS NOT NULL AND NOT EXISTS (
+              SELECT 1 FROM delivery_offers
+              WHERE delivery_offers.order_id = orders.id AND delivery_offers.courier_id = couriers.id
+            )
+        ) THEN 'waiting'
+        ELSE 'uncovered'
+      END AS progress
+    FROM orders
+    JOIN businesses ON businesses.id = orders.business_id
+    LEFT JOIN markets ON markets.id = businesses.market_id
+    WHERE businesses.id = ? AND businesses.self_delivery = 0
+      AND orders.order_type = 'DELIVERY' AND orders.status = 'SHIPPED'
+  `, [unixSeconds(), businessId]).execute() as Array<{ id: number, progress: DispatchProgress }>
 }
 
 async function createRoute(

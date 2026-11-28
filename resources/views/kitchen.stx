@@ -140,7 +140,11 @@ const canonicalPath = '/kitchen'
                       style="background: var(--ink); color: var(--paper)"
                     >{{ nextStep(order).label }}</button>
 
-                    <span :if="!nextStep(order)" class="text-[13px]" style="color: var(--ink-soft)">{{ t('kitchen.waiting_handover') }}</span>
+                    <span :if="!nextStep(order) && !order.dispatchProgress" class="text-[13px]" style="color: var(--ink-soft)">{{ t('kitchen.waiting_handover') }}</span>
+                    <span :if="order.dispatchProgress === 'waiting'" class="text-[13px]" style="color: var(--ink-soft)">{{ t('kitchen.courier_waiting') }}</span>
+                    <span :if="order.dispatchProgress === 'offered'" class="text-[13px]" style="color: var(--ink-soft)">{{ t('kitchen.courier_offered') }}</span>
+                    <span :if="order.dispatchProgress === 'assigned'" class="text-[13px]" style="color: var(--ink-soft)">{{ t('kitchen.courier_assigned') }}</span>
+                    <span :if="order.dispatchProgress === 'uncovered'" class="font-medium text-[13px]" style="color: var(--accent)" role="status">{{ t('kitchen.courier_uncovered') }}</span>
 
                     <button :if="order.status === 'PENDING' || order.status === 'PROCESSING' || (order.orderType !== 'DELIVERY' && order.status === 'SHIPPED')" @click="advance(order.id, 'CANCELLED')" class="px-4 py-2 text-[13px] rounded-full transition-all duration-500" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('common.cancel') }}</button>
 

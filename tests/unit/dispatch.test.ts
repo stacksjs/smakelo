@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
+import { courierCoverage, setCourierMarket } from '../../app/Actions/Admin/courier-coverage'
 import { consoleFor, setShift } from '../../app/Actions/Courier/console'
 import { dispatchReadyDeliveries, dispatchOrder, expireDeliveryOffer, respondToDeliveryOffer } from '../../app/Actions/Delivery/dispatch'
-import { advanceOrder } from '../../app/Actions/Merchant/board'
+import { advanceOrder, boardFor } from '../../app/Actions/Merchant/board'
 import { assertDatabaseCount, assertDatabaseHas, factory, refreshDatabase } from '../support/database'
 
 /**
@@ -23,8 +24,18 @@ import { assertDatabaseCount, assertDatabaseHas, factory, refreshDatabase } from
 
 const database = refreshDatabase()
 
-function seedDelivery(overrides: Record<string, unknown> = {}): { orderId: number, businessId: number } {
-  const [marketId] = database.seed('markets', [factory.market()])
+function defaultMarket(): number {
+  const existing = database.connection().query<{ id: number }, []>('SELECT id FROM markets ORDER BY id LIMIT 1').get()
+  return existing?.id ?? database.seed('markets', [factory.market()])[0]!
+}
+
+function marketCouriers(rows: Array<Record<string, unknown>>, marketId = defaultMarket()): number[] {
+  const ids = database.seed('couriers', rows)
+  database.seed('courier_markets', ids.map(courierId => ({ courier_id: courierId, market_id: marketId })))
+  return ids
+}
+
+function seedDelivery(overrides: Record<string, unknown> = {}, marketId = defaultMarket()): { orderId: number, businessId: number } {
   const [businessId] = database.seed('businesses', [factory.business({
     // Unique per call: a test that dispatches two orders seeds two shops.
     slug: `a-shop-${Math.random().toString(36).slice(2, 8)}`,
@@ -82,7 +93,7 @@ describe('what can be dispatched', () => {
   test('an order already on a run is not dispatched twice', async () => {
     // Twice would put one order on two runs and pay two couriers for it.
     const { orderId } = seedDelivery()
-    database.seed('couriers', [factory.courier()])
+    marketCouriers([factory.courier()])
 
     expect((await dispatchOrder(orderId)).ok).toBe(true)
 
@@ -95,7 +106,7 @@ describe('what can be dispatched', () => {
 
   test('nothing happens when no courier is free', async () => {
     const { orderId } = seedDelivery()
-    database.seed('couriers', [factory.courier({ status: 'on_delivery' })])
+    marketCouriers([factory.courier({ status: 'on_delivery' })])
 
     const result = await dispatchOrder(orderId)
 
@@ -106,14 +117,14 @@ describe('what can be dispatched', () => {
   })
 })
 
-function linkedCourier(overrides: Record<string, unknown> = {}): number {
+function linkedCourier(overrides: Record<string, unknown> = {}, marketId = defaultMarket()): number {
   const [userId] = database.seed('users', [{
     uuid: crypto.randomUUID(),
     name: 'Platform courier',
     email: `${crypto.randomUUID()}@example.invalid`,
     password: 'unused',
   }])
-  const [id] = database.seed('couriers', [factory.courier({ user_id: userId, ...overrides })])
+  const [id] = marketCouriers([factory.courier({ user_id: userId, ...overrides })], marketId)
   return id!
 }
 
@@ -125,7 +136,7 @@ describe('ready delivery offers', () => {
     seedDelivery({ status: 'SHIPPED', order_type: 'PICKUP' })
     const first = seedDelivery({ status: 'SHIPPED' })
     const second = seedDelivery({ status: 'SHIPPED' })
-    database.seed('couriers', [factory.courier()])
+    marketCouriers([factory.courier()])
 
     await dispatchReadyDeliveries()
     assertDatabaseCount('delivery_offers', 0)
@@ -223,6 +234,92 @@ describe('ready delivery offers', () => {
   })
 })
 
+describe('market coverage', () => {
+  test('offers and accepts in both markets even when the other courier is physically closer', async () => {
+    const us = defaultMarket()
+    const [de] = database.seed('markets', [factory.market({ name: 'Nordrhein-Westfalen', country_code: 'DE' })])
+    const american = seedDelivery({ status: 'SHIPPED' }, us)
+    const german = seedDelivery({ status: 'SHIPPED' }, de!)
+    database.connection().query('UPDATE businesses SET latitude = 51.2562, longitude = 7.1508 WHERE id = ?').run(german.businessId)
+
+    const americanCourier = linkedCourier({ latitude: 51.2562, longitude: 7.1508 }, us)
+    const germanCourier = linkedCourier({ latitude: 34.0195, longitude: -118.4912 }, de!)
+
+    await dispatchReadyDeliveries()
+
+    assertDatabaseHas('delivery_offers', { order_id: american.orderId, courier_id: americanCourier, status: 'pending' })
+    assertDatabaseHas('delivery_offers', { order_id: german.orderId, courier_id: germanCourier, status: 'pending' })
+    for (const [courierId, delivery] of [[americanCourier, american], [germanCourier, german]] as const) {
+      const offer = (await consoleFor(courierId))!.offer!
+      expect((await respondToDeliveryOffer(offer.id, courierId, true))?.ok).toBe(true)
+      assertDatabaseHas('delivery_stops', { order_id: delivery.orderId, type: 'dropoff' })
+    }
+  })
+
+  test('an uncovered order stays visible and gets an offer when operations assigns coverage', async () => {
+    const us = defaultMarket()
+    const [de] = database.seed('markets', [factory.market({ name: 'Nordrhein-Westfalen', country_code: 'DE' })])
+    const { orderId, businessId } = seedDelivery({ status: 'SHIPPED' }, de!)
+    const courier = linkedCourier({}, us)
+    const slug = database.connection().query<{ slug: string }, [number]>('SELECT slug FROM businesses WHERE id = ?').get(businessId)!.slug
+
+    await dispatchReadyDeliveries()
+    expect((await boardFor(slug))?.active[0]?.dispatchProgress).toBe('uncovered')
+    assertDatabaseCount('delivery_offers', 0)
+    expect((await courierCoverage()).markets.find(market => market.id === de)?.waiting).toBe(1)
+
+    expect(await setCourierMarket(courier, de!, true)).toBe(true)
+    expect((await boardFor(slug))?.active[0]?.dispatchProgress).toBe('offered')
+    const offer = (await consoleFor(courier))!.offer!
+    assertDatabaseHas('delivery_offers', { id: offer.id, order_id: orderId, courier_id: courier })
+
+    expect(await setCourierMarket(courier, us, false)).toBe(true)
+    expect((await consoleFor(courier))?.offer?.id).toBe(offer.id)
+
+    expect(await setCourierMarket(courier, de!, false)).toBe(true)
+    expect((await boardFor(slug))?.active[0]?.dispatchProgress).toBe('uncovered')
+    expect((await respondToDeliveryOffer(offer.id, courier, true))?.ok).toBe(false)
+    assertDatabaseHas('delivery_offers', { id: offer.id, status: 'withdrawn' })
+    assertDatabaseCount('delivery_stops', 0)
+  })
+
+  test('courier payouts appear in their ledger currency after a second market is added', async () => {
+    const us = defaultMarket()
+    const [de] = database.seed('markets', [factory.market({ currency: 'eur' })])
+    const courierId = linkedCourier({}, us)
+    await setCourierMarket(courierId, de!, true)
+    database.seed('ledger_entries', [
+      { currency: 'usd', kind: 'delivery_fee', amount_cents: 400 },
+      { currency: 'eur', kind: 'delivery_fee', amount_cents: 550 },
+      { currency: 'eur', kind: 'tip', amount_cents: 250 },
+    ].map(row => ({ ...row, uuid: crypto.randomUUID(), party_id: courierId, party_type: 'courier' })))
+
+    expect((await consoleFor(courierId))?.earnings).toEqual({
+      deliveries: 2,
+      amounts: [
+        { currency: 'eur', feeCents: 550, tipCents: 250 },
+        { currency: 'usd', feeCents: 400, tipCents: 0 },
+      ],
+    })
+  })
+
+  test('an inactive pickup market cannot dispatch or accept an existing offer', async () => {
+    const market = defaultMarket()
+    const { orderId } = seedDelivery({ status: 'SHIPPED' }, market)
+    const courier = linkedCourier({}, market)
+
+    await dispatchReadyDeliveries()
+    const offer = (await consoleFor(courier))!.offer!
+    database.connection().query('UPDATE markets SET is_active = 0 WHERE id = ?').run(market)
+
+    expect((await consoleFor(courier))?.offer).toBeNull()
+    expect((await respondToDeliveryOffer(offer.id, courier, true))?.ok).toBe(false)
+    expect(await setCourierMarket(courier, market, true)).toBe(false)
+    assertDatabaseHas('delivery_offers', { id: offer.id, order_id: orderId, status: 'withdrawn' })
+    assertDatabaseCount('delivery_stops', 0)
+  })
+})
+
 describe('who gets the job', () => {
   test('the nearest free courier', async () => {
     // Nearest is the right heuristic for food, which does not improve while it
@@ -230,7 +327,7 @@ describe('who gets the job', () => {
     // they got the job.
     const { orderId } = seedDelivery()
 
-    database.seed('couriers', [
+    marketCouriers([
       // ~11km away.
       factory.courier({ name: 'Far', latitude: 34.1195, longitude: -118.4912 }),
       // ~500m away.
@@ -248,7 +345,7 @@ describe('who gets the job', () => {
   test('a courier who is already carrying something is passed over', async () => {
     const { orderId } = seedDelivery()
 
-    database.seed('couriers', [
+    marketCouriers([
       factory.courier({ name: 'Busy But Close', status: 'on_delivery', latitude: 34.0196, longitude: -118.4912 }),
       factory.courier({ name: 'Free But Far', latitude: 34.0645, longitude: -118.4912 }),
     ])
@@ -262,7 +359,7 @@ describe('who gets the job', () => {
     // A courier with no position cannot be ranked, and dropping them would
     // mean a fleet that has just come on shift can take no orders at all.
     const { orderId } = seedDelivery()
-    database.seed('couriers', [factory.courier({ name: 'Just Started', latitude: null, longitude: null })])
+    marketCouriers([factory.courier({ name: 'Just Started', latitude: null, longitude: null })])
 
     const result = await dispatchOrder(orderId)
 
@@ -274,7 +371,7 @@ describe('who gets the job', () => {
     // Otherwise the same courier is the nearest free one for every order that
     // arrives in the next minute.
     const { orderId } = seedDelivery()
-    const [courierId] = database.seed('couriers', [factory.courier()])
+    const [courierId] = marketCouriers([factory.courier()])
 
     await dispatchOrder(orderId)
 
@@ -287,7 +384,7 @@ describe('the run itself', () => {
     // The sequence is what the tracking pipeline reads. Backwards, the courier
     // delivers before collecting.
     const { orderId } = seedDelivery()
-    database.seed('couriers', [factory.courier()])
+    marketCouriers([factory.courier()])
 
     const result = await dispatchOrder(orderId)
 
@@ -305,7 +402,7 @@ describe('the run itself', () => {
 
   test('starts planned, with both stops still to do', async () => {
     const { orderId } = seedDelivery()
-    database.seed('couriers', [factory.courier()])
+    marketCouriers([factory.courier()])
 
     const result = await dispatchOrder(orderId)
 
@@ -315,7 +412,7 @@ describe('the run itself', () => {
 
   test('carries the courier onto the route', async () => {
     const { orderId } = seedDelivery()
-    const [courierId] = database.seed('couriers', [factory.courier({ name: 'A Courier', vehicle_number: 'BIKE-9' })])
+    const [courierId] = marketCouriers([factory.courier({ name: 'A Courier', vehicle_number: 'BIKE-9' })])
 
     const result = await dispatchOrder(orderId)
 
@@ -329,7 +426,7 @@ describe('the money', () => {
     // it yet. Left there, the delivery fee and the tip are owed to courier
     // number zero, who cannot be paid.
     const { orderId, businessId } = seedDelivery()
-    const [courierId] = database.seed('couriers', [factory.courier()])
+    const [courierId] = marketCouriers([factory.courier()])
 
     for (const row of [
       { party_type: 'courier', party_id: 0, kind: 'delivery_fee', amount_cents: 400 },
@@ -356,7 +453,7 @@ describe('the money', () => {
     // The update is scoped by party type. Without that it would reassign the
     // business's revenue to the courier as well.
     const { orderId, businessId } = seedDelivery()
-    database.seed('couriers', [factory.courier()])
+    marketCouriers([factory.courier()])
 
     database.seed('ledger_entries', [{
       uuid: crypto.randomUUID(),
@@ -378,7 +475,7 @@ describe('the money', () => {
   test('and no other order\'s rows either', async () => {
     const { orderId } = seedDelivery()
     const second = seedDelivery({ delivery_address: 'Another place' })
-    database.seed('couriers', [factory.courier()])
+    marketCouriers([factory.courier()])
 
     database.seed('ledger_entries', [{
       uuid: crypto.randomUUID(),

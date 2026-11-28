@@ -1,5 +1,6 @@
 import { db, sqliteWriteOptions } from '@stacksjs/database/runtime'
-import { offerReadyDeliveries } from '../Delivery/dispatch'
+import type { DispatchProgress } from '../Delivery/dispatch'
+import { dispatchProgressFor, offerReadyDeliveries } from '../Delivery/dispatch'
 
 /**
  * What a kitchen and a merchant need to see.
@@ -18,6 +19,7 @@ export interface BoardOrder {
   minutesAgo: number
   totalCents: number
   tableLabel: string | null
+  dispatchProgress: DispatchProgress | null
   items: Array<{ name: string, quantity: number, modifiers: string[], notes: string }>
 }
 
@@ -55,11 +57,12 @@ export async function boardFor(slug: string): Promise<MerchantBoard | null> {
     .selectAll()
     .execute() as Array<Record<string, unknown>>
 
+  const dispatch = new Map((await dispatchProgressFor(Number(business.id))).map(row => [row.id, row.progress]))
   const active: BoardOrder[] = []
   const completed: BoardOrder[] = []
 
   for (const order of orders) {
-    const shaped = await shapeOrder(order)
+    const shaped = await shapeOrder(order, dispatch.get(Number(order.id)) ?? null)
 
     if (ACTIVE_STATUSES.includes(String(order.status)))
       active.push(shaped)
@@ -97,7 +100,7 @@ export async function boardFor(slug: string): Promise<MerchantBoard | null> {
   }
 }
 
-async function shapeOrder(order: Record<string, unknown>): Promise<BoardOrder> {
+async function shapeOrder(order: Record<string, unknown>, dispatchProgress: DispatchProgress | null): Promise<BoardOrder> {
   const items = await db.selectFrom('order_items')
     .where('order_id', '=', Number(order.id))
     .selectAll()
@@ -149,6 +152,7 @@ async function shapeOrder(order: Record<string, unknown>): Promise<BoardOrder> {
     minutesAgo,
     totalCents: Number(order.total_amount ?? 0),
     tableLabel,
+    dispatchProgress,
     items: lines,
   }
 }

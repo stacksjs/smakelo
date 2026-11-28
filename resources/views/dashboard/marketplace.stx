@@ -10,6 +10,8 @@ export const operationLabels = {
   restore: t('admin.put_back'),
   cancel: t('common.cancel'),
   failed: t('common.error'),
+  assignMarket: t('marketplace.coverage_assign'),
+  removeMarket: t('marketplace.coverage_remove'),
 }
 defineClientPayload({ operationLabels })
 </script>
@@ -23,6 +25,7 @@ defineClientPayload({ operationLabels })
   <div class="flex flex-wrap gap-2 mt-5" role="group" aria-label="{{ t('marketplace.operations') }}">
     <button type="button" :aria-pressed="active() === 'claims'" @click="select('claims')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('claims.title') }}</button>
     <button type="button" :aria-pressed="active() === 'listings'" @click="select('listings')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('admin.listings') }}</button>
+    <button type="button" :aria-pressed="active() === 'coverage'" @click="select('coverage')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('marketplace.coverage_title') }}</button>
     <button type="button" :aria-pressed="active() === 'guards'" @click="select('guards')" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700 marketplace-tab">{{ t('marketplace.demo_checks') }}</button>
   </div>
 
@@ -89,6 +92,47 @@ defineClientPayload({ operationLabels })
     </div>
   </section>
 
+  <section :if="active() === 'coverage' && !failure() && !loading()" class="mt-7" aria-labelledby="courier-coverage">
+    <h2 id="courier-coverage" class="font-semibold text-gray-900 text-lg dark:text-white">{{ t('marketplace.coverage_title') }}</h2>
+    <p :if="!market()" class="mt-2 text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.coverage_no_markets') }}</p>
+
+    <div :if="market()" class="mt-4">
+      <div class="flex flex-wrap gap-x-8 gap-y-4 items-end">
+        <div class="flex flex-col gap-1.5">
+          <label for="coverage-market" class="font-medium text-gray-700 text-sm dark:text-gray-200">{{ t('marketplace.coverage_market') }}</label>
+          <select id="coverage-market" x-model.number="marketId" class="px-3 py-2 text-gray-900 text-sm dark:text-white bg-white dark:bg-gray-900 border border-gray-300 rounded-lg dark:border-gray-700">
+            <option :for="entry in coverage().markets" :value="entry.id">{{ entry.name }}</option>
+          </select>
+        </div>
+
+        <dl class="flex flex-wrap gap-x-6 gap-y-2">
+          <div>
+            <dt class="text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.coverage_on_shift') }}</dt>
+            <dd class="font-semibold tabular-nums text-gray-900 text-lg dark:text-white">{{ market().onShift }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.coverage_orders') }}</dt>
+            <dd class="font-semibold tabular-nums text-gray-900 text-lg dark:text-white">{{ market().waiting }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <p :if="!market().active" class="mt-4 text-gray-700 text-sm dark:text-gray-300">{{ t('marketplace.coverage_inactive') }}</p>
+      <p :if="market().active && market().onShift === 0" class="mt-4 text-gray-700 text-sm dark:text-gray-300">{{ t('marketplace.coverage_no_shift') }}</p>
+      <p :if="coverage().couriers.length === 0" class="mt-4 text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.coverage_no_couriers') }}</p>
+      <ul :if="coverage().couriers.length > 0" class="mt-5 border-gray-200 border-y divide-gray-200 divide-y dark:border-gray-700 dark:divide-gray-700" aria-label="{{ t('marketplace.coverage_assignments') }}">
+        <li :for="courier in coverage().couriers" class="flex flex-wrap gap-3 items-center justify-between py-3">
+          <div class="min-w-0">
+            <p class="font-medium text-gray-900 dark:text-white">{{ courier.name }}</p>
+            <p :if="servesMarket(courier)" class="mt-1 text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.coverage_assigned') }}</p>
+            <p :if="!servesMarket(courier)" class="mt-1 text-gray-600 text-sm dark:text-gray-400">{{ t('marketplace.coverage_unassigned') }}</p>
+          </div>
+          <button :if="market().active || servesMarket(courier)" type="button" :aria-label="coverageAction(courier) + ' ' + courier.name" class="px-3 py-2 font-medium text-gray-700 text-sm dark:text-gray-200 border border-gray-300 rounded-lg dark:border-gray-700" @click="askCoverage(courier)">{{ coverageAction(courier) }}</button>
+        </li>
+      </ul>
+    </div>
+  </section>
+
   <section :if="active() === 'guards' && !failure() && !loading()" class="mt-7" aria-labelledby="demo-checks">
     <h2 id="demo-checks" class="font-semibold text-gray-900 text-lg dark:text-white">{{ t('marketplace.demo_checks') }}</h2>
     <p :if="report()?.allPassed" class="mt-2 text-gray-600 text-sm dark:text-gray-400">{{ t('admin.all_holding') }}</p>
@@ -143,6 +187,9 @@ const notice = state(false)
 const claims = state([])
 const listings = state([])
 const report = state(null)
+const coverage = state(null)
+const marketId = state(0)
+const market = derived(() => coverage()?.markets.find(entry => entry.id === marketId()) ?? null)
 const query = state('')
 const search = state('')
 const task = state(null)
@@ -171,7 +218,8 @@ async function load() {
   try {
     const endpoint = section === 'claims' ? '/api/claims'
       : section === 'guards' ? '/api/admin/guards'
-        : '/api/admin/listings?q=' + encodeURIComponent(search())
+        : section === 'coverage' ? '/api/admin/courier-coverage'
+          : '/api/admin/listings?q=' + encodeURIComponent(search())
     const { data } = await dashboardApi(endpoint)
 
     if (request !== requestNumber)
@@ -181,6 +229,11 @@ async function load() {
       claims.set(data)
     else if (section === 'guards')
       report.set(data)
+    else if (section === 'coverage') {
+      coverage.set(data)
+      if (!data.markets.some(entry => entry.id === marketId()))
+        marketId.set(data.markets[0]?.id ?? 0)
+    }
     else
       listings.set(data)
   }
@@ -211,6 +264,32 @@ function ask(action, item) {
   task.set({ path, label, title: label + '?', description: listing ? item.name : item.businessName, danger: action === 'hide' || action === 'rejected' })
 }
 
+function servesMarket(courier) {
+  return courier.marketIds.includes(marketId())
+}
+
+function coverageAction(courier) {
+  return servesMarket(courier) ? labels.removeMarket : labels.assignMarket
+}
+
+function askCoverage(courier) {
+  const selected = market()
+  if (!selected)
+    return
+
+  const enabled = !servesMarket(courier)
+  const label = coverageAction(courier)
+  mutationError.set('')
+  task.set({
+    path: `/api/admin/courier-coverage/${courier.id}/${selected.id}`,
+    body: { enabled },
+    label,
+    title: label + '?',
+    description: courier.name + ' · ' + selected.name,
+    danger: !enabled,
+  })
+}
+
 async function apply() {
   const change = task()
 
@@ -222,7 +301,7 @@ async function apply() {
   notice.set(false)
 
   try {
-    await dashboardApi(change.path, { method: 'POST', body: {} })
+    await dashboardApi(change.path, { method: 'POST', body: change.body ?? {} })
     task.set(null)
     await load()
     notice.set(true)

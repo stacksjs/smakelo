@@ -383,6 +383,8 @@ describe('what is closed to a stranger', () => {
     ['POST', '/manage/a-shop/fulfilment'],
     ['GET', '/admin/guards'],
     ['GET', '/admin/listings'],
+    ['GET', '/admin/courier-coverage'],
+    ['POST', '/admin/courier-coverage/1/1'],
     ['POST', '/admin/listings/a-shop/hide'],
   ]
 
@@ -470,6 +472,23 @@ describe('what a signed-in stranger still may not do', () => {
 
     expect((await get('/admin/guards', { authorization: `Bearer ${token}` })).status).toBe(403)
     expect((await get('/admin/listings', { authorization: `Bearer ${token}` })).status).toBe(403)
+    expect((await get('/admin/courier-coverage', { authorization: `Bearer ${token}` })).status).toBe(403)
+    expect((await post('/admin/courier-coverage/1/1', { enabled: true }, { authorization: `Bearer ${token}` })).status).toBe(403)
+  })
+
+  test('operations can grant and remove market coverage for a linked courier', async () => {
+    const [marketId] = database.seed('markets', [factory.market()])
+    const [userId] = database.seed('users', [{ name: 'Courier', email: 'coverage@example.invalid', password: 'x' }])
+    const [courierId] = database.seed('couriers', [factory.courier({ user_id: userId })])
+    const token = await signIn(['admin'])
+    const headers = { authorization: `Bearer ${token}` }
+    const path = `/admin/courier-coverage/${courierId}/${marketId}`
+
+    expect((await post(path, { enabled: 'true' }, headers)).status).toBe(422)
+    expect((await post(path, { enabled: true }, headers)).status).toBe(200)
+    expect((await get('/admin/courier-coverage', headers)).body.data.couriers[0].marketIds).toEqual([marketId])
+    expect((await post(path, { enabled: false }, headers)).status).toBe(200)
+    expect((await get('/admin/courier-coverage', headers)).body.data.couriers[0].marketIds).toEqual([])
   })
 
   test('guests and merchants cannot decide a listing claim', async () => {

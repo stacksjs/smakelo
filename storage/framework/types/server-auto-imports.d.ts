@@ -65,6 +65,7 @@ declare global {
   const BusinessReview: typeof import('../../../app/Models/BusinessReview')['default']
   const Claim: typeof import('../../../app/Models/Claim')['default']
   const Courier: typeof import('../../../app/Models/Courier')['default']
+  const CourierMarket: typeof import('../../../app/Models/CourierMarket')['default']
   const CourierPing: typeof import('../../../app/Models/CourierPing')['default']
   const CsaPlan: typeof import('../../../app/Models/CsaPlan')['default']
   const CsaSubscription: typeof import('../../../app/Models/CsaSubscription')['default']

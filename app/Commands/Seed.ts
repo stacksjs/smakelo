@@ -1,7 +1,7 @@
 import { defineCommand, log } from '@stacksjs/cli'
 import { db, sqliteWriteOptions } from '@stacksjs/database'
 import { nextPackingDay } from '../Actions/Csa/membership'
-import { dispatchOrder } from '../Actions/Delivery/dispatch'
+import { dispatchOrder, offerReadyDeliveries } from '../Actions/Delivery/dispatch'
 import { advanceOrder } from '../Actions/Merchant/board'
 import { placeOrder } from '../Actions/Order/place'
 import type { Role } from '../Permissions'
@@ -39,7 +39,8 @@ export default defineCommand((cli) => {
           const listing = await db.selectFrom('businesses').select(['id']).executeTakeFirst()
 
           if (listing) {
-            log.info('Marketplace already initialized. Keeping existing data.')
+            await seedNewDemoCourier()
+            log.info('Marketplace already initialized. Keeping existing orders and listings.')
             return
           }
 
@@ -61,7 +62,7 @@ async function seedDemo(): Promise<void> {
   const menuItems = await seedMenus(businessIds)
   const reviewCount = await seedReviews(businessIds)
   const tableCount = await seedTables(businessIds)
-  const courierCount = await seedCouriers()
+  const courierCount = await seedCouriers(marketIds)
   const planCount = await seedCsaPlans(businessIds)
   const memberCount = await seedCsaMembers()
   const history = await seedOrders()
@@ -112,6 +113,7 @@ async function clearDemoRows(): Promise<void> {
     'review_votes',
     'claims',
     'favorites',
+    'delivery_offers',
     'delivery_stops',
     'license_keys',
     'order_idempotency',
@@ -148,6 +150,7 @@ async function clearDemoRows(): Promise<void> {
     'coupons',
     'tabs',
     'tables',
+    'courier_markets',
     'couriers',
     'products',
     'businesses',
@@ -363,6 +366,15 @@ interface DemoAccount {
   courier?: string
 }
 
+const GERMAN_COURIER = {
+  email: 'courier-de@smakelo.test',
+  name: 'Mara Stein',
+  role: 'courier',
+  courier: 'Mara Stein',
+} as const satisfies DemoAccount
+
+const GERMAN_VEHICLE = { name: GERMAN_COURIER.name, vehicle: 'Bike 4201', lat: 51.2562, lng: 7.1508, market: 'nordrhein-westfalen' }
+
 const ACCOUNTS: DemoAccount[] = [
   {
     email: 'ops@smakelo.test',
@@ -431,6 +443,7 @@ const ACCOUNTS: DemoAccount[] = [
     role: 'courier',
     courier: 'Rosa Delgado',
   },
+  GERMAN_COURIER,
   {
     email: 'customer@smakelo.test',
     name: 'Alex Rivera',
@@ -446,7 +459,7 @@ const ACCOUNTS: DemoAccount[] = [
  * where a change to what a merchant may do belongs, and a projection means
  * anything reading the database sees the same answer as the code does.
  */
-async function seedAccounts(businessIds: Record<string, number>): Promise<{ accounts: number, teams: number }> {
+async function seedRoles(): Promise<void> {
   setRbacStore(createBqbRbacStore())
 
   /*
@@ -471,6 +484,10 @@ async function seedAccounts(businessIds: Record<string, number>): Promise<{ acco
   for (const role of ROLES)
     for (const permission of permissions.forRole(role))
       await givePermissionToRole(role, permission, GUARD).catch(() => undefined)
+}
+
+async function seedAccounts(businessIds: Record<string, number>): Promise<{ accounts: number, teams: number }> {
+  await seedRoles()
 
   /*
    * Every partner gets a team, whether or not anybody signs in as it.
@@ -517,18 +534,9 @@ async function seedAccounts(businessIds: Record<string, number>): Promise<{ acco
   let accounts = 0
 
   for (const account of ACCOUNTS) {
-    const existing = await db.selectFrom('users').where('email', '=', account.email).select(['id']).executeTakeFirst() as { id: number } | undefined
-
-    if (!existing) {
-      // The framework's own registration, so the stored hash is the one
-      // `/login` will check against. The session it opens is discarded.
-      await register({ name: account.name, email: account.email, password: DEMO_PASSWORD } as never)
+    const { id: userId, created } = await seedAccountUser(account)
+    if (created)
       accounts++
-    }
-
-    const user = await db.selectFrom('users').where('email', '=', account.email).select(['id']).executeTakeFirst() as { id: number }
-
-    await syncRoles(Number(user.id), [account.role], GUARD)
 
     for (const slug of account.team?.businesses ?? []) {
       const teamId = teamIdBySlug[slug]
@@ -538,7 +546,7 @@ async function seedAccounts(businessIds: Record<string, number>): Promise<{ acco
 
       const member = await db.selectFrom('team_members')
         .where('team_id', '=', teamId)
-        .where('user_id', '=', Number(user.id))
+        .where('user_id', '=', userId)
         .select(['id'])
         .executeTakeFirst() as { id: number } | undefined
 
@@ -548,7 +556,7 @@ async function seedAccounts(businessIds: Record<string, number>): Promise<{ acco
       await db.insertInto('team_members').values({
         uuid: crypto.randomUUID(),
         team_id: teamId,
-        user_id: Number(user.id),
+        user_id: userId,
         role: 'owner',
         status: 'active',
       } as never).executeTakeFirst()
@@ -559,21 +567,13 @@ async function seedAccounts(businessIds: Record<string, number>): Promise<{ acco
         .execute()
     }
 
-    /* A courier is a person rather than a business, so it links by user id. */
-    if (account.courier) {
-      await db.updateTable('couriers')
-        .set({ user_id: Number(user.id) } as never)
-        .where('name', '=', account.courier)
-        .execute()
-    }
-
     /* And a customer carries the orders this browser has already placed. */
     if (account.role === 'customer') {
       const customer = await db.selectFrom('customers').select(['id']).executeTakeFirst() as { id: number } | undefined
 
       if (customer) {
         await db.updateTable('customers')
-          .set({ user_id: Number(user.id) } as never)
+          .set({ user_id: userId } as never)
           .where('id', '=', Number(customer.id))
           .execute()
       }
@@ -794,15 +794,40 @@ async function seedTables(businessIds: Record<string, number>): Promise<number> 
   return count
 }
 
-/**
- * Couriers.
- *
- * Invented people with invented vehicles, positioned around Santa Monica so a
- * dispatch has somebody plausible to pick. They are `Courier` rows in the
- * framework's own table - the rename in stacksjs/stacks#2382 is what let this
- * app call them what they are.
- */
-async function seedCouriers(): Promise<number> {
+async function seedAccountUser(account: DemoAccount): Promise<{ id: number, created: boolean }> {
+  const existing = await db.selectFrom('users').where('email', '=', account.email).select('id').executeTakeFirst()
+  if (!existing)
+    await register({ name: account.name, email: account.email, password: DEMO_PASSWORD } as never)
+
+  const user = await db.selectFrom('users').where('email', '=', account.email).select('id').executeTakeFirstOrThrow()
+  await syncRoles(Number(user.id), [account.role], GUARD)
+
+  if (account.courier) {
+    await db.updateTable('couriers')
+      .set({ user_id: Number(user.id) })
+      .where('name', '=', account.courier)
+      .execute()
+  }
+
+  return { id: Number(user.id), created: !existing }
+}
+
+/** Populate the added demo persona on an existing deployment once. */
+async function seedNewDemoCourier(): Promise<void> {
+  const original = await db.selectFrom('users').where('email', '=', 'courier@smakelo.test').select('id').executeTakeFirst()
+  const existing = await db.selectFrom('users').where('email', '=', GERMAN_COURIER.email).select('id').executeTakeFirst()
+  const market = await db.selectFrom('markets').where('slug', '=', GERMAN_VEHICLE.market).select('id').executeTakeFirst()
+
+  if (!original || existing || !market)
+    return
+
+  await seedRoles()
+  await seedCourier(GERMAN_VEHICLE, Number(market.id))
+  await seedAccountUser(GERMAN_COURIER)
+  await offerReadyDeliveries()
+}
+
+async function seedCouriers(marketIds: Record<string, number>): Promise<number> {
   const couriers = [
     { name: 'Rosa Delgado', vehicle: 'Vespa 2141', lat: 34.0195, lng: -118.4912 },
     { name: 'Tomas Neal', vehicle: 'Bike 0071', lat: 34.0089, lng: -118.4973 },
@@ -812,33 +837,38 @@ async function seedCouriers(): Promise<number> {
     { name: 'Sam Ruiz', vehicle: 'Bike 0203', lat: 33.9928, lng: -118.4741 },
     { name: 'Nia Fletcher', vehicle: 'Vespa 5566', lat: 34.0316, lng: -118.4977 },
     { name: 'Ivan Petrov', vehicle: 'Car 4417', lat: 34.0104, lng: -118.4917 },
-  ]
+  ].map(courier => ({ ...courier, market: 'los-angeles' }))
 
   let count = 0
-
-  for (const courier of couriers) {
-    const existing = await db.selectFrom('couriers').where('name', '=', courier.name).select(['id']).executeTakeFirst() as { id: number } | undefined
-
-    if (existing)
-      continue
-
-    await db.insertInto('couriers').values({
-      uuid: crypto.randomUUID(),
-      name: courier.name,
-      phone: '+15550000000',
-      vehicle_number: courier.vehicle,
-      license: 'DEMO',
-      status: 'active',
-      latitude: courier.lat,
-      longitude: courier.lng,
-      heading: 0,
-      speed: 0,
-    } as never).executeTakeFirst()
-
-    count += 1
+  for (const courier of [...couriers, GERMAN_VEHICLE]) {
+    const marketId = marketIds[courier.market]
+    if (marketId && await seedCourier(courier, marketId))
+      count++
   }
 
   return count
+}
+
+async function seedCourier(courier: { name: string, vehicle: string, lat: number, lng: number }, marketId: number): Promise<boolean> {
+  const existing = await db.selectFrom('couriers').where('name', '=', courier.name).select('id').executeTakeFirst()
+  if (existing)
+    return false
+
+  const saved = await db.insertInto('couriers').values({
+    uuid: crypto.randomUUID(),
+    name: courier.name,
+    phone: '+15550000000',
+    vehicle_number: courier.vehicle,
+    license: 'DEMO',
+    status: 'active',
+    latitude: courier.lat,
+    longitude: courier.lng,
+    heading: 0,
+    speed: 0,
+  }).returning('id').executeTakeFirstOrThrow()
+
+  await db.insertInto('courier_markets').values({ courier_id: saved.id, market_id: marketId }).execute()
+  return true
 }
 
 /**

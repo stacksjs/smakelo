@@ -17636,10 +17636,66 @@
             "type": "index"
           }
         ]
+      },
+      {
+        "table": "courier_markets",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "courier_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "references": {
+              "table": "couriers",
+              "column": "id",
+              "onDelete": "cascade"
+            }
+          },
+          {
+            "name": "market_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "references": {
+              "table": "markets",
+              "column": "id",
+              "onDelete": "cascade"
+            }
+          }
+        ],
+        "indexes": [
+          {
+            "name": "courier_markets_courier_market_unique",
+            "columns": [
+              "courier_id",
+              "market_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "courier_markets_market_id_index",
+            "columns": [
+              "market_id"
+            ],
+            "type": "index"
+          }
+        ]
       }
     ]
   },
-  "hash": "bc967143ef6edd6d1ceb3f7c17c2ee1d8cd0d27c6ba567693e89d5184cf413ba",
+  "hash": "faca0d8e80611839174204d36e8f1b511acf6e5c3e0761660387579688b70f36",
   "dialect": "sqlite",
-  "updatedAt": "2026-11-28T18:50:49.788Z"
+  "updatedAt": "2026-11-28T19:09:41.840Z"
 }

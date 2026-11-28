@@ -419,6 +419,10 @@ claims:
   lede: De vermeldingen komen uit open data, dus de meesten die schrijven willen eraf. Dat is een redelijke wens, en het is hier de eerste optie.
 
 kitchen:
+  courier_waiting: Wacht op een lokale koerier
+  courier_offered: Aanbod verzonden naar een lokale koerier
+  courier_assigned: Koerier toegewezen
+  courier_uncovered: Geen koeriersdekking voor deze bestelling
   send_delivery: Op pad voor bezorging
   complete_delivery: Markeer als bezorgd
   picked_up: Afgehaald
@@ -469,6 +473,21 @@ admin:
   listings_lede: Een vermelding verbergen haalt hem van de ontdekpagina, uit het zoeken, van de kaart en van zijn eigen pagina, en er kan niet meer besteld worden. De regel blijft staan, zodat hij terug kan komen als blijkt dat het verzoek van iemand kwam die de zaak helemaal niet runt.
 
 marketplace:
+  coverage_title: Koeriersdekking
+  coverage_market: Markt
+  coverage_on_shift: Koeriers in dienst
+  coverage_orders: Bestellingen wachten op toewijzing
+  coverage_assignments: Koerierstoewijzingen
+  coverage_assign: Koerier toewijzen
+  coverage_remove: Koerier verwijderen
+  coverage_assigned: Toegewezen
+  coverage_unassigned: Niet toegewezen
+  coverage_inactive: Deze markt is inactief.
+  coverage_no_shift: Er zijn geen koeriers in dienst in deze markt.
+  coverage_no_couriers: Er zijn geen koeriersaccounts gekoppeld.
+  coverage_no_markets: Er zijn nog geen markten toegevoegd.
+  coverage_invalid: Kies een geldige koerier en markt.
+  coverage_unavailable: Deze koerier of markt is niet beschikbaar.
   operations: Marktplaatsbeheer
   demo_checks: Democontroles
   recent_decisions: Recente beslissingen
