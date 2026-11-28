@@ -17,12 +17,28 @@ import type { DashboardConfig } from '@stacksjs/types'
  *     Data section itself stays — that's where every userland model under
  *     `app/Models/` is auto-listed, and you always want to see those.
  */
+const operatorRoles = ['admin']
+
 export default {
   enabled: true,
 
+  nav: [
+    {
+      title: 'Marketplace',
+      items: [
+        { label: 'Orders', href: '/models/order', icon: 'orders', roles: operatorRoles },
+        { label: 'Business listings', href: '/models/business', icon: 'cart', roles: operatorRoles },
+        { label: 'Claims', href: '/models/claim', icon: 'document', roles: operatorRoles },
+        { label: 'Markets', href: '/models/market', icon: 'globe', roles: operatorRoles },
+        { label: 'Couriers', href: '/models/courier', icon: 'user', roles: operatorRoles },
+        { label: 'Delivery routes', href: '/models/delivery-route', icon: 'truck', roles: operatorRoles },
+      ],
+    },
+  ],
+
   sections: {
-    library: { enabled: true },
-    content: { enabled: true },
+    library: { enabled: false },
+    content: { enabled: false },
     commerce: { enabled: true },
     marketing: { enabled: true },
     analytics: { enabled: true },

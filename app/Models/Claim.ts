@@ -89,6 +89,10 @@ export default defineModel({
   },
 
   dashboard: {
-    highlight: true,
+    enabled: false,
+    label: 'Claims',
+    columns: ['id', 'business', 'status', 'createdAt', 'decidedAt'],
+    filters: ['business', 'status'],
+    writes: [],
   },
 } as const)

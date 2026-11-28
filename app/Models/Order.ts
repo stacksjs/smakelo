@@ -248,6 +248,15 @@ export default defineModel({
   },
 
   dashboard: {
-    highlight: true,
+    enabled: false,
+    label: 'Orders',
+    columns: ['id', 'business', 'status', 'orderType', 'totalAmount', 'createdAt'],
+    filters: ['status', 'orderType', 'business'],
+    fields: {
+      orderType: { label: 'Fulfilment' },
+      totalAmount: { label: 'Total', format: 'money', currencyField: 'currency' },
+      createdAt: { label: 'Placed at' },
+    },
+    writes: [],
   },
 } as const)

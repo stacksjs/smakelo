@@ -173,6 +173,10 @@ export default defineModel({
   },
 
   dashboard: {
-    highlight: true,
+    enabled: false,
+    label: 'Couriers',
+    columns: ['name', 'status', 'lastPingAt'],
+    filters: ['status'],
+    writes: [],
   },
 } as const)

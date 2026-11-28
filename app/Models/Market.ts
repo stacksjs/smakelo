@@ -175,6 +175,10 @@ export default defineModel({
   },
 
   dashboard: {
-    highlight: true,
+    enabled: false,
+    label: 'Markets',
+    columns: ['name', 'countryCode', 'currency', 'taxMode', 'timezone', 'isActive'],
+    filters: ['countryCode', 'currency', 'isActive'],
+    writes: [],
   },
 } as const)

@@ -122,6 +122,10 @@ export default defineModel({
   },
 
   dashboard: {
-    highlight: true,
+    enabled: false,
+    label: 'Delivery routes',
+    columns: ['id', 'courier', 'status', 'stops', 'startedAt', 'completedAt'],
+    filters: ['courier', 'status'],
+    writes: [],
   },
 } as const)

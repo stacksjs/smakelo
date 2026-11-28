@@ -348,6 +348,10 @@ export default defineModel({
   },
 
   dashboard: {
-    highlight: true,
+    enabled: false,
+    label: 'Business listings',
+    columns: ['name', 'type', 'city', 'market', 'isPartner', 'isClaimed'],
+    filters: ['type', 'market', 'isPartner', 'isClaimed'],
+    writes: [],
   },
 } as const)
