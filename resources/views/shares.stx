@@ -106,7 +106,7 @@ const canonicalPath = '/shares'
     </main>
 
     <script client>
-      import { money, send, visitorToken } from '../functions/session'
+      import { apiGet, money, send } from '../functions/session'
 
       /*
        * The words this script writes, in the language the server served.
@@ -145,7 +145,7 @@ const canonicalPath = '/shares'
       }
 
       async function load() {
-        const { data } = await (await fetch('/api/csa/mine', { headers: { 'x-visitor': visitorToken() } })).json()
+        const { data } = await (await apiGet('/api/csa/mine')).json()
 
         shares.set(data)
         loading.set(false)

@@ -1,5 +1,5 @@
-import { db } from '@stacksjs/database'
-import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
+import { customerForBuyer, customerIdsForBuyer } from '../Visitor/identity'
 
 /**
  * Joining, pausing and leaving a farm's season.
@@ -61,6 +61,7 @@ export async function plansFor(businessSlug: string): Promise<PlanRow[]> {
 export interface JoinInput {
   planId: number
   visitorToken: unknown
+  userId?: number | null
   name: string
   fulfilment: 'pickup' | 'delivery'
   deliveryAddress?: string
@@ -82,44 +83,47 @@ export async function join(input: JoinInput): Promise<{ ok: boolean, subscriptio
   if (input.fulfilment === 'delivery' && !String(input.deliveryAddress ?? '').trim())
     return { ok: false, reason: 'Where should the box go?' }
 
-  const customerId = await customerForVisitor(input.visitorToken, input.name)
+  return await db.transaction(async () => {
+    const customerId = await customerForBuyer(input.visitorToken, input.userId, input.name)
 
-  if (!customerId)
-    return { ok: false, reason: 'Could not identify this browser.' }
+    if (!customerId)
+      return { ok: false, reason: 'Could not identify this browser.' }
 
-  const existing = await db.selectFrom('csa_subscriptions')
-    .where('csa_plan_id', '=', Number(plan.id))
-    .where('customer_id', '=', customerId)
-    .where('status', '!=', 'cancelled')
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+    const customerIds = input.userId ? await customerIdsForBuyer(input.visitorToken, input.userId) : [customerId]
+    const existing = await db.selectFrom('csa_subscriptions')
+      .where('csa_plan_id', '=', Number(plan.id))
+      .where('customer_id', 'in', customerIds)
+      .where('status', '!=', 'cancelled')
+      .select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
 
-  if (existing)
-    return { ok: false, reason: 'You are already a member of this share.' }
+    if (existing)
+      return { ok: false, reason: 'You are already a member of this share.' }
 
-  const nextBoxAt = nextPackingDay(Number(plan.day_of_week ?? 3))
+    const nextBoxAt = nextPackingDay(Number(plan.day_of_week ?? 3))
 
-  await db.insertInto('csa_subscriptions').values({
-    uuid: crypto.randomUUID(),
-    csa_plan_id: Number(plan.id),
-    customer_id: customerId,
-    status: 'active',
-    fulfilment: input.fulfilment,
-    delivery_address: String(input.deliveryAddress ?? '').slice(0, 255),
-    next_box_at: nextBoxAt,
-    paused_until: '',
-    boxes_delivered: 0,
-    note: String(input.note ?? '').slice(0, 500),
-  } as never).executeTakeFirst()
+    await db.insertInto('csa_subscriptions').values({
+      uuid: crypto.randomUUID(),
+      csa_plan_id: Number(plan.id),
+      customer_id: customerId,
+      status: 'active',
+      fulfilment: input.fulfilment,
+      delivery_address: String(input.deliveryAddress ?? '').slice(0, 255),
+      next_box_at: nextBoxAt,
+      paused_until: '',
+      boxes_delivered: 0,
+      note: String(input.note ?? '').slice(0, 500),
+    } as never).executeTakeFirst()
 
-  const created = await db.selectFrom('csa_subscriptions')
-    .where('csa_plan_id', '=', Number(plan.id))
-    .where('customer_id', '=', customerId)
-    .orderBy('id', 'desc')
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+    const created = await db.selectFrom('csa_subscriptions')
+      .where('csa_plan_id', '=', Number(plan.id))
+      .where('customer_id', '=', customerId)
+      .orderBy('id', 'desc')
+      .select(['id'])
+      .executeTakeFirst() as { id: number } | undefined
 
-  return { ok: true, subscriptionId: Number(created?.id ?? 0), nextBoxAt }
+    return { ok: true, subscriptionId: Number(created?.id ?? 0), nextBoxAt }
+  }, sqliteWriteOptions())
 }
 
 export interface MembershipRow {
@@ -136,14 +140,14 @@ export interface MembershipRow {
   boxesDelivered: number
 }
 
-export async function membershipsFor(visitorToken: unknown): Promise<MembershipRow[]> {
-  const customerId = await existingCustomerFor(visitorToken)
+export async function membershipsFor(visitorToken: unknown, userId?: number | null): Promise<MembershipRow[]> {
+  const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
+  if (customerIds.length === 0)
     return []
 
   const rows = await db.selectFrom('csa_subscriptions')
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
     .orderBy('id', 'desc')
     .selectAll()
     .execute() as Array<Record<string, unknown>>
@@ -191,10 +195,11 @@ export async function setMembershipState(
   visitorToken: unknown,
   action: 'pause' | 'resume' | 'cancel',
   until = '',
+  userId?: number | null,
 ): Promise<{ ok: boolean, status?: string, nextBoxAt?: string, reason?: string }> {
-  const customerId = await existingCustomerFor(visitorToken)
+  const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
+  if (customerIds.length === 0)
     return { ok: false, reason: 'Could not identify this browser.' }
 
   const row = await db.selectFrom('csa_subscriptions')
@@ -205,9 +210,7 @@ export async function setMembershipState(
   if (!row)
     return { ok: false, reason: 'No such membership.' }
 
-  // Somebody else's membership is not yours to pause, even in a demo where the
-  // identity is only a browser token.
-  if (Number(row.customer_id) !== customerId)
+  if (!customerIds.includes(Number(row.customer_id)))
     return { ok: false, reason: 'That membership belongs to someone else.' }
 
   if (String(row.status) === 'cancelled')

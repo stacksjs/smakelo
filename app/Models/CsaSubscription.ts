@@ -28,11 +28,6 @@ export default defineModel({
     },
 
     useSeeder: { count: 0 },
-
-    useApi: {
-      middleware: ['auth'],
-      uri: 'csa-subscriptions',
-    },
   },
 
   belongsTo: ['CsaPlan', 'Customer'],

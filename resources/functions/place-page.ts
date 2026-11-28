@@ -1,5 +1,5 @@
 import { basemap, keepSized } from './map'
-import { apiGet, money, send, visitorToken } from './session'
+import { apiGet, money, send } from './session'
 
 /**
  * What a place page does once it is on screen.
@@ -40,7 +40,7 @@ export function placeHandlers(page: PlaceSignals) {
   const setClaim = (field: string, value: unknown) => patch(page.claim, field, value)
 
   async function loadSaved(): Promise<void> {
-    const response = await fetch('/api/saved', { headers: { 'x-visitor': visitorToken() } })
+    const response = await apiGet('/api/saved')
 
     if (!response.ok)
       return
@@ -51,9 +51,9 @@ export function placeHandlers(page: PlaceSignals) {
   }
 
   async function toggleSave(): Promise<void> {
-    const response = await send(`/api/businesses/${slug}/save`)
+    const response = await send(`/api/businesses/${slug}/save`, { saved: !page.saved() }).catch(() => null)
 
-    if (response.ok)
+    if (response?.ok)
       page.saved.set((await response.json()).data.saved)
   }
 

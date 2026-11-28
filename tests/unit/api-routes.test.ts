@@ -519,6 +519,7 @@ describe('what a signed-in stranger still may not do', () => {
     expect((await get('/orders/mine', guest)).body.data.map((entry: { id: number }) => entry.id)).toEqual([guestOrder.body.data.orderId])
     expect((await post('/account/link', {}, { ...guest, ...buyer })).body.data.linked).toBe(true)
     expect((await post('/account/link', {}, { ...guest, ...stranger })).body.data.linked).toBe(false)
+    expect((await get('/orders/mine', guest)).body.data).toEqual([])
 
     const accountOrder = await post('/orders', order, { ...otherDevice, ...buyer })
     expect(accountOrder.status).toBe(201)
@@ -526,6 +527,102 @@ describe('what a signed-in stranger still may not do', () => {
       .toEqual([accountOrder.body.data.orderId, guestOrder.body.data.orderId])
     expect((await get('/orders/mine', { ...guest, ...stranger })).body.data).toEqual([])
     expect((await get('/orders/mine', otherDevice)).body.data).toEqual([])
+  })
+
+  test('saved places follow an account and merging guest lists does not duplicate them', async () => {
+    seedShop()
+    const guest = { 'x-visitor': 'guestfavoritesbrowser1234' }
+    const buyer = { authorization: `Bearer ${await signIn()}` }
+    const other = { authorization: `Bearer ${await signIn()}` }
+    const favorite = '/businesses/a-shop/save'
+
+    expect((await post(favorite, { saved: true }, guest)).body.data.saved).toBe(true)
+    expect((await post(favorite, { saved: true }, buyer)).body.data.saved).toBe(true)
+    expect((await post('/account/link', {}, { ...guest, ...buyer })).body.data.linked).toBe(true)
+
+    const saved = await get('/saved', buyer)
+    expect(saved.body.data.map((place: { slug: string }) => place.slug)).toEqual(['a-shop'])
+    expect((await get('/account', buyer)).body.data.carries.saved).toBe(1)
+    expect((await get('/saved', guest)).body.data).toEqual([])
+    expect((await get('/saved', { ...guest, ...other })).body.data).toEqual([])
+
+    expect((await post(favorite, { saved: false }, buyer)).body.data.saved).toBe(false)
+    expect((await post(favorite, { saved: false }, buyer)).body.data.saved).toBe(false)
+    expect((await get('/saved', buyer)).body.data).toEqual([])
+  })
+
+  test('delivery addresses follow the buyer and stay private after linking a browser', async () => {
+    const guest = { 'x-visitor': 'guestaddressesbrowser1234' }
+    const buyer = { authorization: `Bearer ${await signIn()}` }
+    const other = { authorization: `Bearer ${await signIn()}` }
+
+    const first = await post('/addresses', { label: 'First', line: '100 Demo Street' }, guest)
+    expect(first.status).toBe(201)
+    expect((await get('/addresses', guest)).body.data[0]).toMatchObject({ line: '100 Demo Street', isDefault: true, latitude: null, longitude: null })
+    expect((await post('/account/link', {}, { ...guest, ...buyer })).body.data.linked).toBe(true)
+    expect((await get('/addresses', guest)).body.data).toEqual([])
+    expect((await get('/addresses', { ...guest, ...other })).body.data).toEqual([])
+
+    const second = await post('/addresses', { label: 'Second', line: '200 Demo Street' }, buyer)
+    expect(second.status).toBe(201)
+    expect((await get('/addresses', buyer)).body.data.map((address: { isDefault: boolean }) => address.isDefault)).toEqual([true, false])
+
+    const removeFirst = `/addresses/${first.body.data.id}/remove`
+    expect((await post(removeFirst, {}, guest)).status).toBe(404)
+    expect((await post(removeFirst, {}, other)).status).toBe(404)
+    expect((await post(removeFirst, {}, buyer)).status).toBe(200)
+
+    const next = await post('/addresses', { line: '300 Demo Street' }, buyer)
+    expect(next.status).toBe(201)
+    expect((await get('/addresses', buyer)).body.data[0]).toMatchObject({ line: '200 Demo Street', isDefault: true })
+
+    const newGuest = await post('/addresses', { line: '400 Demo Street' }, guest)
+    expect(newGuest.status).toBe(201)
+    expect((await get('/addresses', guest)).body.data).toHaveLength(1)
+    expect((await get('/addresses', buyer)).body.data).toHaveLength(2)
+  })
+
+  test('a browser linked before credential retirement starts a new guest profile', async () => {
+    const token = 'legacylinkedbrowser123456'
+    const buyer = { authorization: `Bearer ${await signIn()}` }
+    const { body } = await get('/account', buyer)
+    const [legacyCustomer] = database.seed('customers', [{
+      uuid: crypto.randomUUID(),
+      name: 'Previous guest',
+      email: `visitor-${token}@demo.smakelo.invalid`,
+      user_id: body.data.user.id,
+      avatar: '',
+    }])
+    database.seed('addresses', [{ line: '100 Legacy Avenue', customer_id: legacyCustomer, is_default: 1 }])
+
+    const guest = { 'x-visitor': token }
+    expect((await get('/addresses', guest)).body.data).toEqual([])
+    expect((await post('/addresses', { line: '200 Guest Avenue' }, guest)).status).toBe(201)
+    expect((await get('/addresses', guest)).body.data[0]).toMatchObject({ line: '200 Guest Avenue' })
+    expect((await get('/addresses', buyer)).body.data[0]).toMatchObject({ line: '100 Legacy Avenue' })
+  })
+
+  test('a farm membership stays accessible to the account after its guest credential is retired', async () => {
+    const { businessId } = seedShop({ type: 'farm' })
+    const [planId] = database.seed('csa_plans', [{
+      name: 'Weekly share',
+      business_id: businessId,
+      price_cents: 2500,
+      is_active: 1,
+    }])
+    const guest = { 'x-visitor': 'guestcsamemberbrowser1234' }
+    const buyer = { authorization: `Bearer ${await signIn()}` }
+    const membership = await post('/csa/join', { planId, name: 'A buyer' }, guest)
+
+    expect(membership.status).toBe(201)
+    expect((await post('/account/link', {}, { ...guest, ...buyer })).body.data.linked).toBe(true)
+    expect((await get('/csa/mine', guest)).body.data).toEqual([])
+    expect((await get('/csa/mine', buyer)).body.data[0]).toMatchObject({ planName: 'Weekly share', status: 'active' })
+    expect((await post('/csa/join', { planId }, buyer)).status).toBe(422)
+
+    const action = `/csa/${membership.body.data.subscriptionId}/pause`
+    expect((await post(action, { until: '2040-12-18' }, guest)).status).toBe(422)
+    expect((await post(action, { until: '2040-12-18' }, buyer)).body.data.status).toBe('paused')
   })
 
   test('a completed account order verifies a review on another device', async () => {

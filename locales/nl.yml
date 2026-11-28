@@ -283,7 +283,7 @@ review:
 
 saved:
   title: Bewaard
-  lede: Bewaard in deze browser. Er zijn hier geen accounts, dus een andere browser is een andere lijst - en wie zijn sitegegevens wist, wist hem mee.
+  lede: Log in om je bewaarde plekken op elk apparaat te vinden.
   empty: Nog niets bewaard.
   empty_cta: Iets zoeken
   remove: Verwijderen
@@ -551,6 +551,9 @@ account:
   tile_shares_one: aandeel
   tile_shares_many: aandelen
   signed_in_as: Ingelogd als {name}
+  addresses: Bezorgadressen
+  no_addresses: Je hebt geen opgeslagen bezorgadressen.
+  default_address: Standaard
   operator_head: Wat je runt
   operator_body: De schermen die dit account opent.
   surface_kitchen: Bestelbord

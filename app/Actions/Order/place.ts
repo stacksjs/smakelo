@@ -1,6 +1,6 @@
 import type { PricedLine } from './pricing'
 import { db, sqliteWriteOptions } from '@stacksjs/database'
-import { customerForAccount, customerForVisitor } from '../Visitor/identity'
+import { customerForBuyer } from '../Visitor/identity'
 import { distanceInMeters } from '../Business/geo'
 import { tableTabForCode } from '../Dine/tables'
 import { priceOrder } from './pricing'
@@ -84,9 +84,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder | 
     const trackingToken = crypto.randomUUID().replace(/-/g, '').slice(0, 24)
     const uuid = crypto.randomUUID()
 
-    const customerId = input.userId
-      ? await customerForAccount(input.userId)
-      : await customerForVisitor(input.visitorToken, input.customerName ?? 'Guest')
+    const customerId = await customerForBuyer(input.visitorToken, input.userId, input.customerName)
 
     await db.insertInto('orders').values({
       uuid,

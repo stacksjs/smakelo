@@ -638,7 +638,7 @@ function openLabel(business) {
     <script client>
       import { divIcon, Marker, TsMap, vectorTileLayer } from 'ts-maps'
       import { basemap, keepSized } from '../functions/map'
-      import { send, visitorToken } from '../functions/session'
+      import { apiGet, send } from '../functions/session'
 
       /*
        * One list, four controls, and a search that reaches past the page.
@@ -793,7 +793,7 @@ function openLabel(business) {
       const saved = state([])
 
       async function loadSaved() {
-        const response = await fetch('/api/saved', { headers: { 'x-visitor': visitorToken() } }).catch(() => null)
+        const response = await apiGet('/api/saved').catch(() => null)
 
         if (!response || !response.ok)
           return
@@ -815,7 +815,7 @@ function openLabel(business) {
 
         saved.set(was.includes(slug) ? was.filter(entry => entry !== slug) : [...was, slug])
 
-        const response = await send(`/api/businesses/${slug}/save`).catch(() => null)
+        const response = await send(`/api/businesses/${slug}/save`, { saved: !was.includes(slug) }).catch(() => null)
 
         if (!response || !response.ok) {
           saved.set(was)

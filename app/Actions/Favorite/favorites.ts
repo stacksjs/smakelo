@@ -1,6 +1,6 @@
-import { db } from '@stacksjs/database'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
 import { visualFor } from '../Business/identity'
-import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
+import { customerForBuyer, customerIdsForBuyer } from '../Visitor/identity'
 
 /**
  * Saved places.
@@ -12,39 +12,48 @@ import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
  * remembering it.
  */
 
-export async function toggleFavorite(businessSlug: string, visitorToken: unknown): Promise<{ ok: boolean, saved?: boolean, reason?: string }> {
-  const business = await db.selectFrom('businesses')
-    .where('slug', '=', String(businessSlug))
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+export async function toggleFavorite(
+  businessSlug: string,
+  visitorToken: unknown,
+  userId?: number | null,
+  saved?: boolean,
+): Promise<{ ok: boolean, saved?: boolean, reason?: string }> {
+  return await db.transaction(async () => {
+    const business = await db.selectFrom('businesses')
+      .where('slug', '=', businessSlug)
+      .select(['id', 'deleted_at'])
+      .executeTakeFirst()
 
-  if (!business)
-    return { ok: false, reason: 'That business is not listed.' }
+    if (!business || (business.deleted_at && saved !== false))
+      return { ok: false, reason: 'That business is not listed.' }
 
-  const customerId = await customerForVisitor(visitorToken)
+    const customerId = await customerForBuyer(visitorToken, userId)
 
-  if (!customerId)
-    return { ok: false, reason: 'Could not identify this browser.' }
+    if (customerId === null)
+      return { ok: false, reason: 'Could not identify this buyer.' }
 
-  const existing = await db.selectFrom('favorites')
-    .where('business_id', '=', Number(business.id))
-    .where('customer_id', '=', customerId)
-    .select(['id'])
-    .executeTakeFirst() as { id: number } | undefined
+    const customerIds = userId ? await customerIdsForBuyer(visitorToken, userId) : [customerId]
+    const matches = db.selectFrom('favorites')
+      .where('business_id', '=', Number(business.id))
+      .where('customer_id', 'in', customerIds)
 
-  if (existing) {
-    await db.deleteFrom('favorites').where('id', '=', Number(existing.id)).execute()
-    return { ok: true, saved: false }
-  }
+    const existing = await matches.select(['id']).execute()
+    const shouldSave = saved ?? existing.length === 0
 
-  await db.insertInto('favorites').values({
-    uuid: crypto.randomUUID(),
-    business_id: Number(business.id),
-    customer_id: customerId,
-    note: '',
-  } as never).executeTakeFirst()
+    if (!shouldSave && existing.length > 0) {
+      await db.deleteFrom('favorites').where('id', 'in', existing.map(row => Number(row.id))).execute()
+    }
+    else if (shouldSave && existing.length === 0) {
+      await db.insertInto('favorites').values({
+        uuid: crypto.randomUUID(),
+        business_id: Number(business.id),
+        customer_id: customerId,
+        note: '',
+      } as never).execute()
+    }
 
-  return { ok: true, saved: true }
+    return { ok: true, saved: shouldSave }
+  }, sqliteWriteOptions())
 }
 
 export interface SavedPlace {
@@ -66,23 +75,32 @@ export interface SavedPlace {
 }
 
 /** The list somebody opens when deciding where to eat, newest first. */
-export async function favoritesFor(visitorToken: unknown): Promise<SavedPlace[]> {
-  const customerId = await existingCustomerFor(visitorToken)
+export async function favoritesFor(visitorToken: unknown, userId?: number | null): Promise<SavedPlace[]> {
+  const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
+  if (customerIds.length === 0)
     return []
 
   const rows = await db.selectFrom('favorites')
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
     .orderBy('id', 'desc')
     .selectAll()
     .execute() as Array<Record<string, unknown>>
 
   const places: SavedPlace[] = []
+  const seen = new Set<number>()
 
   for (const row of rows) {
+    const businessId = Number(row.business_id)
+
+    if (seen.has(businessId))
+      continue
+
+    seen.add(businessId)
+
     const business = await db.selectFrom('businesses')
-      .where('id', '=', Number(row.business_id))
+      .where('id', '=', businessId)
+      .where('deleted_at', 'is', null)
       .selectAll()
       .executeTakeFirst() as Record<string, unknown> | undefined
 
@@ -113,8 +131,8 @@ export async function favoritesFor(visitorToken: unknown): Promise<SavedPlace[]>
 }
 
 /** Which of these slugs this browser has saved, for marking a list of cards. */
-export async function savedSlugs(visitorToken: unknown): Promise<string[]> {
-  return (await favoritesFor(visitorToken)).map(place => place.slug)
+export async function savedSlugs(visitorToken: unknown, userId?: number | null): Promise<string[]> {
+  return (await favoritesFor(visitorToken, userId)).map(place => place.slug)
 }
 
 /** The full class, since a class assembled in a template is never generated. */

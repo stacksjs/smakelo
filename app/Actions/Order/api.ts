@@ -40,6 +40,11 @@ function readInput(body: any): PlaceOrderInput | { reason: string } {
   if (lines.some(line => !Number.isFinite(line.productId)))
     return { reason: 'One of those items is not a real item.' }
 
+  const latitude = body?.deliveryLatitude == null ? NaN : Number(body.deliveryLatitude)
+  const longitude = body?.deliveryLongitude == null ? NaN : Number(body.deliveryLongitude)
+  const hasCoordinates = fulfilment === 'delivery'
+    && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && (latitude !== 0 || longitude !== 0)
+
   return {
     businessSlug,
     fulfilment: fulfilment as 'delivery' | 'pickup' | 'dine_in',
@@ -47,8 +52,8 @@ function readInput(body: any): PlaceOrderInput | { reason: string } {
     customerName: typeof body?.customerName === 'string' ? body.customerName.slice(0, 120) : '',
     customerEmail: typeof body?.customerEmail === 'string' ? body.customerEmail.slice(0, 160) : '',
     deliveryAddress: typeof body?.deliveryAddress === 'string' ? body.deliveryAddress.slice(0, 255) : '',
-    deliveryLatitude: Number.isFinite(Number(body?.deliveryLatitude)) ? Number(body.deliveryLatitude) : undefined,
-    deliveryLongitude: Number.isFinite(Number(body?.deliveryLongitude)) ? Number(body.deliveryLongitude) : undefined,
+    deliveryLatitude: hasCoordinates ? latitude : undefined,
+    deliveryLongitude: hasCoordinates ? longitude : undefined,
     // Tips are clamped rather than trusted. A negative tip would take money out
     // of the courier's share.
     tipCents: Math.max(0, Math.min(50_000, Math.round(Number(body?.tipCents ?? 0)) || 0)),

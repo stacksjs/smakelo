@@ -1,4 +1,4 @@
-import { money, send, visitorToken } from './session'
+import { apiGet, money, send } from './session'
 
 /**
  * Ordering, on the restaurant's own page.
@@ -170,9 +170,9 @@ export function cartHandlers(page: CartSignals) {
   }
 
   async function loadAddresses(): Promise<void> {
-    const response = await fetch('/api/addresses', { headers: { 'x-visitor': visitorToken() } })
+    const response = await apiGet('/api/addresses').catch(() => null)
 
-    if (!response.ok)
+    if (!response?.ok)
       return
 
     const { data } = await response.json()
@@ -182,7 +182,7 @@ export function cartHandlers(page: CartSignals) {
     // Somebody with one address should never be asked to pick it.
     const preferred = data.find((address: any) => address.isDefault) ?? data[0]
 
-    if (preferred && !page.checkout().address)
+    if (preferred && !page.checkout().addressLine.trim())
       chooseAddress(preferred)
   }
 
@@ -698,8 +698,8 @@ export function cartHandlers(page: CartSignals) {
 
     return {
       deliveryAddress: checkout.addressLine || (checkout.address ? checkout.address.line : ''),
-      deliveryLatitude: checkout.address ? checkout.address.latitude : undefined,
-      deliveryLongitude: checkout.address ? checkout.address.longitude : undefined,
+      deliveryLatitude: checkout.address?.latitude ?? undefined,
+      deliveryLongitude: checkout.address?.longitude ?? undefined,
     }
   }
 

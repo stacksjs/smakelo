@@ -1,5 +1,5 @@
-import { db } from '@stacksjs/database'
-import { customerForVisitor, existingCustomerFor } from '../Visitor/identity'
+import { db, sqliteWriteOptions } from '@stacksjs/database'
+import { customerForBuyer, customerIdsForBuyer } from '../Visitor/identity'
 
 /**
  * Where somebody's food goes.
@@ -15,29 +15,32 @@ export interface AddressRow {
   line: string
   city: string
   postalCode: string
-  latitude: number
-  longitude: number
+  latitude: number | null
+  longitude: number | null
   notes: string
   isDefault: boolean
 }
 
-export async function addressesFor(visitorToken: unknown): Promise<AddressRow[]> {
-  const customerId = await existingCustomerFor(visitorToken)
+export async function addressesFor(visitorToken: unknown, userId?: number | null): Promise<AddressRow[]> {
+  const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
+  if (customerIds.length === 0)
     return []
 
   const rows = await db.selectFrom('addresses')
-    .where('customer_id', '=', customerId)
+    .where('customer_id', 'in', customerIds)
+    .orderBy('is_default', 'desc')
     .orderBy('id', 'desc')
     .selectAll()
-    .execute() as Array<Record<string, unknown>>
+    .execute()
 
-  return rows.map(shape).sort((a, b) => Number(b.isDefault) - Number(a.isDefault))
+  // A buyer can import more than one guest profile, each with a past default.
+  return rows.map((row, index) => ({ ...shape(row), isDefault: index === 0 }))
 }
 
 export interface SaveAddressInput {
   visitorToken: unknown
+  userId?: number | null
   label: string
   line: string
   city?: string
@@ -53,71 +56,86 @@ export async function saveAddress(input: SaveAddressInput): Promise<{ ok: boolea
   if (line.length < 5)
     return { ok: false, reason: 'That is not enough of an address to find.' }
 
-  const customerId = await customerForVisitor(input.visitorToken)
+  return await db.transaction(async () => {
+    const customerId = await customerForBuyer(input.visitorToken, input.userId)
 
-  if (!customerId)
-    return { ok: false, reason: 'Could not identify this browser.' }
+    if (customerId === null)
+      return { ok: false, reason: 'Could not identify this buyer.' }
 
-  const existing = await db.selectFrom('addresses')
-    .where('customer_id', '=', customerId)
-    .select(['id'])
-    .execute() as Array<{ id: number }>
+    const customerIds = input.userId ? await customerIdsForBuyer(input.visitorToken, input.userId) : [customerId]
+    const existing = await db.selectFrom('addresses')
+      .where('customer_id', 'in', customerIds)
+      .orderBy('is_default', 'desc')
+      .orderBy('id', 'desc')
+      .select(['id', 'is_default'])
+      .executeTakeFirst()
 
-  const position = coordinates(input)
+    if (existing && Number(existing.is_default) !== 1) {
+      await db.updateTable('addresses')
+        .set({ is_default: 1 })
+        .where('id', '=', Number(existing.id))
+        .execute()
+    }
 
-  await db.insertInto('addresses').values({
-    uuid: crypto.randomUUID(),
-    customer_id: customerId,
-    label: String(input.label ?? 'Home').trim().slice(0, 40) || 'Home',
-    line: line.slice(0, 255),
-    city: String(input.city ?? 'Los Angeles').slice(0, 120),
-    postal_code: String(input.postalCode ?? '').slice(0, 20),
-    latitude: position.latitude,
-    longitude: position.longitude,
-    notes: String(input.notes ?? '').slice(0, 300),
-    // The first one saved is the default, because a person with one address
-    // should never have to choose it.
-    is_default: existing.length === 0 ? 1 : 0,
-  } as never).executeTakeFirst()
+    const position = coordinates(input)
+    const created = await db.insertInto('addresses').values({
+      uuid: crypto.randomUUID(),
+      customer_id: customerId,
+      label: String(input.label ?? 'Home').trim().slice(0, 40) || 'Home',
+      line: line.slice(0, 255),
+      city: String(input.city ?? '').slice(0, 120),
+      postal_code: String(input.postalCode ?? '').slice(0, 20),
+      latitude: position.latitude,
+      longitude: position.longitude,
+      notes: String(input.notes ?? '').slice(0, 300),
+      is_default: existing ? 0 : 1,
+    } as never).returningAll().executeTakeFirst()
 
-  const created = await db.selectFrom('addresses')
-    .where('customer_id', '=', customerId)
-    .orderBy('id', 'desc')
-    .selectAll()
-    .executeTakeFirst() as Record<string, unknown> | undefined
+    if (!created)
+      throw new Error('The saved address could not be loaded.')
 
-  return { ok: true, address: created ? shape(created) : undefined }
+    return { ok: true, address: shape(created) }
+  }, sqliteWriteOptions())
 }
 
-export async function removeAddress(id: number, visitorToken: unknown): Promise<{ ok: boolean, reason?: string }> {
-  const customerId = await existingCustomerFor(visitorToken)
+export async function removeAddress(id: number, visitorToken: unknown, userId?: number | null): Promise<boolean> {
+  return await db.transaction(async () => {
+    const customerIds = await customerIdsForBuyer(visitorToken, userId)
 
-  if (!customerId)
-    return { ok: false, reason: 'Could not identify this browser.' }
+    if (customerIds.length === 0)
+      return false
 
-  const row = await db.selectFrom('addresses')
-    .where('id', '=', Number(id))
-    .select(['id', 'customer_id'])
-    .executeTakeFirst() as { id: number, customer_id: number } | undefined
+    const deleted = await db.deleteFrom('addresses')
+      .where('id', '=', id)
+      .where('customer_id', 'in', customerIds)
+      .returning(['is_default'])
+      .executeTakeFirst()
 
-  if (!row || Number(row.customer_id) !== customerId)
-    return { ok: false, reason: 'That address belongs to someone else.' }
+    if (!deleted)
+      return false
 
-  await db.deleteFrom('addresses').where('id', '=', Number(id)).execute()
+    if (Number(deleted.is_default) === 1) {
+      const next = await db.selectFrom('addresses')
+        .where('customer_id', 'in', customerIds)
+        .orderBy('is_default', 'desc')
+        .orderBy('id', 'desc')
+        .select(['id', 'is_default'])
+        .executeTakeFirst()
 
-  return { ok: true }
+      if (next && Number(next.is_default) !== 1) {
+        await db.updateTable('addresses')
+          .set({ is_default: 1 })
+          .where('id', '=', Number(next.id))
+          .execute()
+      }
+    }
+
+    return true
+  }, sqliteWriteOptions())
 }
 
-/**
- * Turn an address into a position.
- *
- * There is no geocoder here, and adding one would mean sending a stranger's
- * home address to a third party so a demonstration could price a delivery
- * nobody will make. Los Angeles is the only market, so an unplaced address sits
- * at the market centre and the fee comes out at the base rate: honest, and
- * visibly a flat rate rather than a fake precise one.
- */
-function coordinates(input: SaveAddressInput): { latitude: number, longitude: number } {
+/** A typed address has no map position until one has been supplied. */
+function coordinates(input: SaveAddressInput): { latitude: number | null, longitude: number | null } {
   const latitude = Number(input.latitude)
   const longitude = Number(input.longitude)
 
@@ -129,7 +147,7 @@ function coordinates(input: SaveAddressInput): { latitude: number, longitude: nu
 
   return placed
     ? { latitude, longitude }
-    : { latitude: 34.0195, longitude: -118.4912 }
+    : { latitude: null, longitude: null }
 }
 
 function shape(row: Record<string, unknown>): AddressRow {
@@ -139,8 +157,8 @@ function shape(row: Record<string, unknown>): AddressRow {
     line: String(row.line ?? ''),
     city: String(row.city ?? ''),
     postalCode: String(row.postal_code ?? ''),
-    latitude: Number(row.latitude ?? 0),
-    longitude: Number(row.longitude ?? 0),
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
     notes: String(row.notes ?? ''),
     isDefault: Number(row.is_default) === 1,
   }

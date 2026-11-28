@@ -1,5 +1,5 @@
 import { db } from '@stacksjs/database'
-import { customerForAccount, customerForVisitor, customerIdsForBuyer } from '../Visitor/identity'
+import { customerForBuyer, customerIdsForBuyer } from '../Visitor/identity'
 
 /**
  * Writing, rating and answering reviews.
@@ -60,9 +60,7 @@ export async function submitReview(input: ReviewInput): Promise<ReviewResult> {
   if (body.length < 20)
     return { ok: false, reason: 'Say a little more than that: twenty characters at least.' }
 
-  const customerId = input.userId
-    ? await customerForAccount(input.userId)
-    : await customerForVisitor(input.visitorToken, input.authorName)
+  const customerId = await customerForBuyer(input.visitorToken, input.userId, input.authorName)
 
   if (!customerId)
     return { ok: false, reason: 'Could not identify this browser. Enable cookies and try again.' }
@@ -122,7 +120,7 @@ export async function voteOnReview(reviewId: number, visitorToken: unknown, help
   if (!review)
     return { ok: false, reason: 'No such review.' }
 
-  const customerId = userId ? await customerForAccount(userId) : await customerForVisitor(visitorToken)
+  const customerId = await customerForBuyer(visitorToken, userId)
 
   if (!customerId)
     return { ok: false, reason: 'Could not identify this browser.' }

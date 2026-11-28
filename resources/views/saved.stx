@@ -46,7 +46,13 @@ const canonicalPath = '/saved'
 
         <p :if="loading()" class="mt-10 text-[15px]" style="color: var(--ink-soft)">{{ t('common.loading') }}…</p>
 
-        <div :if="!loading() && places().length === 0" class="p-8 mt-10 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
+        <div :if="failed()" class="mt-10">
+          <p role="alert" class="text-[15px]" style="color: var(--ink-soft)">{{ t('common.error') }}</p>
+          <button type="button" @click="load()" class="mt-4 text-[14px] underline underline-offset-4">{{ t('common.retry') }}</button>
+        </div>
+        <p :if="removeFailed()" role="alert" class="mt-5 text-[15px]" style="color: var(--accent)">{{ t('common.error') }}</p>
+
+        <div :if="!loading() && !failed() && places().length === 0" class="p-8 mt-10 text-center rounded-[1.75rem]" style="background: var(--paper-raised); box-shadow: 0 1px 2px rgba(20,17,15,0.03)">
           <p class="text-[15px]" style="color: var(--ink-soft)">{{ t('saved.empty') }}</p>
           <a href="/" class="inline-block mt-4 text-[14px] underline underline-offset-4">{{ t('saved.empty_cta') }}</a>
         </div>
@@ -75,7 +81,7 @@ const canonicalPath = '/saved'
               <div class="flex gap-2 items-center shrink-0">
                 <a :if="place.isPartner" :href="'/places/' + place.slug" class="px-4 py-2 text-[13px] font-medium rounded-full transition-all duration-500" style="background: var(--accent); color: #fff">{{ t('place.order') }}</a>
                 <span :if="!place.isPartner" class="px-3 py-1 text-[11px] rounded-full" style="border: 1px solid var(--line); color: var(--ink-soft)">{{ t('saved.listing_only') }}</span>
-                <button @click="unsave(place.slug)" class="px-3 py-2 text-[13px] transition-opacity duration-500 hover:opacity-70" style="color: var(--ink-soft)">{{ t('saved.remove') }}</button>
+                <button type="button" @click="unsave(place.slug)" :disabled="Boolean(removing())" class="px-3 py-2 text-[13px] disabled:opacity-50 hover:opacity-70 duration-500 transition-opacity" style="color: var(--ink-soft)">{{ t('saved.remove') }}</button>
               </div>
             </div>
           </div>
@@ -84,7 +90,7 @@ const canonicalPath = '/saved'
     </main>
 
     <script client>
-      import { csrfToken, visitorToken } from '../functions/session'
+      import { apiGet, send } from '../functions/session'
 
       /*
        * A string this script writes, in the language the server served.
@@ -95,7 +101,7 @@ const canonicalPath = '/saved'
        * is in partials/head.stx.
        */
       function say(key, english) {
-        return window.Smakelo && window.Smakelo.t ? window.Smakelo.t(key, english) : english
+        return globalThis.Smakelo?.t?.(key, english) ?? english
       }
 
       /* A place's rating, with the numbers where the sentence wants them. */
@@ -107,24 +113,56 @@ const canonicalPath = '/saved'
 
       const places = state([])
       const loading = state(true)
+      const failed = state(false)
+      const removing = state('')
+      const removeFailed = state(false)
 
       async function load() {
-        const response = await fetch('/api/saved', { headers: { 'x-visitor': visitorToken() } })
-        const { data } = await response.json()
+        loading.set(true)
+        failed.set(false)
 
-        places.set(data)
-        loading.set(false)
+        try {
+          const response = await apiGet('/api/saved')
+
+          if (!response.ok) {
+            failed.set(true)
+            return
+          }
+
+          const { data } = await response.json()
+          places.set(data)
+        }
+        catch {
+          failed.set(true)
+        }
+        finally {
+          loading.set(false)
+        }
       }
 
       async function unsave(slug) {
-        await fetch(`/api/businesses/${slug}/save`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken(), 'x-visitor': visitorToken() },
-          credentials: 'same-origin',
-          body: '{}',
-        })
+        if (removing())
+          return
 
-        load()
+        removing.set(slug)
+        removeFailed.set(false)
+
+        try {
+          const response = await send(`/api/businesses/${encodeURIComponent(slug)}/save`, { saved: false })
+
+          if (!response.ok) {
+            removeFailed.set(true)
+            return
+          }
+
+          places.update(list => list.filter(place => place.slug !== slug))
+        }
+        catch {
+          removeFailed.set(true)
+        }
+        finally {
+          removing.set('')
+        }
       }
 
       load()

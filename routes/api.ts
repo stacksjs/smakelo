@@ -9,7 +9,8 @@ import { manageView, updateFulfilment, updateHours, updateItem } from '../app/Ac
 import { allCouriers, consoleFor, setShift } from '../app/Actions/Courier/console'
 import { recordBatch, recordPing } from '../app/Actions/Courier/pings'
 import { dispatchNextReadyOrder } from '../app/Actions/Delivery/dispatch'
-import { accountState, linkVisitorToUser } from '../app/Actions/Account/session'
+import { accountState } from '../app/Actions/Account/session'
+import { linkVisitorToUser } from '../app/Actions/Visitor/identity'
 import { listings, setHidden } from '../app/Actions/Admin/curation'
 import type { Viewer } from '../app/Actions/Account/access'
 import { can, canActOnBusiness, canReadStatement, courierFor, viewerFor } from '../app/Actions/Account/access'
@@ -585,11 +586,14 @@ route.post('/reviews/{id}/respond', async (request: any) => {
 
 /** `GET /api/saved` and `POST /api/businesses/{slug}/save` */
 route.get('/saved', async (request: any) => {
-  return response.json({ data: await favoritesFor(visitorOf(request)) })
+  const data = await favoritesFor(visitorOf(request), await signedInUserId(request))
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 route.post('/businesses/{slug}/save', async (request: any) => {
-  const result = await toggleFavorite(String(request?.getParam?.('slug') ?? ''), visitorOf(request))
+  const body = await request.all()
+  const saved = typeof body?.saved === 'boolean' ? body.saved : undefined
+  const result = await toggleFavorite(String(request?.getParam?.('slug') ?? ''), visitorOf(request), await signedInUserId(request), saved)
 
   if (!result.ok)
     return response.json({ message: result.reason }, 422)
@@ -697,15 +701,15 @@ route.post('/payment/confirm', async (request: any) => {
 /**
  * CSA shares.
  *
- * A farm's plans are public; a membership belongs to the browser that took it
- * out, which is checked in the action rather than here.
+ * A farm's plans are public. Memberships belong to the buyer.
  */
 route.get('/csa/{slug}/plans', async (request: any) => {
   return response.json({ data: await plansFor(String(request?.getParam?.('slug') ?? '')) })
 })
 
 route.get('/csa/mine', async (request: any) => {
-  return response.json({ data: await membershipsFor(visitorOf(request)) })
+  const data = await membershipsFor(visitorOf(request), await signedInUserId(request))
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 route.post('/csa/join', async (request: any) => {
@@ -714,6 +718,7 @@ route.post('/csa/join', async (request: any) => {
   const result = await join({
     planId: Number(body?.planId ?? 0),
     visitorToken: visitorOf(request),
+    userId: await signedInUserId(request),
     name: String(body?.name ?? 'Guest'),
     fulfilment: body?.fulfilment === 'delivery' ? 'delivery' : 'pickup',
     deliveryAddress: String(body?.deliveryAddress ?? ''),
@@ -734,6 +739,7 @@ route.post('/csa/{id}/{action}', async (request: any) => {
     visitorOf(request),
     String(request?.getParam?.('action') ?? '') as 'pause' | 'resume' | 'cancel',
     String(body?.until ?? ''),
+    await signedInUserId(request),
   )
 
   if (!result.ok)
@@ -984,7 +990,8 @@ route.post('/courier/{id}/pings', async (request: any) => {
 
 /** `GET /api/addresses`, `POST /api/addresses`, `POST /api/addresses/{id}/remove` */
 route.get('/addresses', async (request: any) => {
-  return response.json({ data: await addressesFor(visitorOf(request)) })
+  const data = await addressesFor(visitorOf(request), await signedInUserId(request))
+  return Response.json({ data }, { headers: { 'Cache-Control': 'private, no-store' } })
 })
 
 route.post('/addresses', async (request: any) => {
@@ -992,12 +999,13 @@ route.post('/addresses', async (request: any) => {
 
   const result = await saveAddress({
     visitorToken: visitorOf(request),
+    userId: await signedInUserId(request),
     label: String(body?.label ?? 'Home'),
     line: String(body?.line ?? ''),
     city: String(body?.city ?? ''),
     postalCode: String(body?.postalCode ?? ''),
-    latitude: body?.latitude === undefined ? undefined : Number(body.latitude),
-    longitude: body?.longitude === undefined ? undefined : Number(body.longitude),
+    latitude: body?.latitude == null ? undefined : Number(body.latitude),
+    longitude: body?.longitude == null ? undefined : Number(body.longitude),
     notes: String(body?.notes ?? ''),
   })
 
@@ -1008,10 +1016,10 @@ route.post('/addresses', async (request: any) => {
 })
 
 route.post('/addresses/{id}/remove', async (request: any) => {
-  const result = await removeAddress(Number(request?.getParam?.('id') ?? 0), visitorOf(request))
+  const removed = await removeAddress(Number(request?.getParam?.('id') ?? 0), visitorOf(request), await signedInUserId(request))
 
-  if (!result.ok)
-    return response.json({ message: result.reason }, 422)
+  if (!removed)
+    return response.json({ message: 'Address not found.' }, 404)
 
   return response.json({ data: { ok: true } })
 })

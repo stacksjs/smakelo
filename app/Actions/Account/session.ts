@@ -1,13 +1,12 @@
 import { db } from '@stacksjs/database'
-import { customerIdsForBuyer, existingCustomerFor } from '../Visitor/identity'
+import { customerIdsForBuyer } from '../Visitor/identity'
+import { savedSlugs } from '../Favorite/favorites'
 
 /**
  * Who is signed in, and what they could sign in with.
  *
- * Accounts are optional here. Everything on this site works from a browser
- * token: saved places, orders, reviews, shares. Signing in binds that token to
- * an account so the same list appears on a second device, which is the only
- * thing an account actually buys a customer and the only thing it is sold as.
+ * Guests can use a browser token. Signing in transfers their activity
+ * to the account and the browser credential stops opening that history.
  */
 
 export interface SocialButton {
@@ -93,7 +92,6 @@ async function userById(id: number): Promise<{ id: number, name: string, email: 
  * told plainly that there is nothing to keep yet.
  */
 async function visitorActivity(visitorToken: unknown, userId?: number): Promise<{ saved: number, orders: number, reviews: number, shares: number }> {
-  const customerId = await existingCustomerFor(visitorToken)
   const buyerIds = await customerIdsForBuyer(visitorToken, userId)
 
   const count = async (table: string, ids: number[]): Promise<number> => {
@@ -107,29 +105,11 @@ async function visitorActivity(visitorToken: unknown, userId?: number): Promise<
 
     return rows.length
   }
-  const browserIds = customerId === null ? [] : [customerId]
 
   return {
-    saved: await count('favorites', browserIds),
+    saved: (await savedSlugs(visitorToken, userId)).length,
     orders: await count('orders', buyerIds),
     reviews: await count('business_reviews', buyerIds),
-    shares: await count('csa_subscriptions', browserIds),
+    shares: await count('csa_subscriptions', buyerIds),
   }
-}
-
-/** Attach unclaimed guest history without reassigning another account's data. */
-export async function linkVisitorToUser(userId: number, visitorToken: unknown): Promise<{ ok: boolean, linked: boolean }> {
-  const customerId = await existingCustomerFor(visitorToken)
-
-  if (!customerId)
-    return { ok: true, linked: false }
-
-  const updated = await db.updateTable('customers')
-    .set({ user_id: userId } as never)
-    .where('id', '=', customerId)
-    .where('user_id', 'is', null)
-    .returning(['id'])
-    .executeTakeFirst()
-
-  return { ok: true, linked: Boolean(updated) }
 }

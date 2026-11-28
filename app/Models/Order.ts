@@ -34,11 +34,6 @@ export default defineModel({
       count: 20,
     },
 
-    useApi: {
-      uri: 'orders',
-      middleware: ['auth'],
-    },
-
     observe: true,
   },
 

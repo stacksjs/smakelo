@@ -284,7 +284,7 @@ review:
 
 saved:
   title: Saved
-  lede: Kept in this browser. There are no accounts here, so a different browser is a different list, and clearing your site data clears it.
+  lede: Sign in to find your saved places on any device.
   empty: Nothing saved yet.
   empty_cta: Find somewhere
   remove: Remove
@@ -552,6 +552,9 @@ account:
   tile_shares_one: share
   tile_shares_many: shares
   signed_in_as: Signed in as {name}
+  addresses: Delivery addresses
+  no_addresses: You have no saved delivery addresses.
+  default_address: Default
   operator_head: What you run
   operator_body: The screens this account opens.
   surface_kitchen: Orders board

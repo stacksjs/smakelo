@@ -22,10 +22,10 @@ export async function customerForVisitor(token: unknown, name = 'Guest'): Promis
   if (!isVisitorToken(token))
     return null
 
-  return await findOrCreateCustomer(`visitor-${token.toLowerCase()}@demo.smakelo.invalid`, name)
+  return await findOrCreateCustomer(visitorEmail(token), name)
 }
 
-/** The customer used for new orders by an authenticated account. */
+/** The customer used for new activity by an authenticated account. */
 export async function customerForAccount(userId: number): Promise<number | null> {
   const user = await db.selectFrom('users')
     .where('id', '=', userId)
@@ -35,6 +35,10 @@ export async function customerForAccount(userId: number): Promise<number | null>
   return user
     ? await findOrCreateCustomer(`account-${userId}@demo.smakelo.invalid`, user.name, userId)
     : null
+}
+
+export async function customerForBuyer(visitorToken: unknown, userId?: number | null, name?: string): Promise<number | null> {
+  return userId ? await customerForAccount(userId) : await customerForVisitor(visitorToken, name)
 }
 
 export async function customerIdsForBuyer(visitorToken: unknown, userId?: number | null): Promise<number[]> {
@@ -53,11 +57,20 @@ export async function customerIdsForBuyer(visitorToken: unknown, userId?: number
 
 async function findOrCreateCustomer(email: string, name: string, userId?: number): Promise<number | null> {
   return await db.transaction(async () => {
-    const existing = await db.selectFrom('customers').where('email', '=', email).select(['id'])
-      .executeTakeFirst() as { id: number } | undefined
+    const existing = await db.selectFrom('customers').where('email', '=', email).select(['id', 'user_id'])
+      .executeTakeFirst()
 
-    if (existing)
-      return Number(existing.id)
+    if (existing) {
+      if (userId || existing.user_id == null)
+        return Number(existing.id)
+
+      // Older links kept the browser's address on the now account-owned row.
+      // Retire it before creating a new guest profile for the signed-out browser.
+      await db.updateTable('customers')
+        .set({ email: linkedVisitorEmail(Number(existing.id)) })
+        .where('id', '=', Number(existing.id))
+        .execute()
+    }
 
     const created = await db.insertInto('customers').values({
       uuid: crypto.randomUUID(),
@@ -80,11 +93,37 @@ export async function existingCustomerFor(token: unknown): Promise<number | null
     return null
 
   const row = await db.selectFrom('customers')
-    .where('email', '=', `visitor-${token.toLowerCase()}@demo.smakelo.invalid`)
+    .where('email', '=', visitorEmail(token))
+    .where('user_id', 'is', null)
     .select(['id'])
     .executeTakeFirst() as { id: number } | undefined
 
   return row ? Number(row.id) : null
+}
+
+/** Transfer guest history to an account and retire its browser credential. */
+export async function linkVisitorToUser(userId: number, visitorToken: unknown): Promise<{ ok: boolean, linked: boolean }> {
+  const customerId = await existingCustomerFor(visitorToken)
+
+  if (customerId === null)
+    return { ok: true, linked: false }
+
+  const updated = await db.updateTable('customers')
+    .set({ user_id: userId, email: linkedVisitorEmail(customerId) })
+    .where('id', '=', customerId)
+    .where('user_id', 'is', null)
+    .returning(['id'])
+    .executeTakeFirst()
+
+  return { ok: true, linked: Boolean(updated) }
+}
+
+function visitorEmail(token: string): string {
+  return `visitor-${token.toLowerCase()}@demo.smakelo.invalid`
+}
+
+function linkedVisitorEmail(customerId: number): string {
+  return `linked-visitor-${customerId}@demo.smakelo.invalid`
 }
 
 function cleanName(name: string): string {

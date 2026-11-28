@@ -283,7 +283,7 @@ review:
 
 saved:
   title: Gemerkt
-  lede: In diesem Browser gespeichert. Es gibt hier keine Konten, also ist ein anderer Browser eine andere Liste - und wer die Websitedaten löscht, löscht sie mit.
+  lede: Melde dich an, um deine gespeicherten Orte auf jedem Gerät zu finden.
   empty: Noch nichts gemerkt.
   empty_cta: Etwas finden
   remove: Entfernen
@@ -551,6 +551,9 @@ account:
   tile_shares_one: Anteil
   tile_shares_many: Anteile
   signed_in_as: Angemeldet als {name}
+  addresses: Lieferadressen
+  no_addresses: Du hast keine gespeicherten Lieferadressen.
+  default_address: Standard
   operator_head: Was du betreibst
   operator_body: Die Seiten, die dieses Konto öffnet.
   surface_kitchen: Bestelltafel

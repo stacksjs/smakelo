@@ -30,12 +30,6 @@ export default defineModel({
     },
 
     useSeeder: { count: 0 },
-
-    useApi: {
-      // Somebody's home address. Staff only, both ways.
-      middleware: ['auth'],
-      uri: 'addresses',
-    },
   },
 
   belongsTo: ['Customer'],
@@ -72,11 +66,8 @@ export default defineModel({
     },
 
     /**
-     * Coordinates, so the delivery fee means something.
-     *
-     * Geocoded when the address is saved rather than at checkout: a customer
-     * waiting on a lookup before they can see a total is a customer watching a
-     * spinner at the worst moment.
+     * Coordinates when supplied with an address, available for a delivery
+     * quote without a lookup during checkout.
      */
     latitude: {
       order: 5,
